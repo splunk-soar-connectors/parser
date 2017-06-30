@@ -51,10 +51,12 @@
           "primary": false, 
           "contains": [], 
           "value_list": [
-            "pdf", 
+            "txt", 
             "email", 
-            "txt",
-            "docx"
+            "pdf",
+            "docx",
+            "csv",
+            "html"
           ], 
           "default": "", 
           "order": 2

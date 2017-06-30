@@ -168,7 +168,8 @@ class ParserConnector(BaseConnector):
         # ingestion app (like this one) on a new container. where it wont let you
         # However, the base connector code adds the asset_id, which causes the server to fail
         # when adding the asset.
-        # This line can possibly be removed and should be retested in 3.0
+        # This line can probably be removed and should be retested in 3.0
+        # This also means that created containers ARE NOT associated with an asset
         self._BaseConnector__container_common.pop('asset_id')
 
         if (file_type == 'email'):
@@ -194,7 +195,7 @@ class ParserConnector(BaseConnector):
             if max_artifacts < 1:
                 return action_result.set_status("max_artifacts must be greater than 0")
 
-        ret_val = self._save_to_container(action_result, artifacts, file_info['name'], vault_id, label, max_artifacts)
+        ret_val = self._save_to_container(action_result, artifacts, file_info['name'], label, vault_id, max_artifacts)
         if phantom.is_fail(ret_val):
             return ret_val
 

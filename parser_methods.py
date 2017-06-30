@@ -14,6 +14,7 @@
 
 import re
 import os
+import csv
 import magic
 import email
 import socket
@@ -104,7 +105,7 @@ PROC_EMAIL_JSON_EMAIL_HEADERS = "email_headers"
 PROC_EMAIL_CONTENT_TYPE_MESSAGE = "message/rfc822"
 
 URI_REGEX = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
-EMAIL_REGEX = r"\b[A-Z0-9._%+-]+@+[A-Z0-9.-]+\.[A-Z]{2,}\b"
+EMAIL_REGEX = r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"
 EMAIL_REGEX2 = r'".*"@[A-Z0-9.-]+\.[A-Z]{2,}\b'
 HASH_REGEX = r"\b[0-9a-fA-F]{32}\b|\b[0-9a-fA-F]{40}\b|\b[0-9a-fA-F]{64}\b"
 IP_REGEX = r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}'
@@ -126,7 +127,6 @@ def _extract_domain_from_url(url):
 
 
 def _is_ip(input_ip):
-
     if (ph_utils.is_ip(input_ip)):
         return True
 
@@ -137,7 +137,6 @@ def _is_ip(input_ip):
 
 
 def _clean_url(url):
-
     url = url.strip('>),.]\r\n')
 
     # Check before splicing, find returns -1 if not found
@@ -152,7 +151,6 @@ def _clean_url(url):
 
 
 def is_ipv6(input_ip):
-
     try:
         socket.inet_pton(socket.AF_INET6, input_ip)
     except:  # not a valid v6 address
@@ -164,10 +162,10 @@ def is_ipv6(input_ip):
 class TextIOCParser():
     BASE_PATTERNS = [
         {
-            'cef': 'ip',                       # Name of CEF field
-            'pattern': IP_REGEX,               # Regex to match
-            'name': 'IP Artifact',             # Name of artifact
-            'validator': _is_ip                # Additional function to verify matched string
+            'cef': 'ip',             # Name of CEF field
+            'pattern': IP_REGEX,     # Regex to match
+            'name': 'IP Artifact',   # Name of artifact
+            'validator': _is_ip      # Additional function to verify matched string (Should return true or false)
         },
         {
             'cef': 'ip',
@@ -179,13 +177,12 @@ class TextIOCParser():
             'cef': 'requestURL',
             'pattern': URI_REGEX,
             'name': 'URL Artifact',
-            'validator': None,
-            'clean': _clean_url,              # Additional cleaning of data from regex
-            'subtypes': [                     # Additional IOCs to find in a matched one
+            'clean': _clean_url,     # Additional cleaning of data from regex (Should return a string)
+            'subtypes': [            # Additional IOCs to find in a matched one
                 {
                     'cef': 'domain',
                     'name': 'Domain Artifact',
-                    'callback': _extract_domain_from_url          # Method to extract substring
+                    'callback': _extract_domain_from_url  # Method to extract substring
                 }
             ]
         },
@@ -193,6 +190,30 @@ class TextIOCParser():
             'cef': 'fileHash',
             'pattern': HASH_REGEX,
             'name': 'Hash Artifact'
+        },
+        {
+            'cef': 'email',
+            'pattern': EMAIL_REGEX,
+            'name': 'Email Artifact',
+            'subtypes': [
+                {
+                    'cef': 'domain',
+                    'name': 'Domain Artifact',
+                    'callback': lambda(x): x[x.rfind('@') + 1:]
+                }
+            ]
+        },
+        {
+            'cef': 'email',
+            'pattern': EMAIL_REGEX2,
+            'name': 'Email Artifact',
+            'subtypes': [
+                {
+                    'cef': 'domain',
+                    'name': 'Domain Artifact',
+                    'callback': lambda(x): x[x.rfind('@') + 1:]
+                }
+            ]
         }
     ]
     found_values = set()
@@ -219,6 +240,8 @@ class TextIOCParser():
                 self._create_artifact(artifacts, sub_val, subtype['cef'], subtype['name'])
 
     def _pass_over_value(self, artifacts, value, validator, clean, subtypes, ioc):
+        if not value:
+            return
         if value in self.found_values:
             return
         if clean:
@@ -232,7 +255,7 @@ class TextIOCParser():
     def parse_to_artifacts(self, text):
         artifacts = []
         for ioc in self.patterns:
-            regexp = re.compile(ioc['pattern'])
+            regexp = re.compile(ioc['pattern'], re.IGNORECASE)
             found = regexp.findall(text)
             validator = ioc.get('validator')
             clean = ioc.get('clean')
@@ -246,9 +269,12 @@ class TextIOCParser():
         return artifacts
 
 
-def _grab_raw_text(action_result, file_path):
+def _grab_raw_text(action_result, txt_file):
+    """ This function will actually really work for any file which is basically raw text.
+        html, rtf, and the list could go on
+    """
     try:
-        fp = file(file_path, 'r')
+        fp = file(txt_file, 'r')
         text = fp.read()
         fp.close()
         return phantom.APP_SUCCESS, text
@@ -256,7 +282,7 @@ def _grab_raw_text(action_result, file_path):
         return action_result.set_status(phantom.APP_ERROR, e), None
 
 
-def _pdf_to_text(action_result, fname):
+def _pdf_to_text(action_result, pdf_file):
     try:
         pagenums = set()
         output = StringIO()
@@ -264,7 +290,7 @@ def _pdf_to_text(action_result, fname):
         converter = TextConverter(manager, output, laparams=LAParams())
         interpreter = PDFPageInterpreter(manager, converter)
 
-        infile = file(fname, 'rb')
+        infile = file(pdf_file, 'rb')
         for page in PDFPage.get_pages(infile, pagenums):
             interpreter.process_page(page)
         infile.close()
@@ -276,9 +302,12 @@ def _pdf_to_text(action_result, fname):
         return action_result.set_status(phantom.APP_ERROR, "Failed to parse pdf: {0}".format(str(e))), None
 
 
-def _docx_to_text(action_result, docx):
+def _docx_to_text(action_result, docx_file):
+    """ docx is literally a zip file, and all the words in the document are in one xml document
+        doc does not work this way at all
+    """
     try:
-        zf = zipfile.ZipFile(docx)
+        zf = zipfile.ZipFile(docx_file)
         fp = zf.open('word/document.xml')
         txt = fp.read()
         fp.close()
@@ -289,6 +318,39 @@ def _docx_to_text(action_result, docx):
         return phantom.APP_SUCCESS, doc_txt
     except Exception as e:
         return action_result.set_status(phantom.APP_ERROR, "Failed to parse docx: {0}".format(str(e))), None
+
+
+def _csv_to_text(action_result, csv_file):
+    """ This function really only exists due to a misunderating on how word boundries (\b) work
+        As it turns out, only word characters can invalidate word boundries. So stuff like commas,
+        brackets, gt and lt signs, etc. do not
+    """
+    text = ""
+    try:
+        fp = open(csv_file, 'rb')
+        reader = csv.reader(fp)
+        for row in reader:
+            text += ' '.join(row)
+            text += ' '  # The humanity of always having a trailing space
+        fp.close()
+        return phantom.APP_SUCCESS, text
+    except Exception as e:
+        return action_result.set_status(phantom.APP_ERROR, "Failed to parse csv: {0}".format(str(e))), None
+
+
+def _html_to_text(action_result, html_file):
+    """ Similar to CSV, this is also unnecessary. It will trim /some/ of that fat from a normal HTML, however
+    """
+    try:
+       fp = open(html_file, 'r')
+       html_text = fp.read()
+       soup = BeautifulSoup(html_text, 'html.parser')
+       read_text = soup.findAll(text=True)
+       text = ' '.join(read_text)
+       fp.close()
+       return text
+    except Exception as e:
+        return action_result.set_status(phantom.APP_ERROR, "Failed to parse html: {0}".format(str(e))), None
 
 
 def _join_thread(base_connector, thread):
@@ -309,7 +371,7 @@ def _wait_for_parse(base_connector):
         base_connector.send_progress(base_msg + '.' * i)
         base_connector._lock.release()
         i = i % 5 + 1
-        time.sleep(2)
+        time.sleep(1)
     return
 
 
@@ -317,16 +379,25 @@ def parse_file(base_connector, action_result, file_info):
     """ Parse a non-email file """
     raw_text = None
     if (file_info['type'] == 'pdf'):
+        """ Parsing a PDF document over like, 10 pages starts to take a while
+            (A 80 something page document took like 5 - 10 minutes)
+            The thread is nice because it shows a constantly changing message,
+            which shows that the app isn't frozen, but it also stops watchdog
+            from terminating the app
+        """
         thread = threading.Thread(target=_wait_for_parse, args=[base_connector])
-        thread = thread
         thread.start()
         ret_val, raw_text = _pdf_to_text(action_result, file_info['path'])
-        base_connector.debug_print("aaaaaaaaaaaaaaaa")
         _join_thread(base_connector, thread)
     elif (file_info['type'] == 'txt'):
         ret_val, raw_text = _grab_raw_text(action_result, file_info['path'])
     elif (file_info['type'] == 'docx'):
         ret_val, raw_text = _docx_to_text(action_result, file_info['path'])
+    elif (file_info['type'] == 'csv'):
+        ret_val, raw_text = _csv_to_text(action_result, file_info['path'])
+        base_connector.debug_print(raw_text)
+    elif (file_info['type'] == 'html'):
+        ret_val, raw_text = _html_to_text(action_result, file_info['path'])
     else:
         return action_result.set_status(phantom.APP_ERROR, "Unexpected file type"), None
     if phantom.is_fail(ret_val):
