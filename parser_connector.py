@@ -154,8 +154,8 @@ class ParserConnector(BaseConnector):
             artifact['container_id'] = container_id
         status, message, id_list = self.save_artifacts(artifacts)
         if phantom.is_fail(status):
-            return action_result.set_status(phantom.APP_ERROR, message)
-        return phantom.APP_SUCCESS
+            return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
+        return RetVal(phantom.APP_SUCCESS, container_id)
 
     def _handle_parse_file(self, param):
         action_result = self.add_action_result(ActionResult(dict(param)))
@@ -195,13 +195,14 @@ class ParserConnector(BaseConnector):
             if max_artifacts < 1:
                 return action_result.set_status("max_artifacts must be greater than 0")
 
-        ret_val = self._save_to_container(action_result, artifacts, file_info['name'], label, vault_id, max_artifacts)
+        ret_val, c_id = self._save_to_container(action_result, artifacts, file_info['name'], label, vault_id, max_artifacts)
         if phantom.is_fail(ret_val):
             return ret_val
 
         # Add a dictionary that is made up of the most important values from data into the summary
         summary = action_result.update_summary({})
-        summary['artifacts_created'] = len(response['artifacts'])
+        summary['artifacts_found'] = len(response['artifacts'])
+        summary['container_id'] = c_id
 
         return action_result.set_status(phantom.APP_SUCCESS)
 

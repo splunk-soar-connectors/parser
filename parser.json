@@ -49,7 +49,6 @@
           "data_type": "string", 
           "required": false, 
           "primary": false, 
-          "contains": [], 
           "value_list": [
             "txt", 
             "email", 
@@ -69,7 +68,88 @@
           "order": 3
         }
       }, 
-      "output": [], 
+      "render": {
+        "width": 12,
+        "title": "Parse File",
+        "type": "table",
+        "height": 5
+      },
+      "output": [
+        {
+          "data_path": "action_result.status",
+          "data_type": "string",
+          "example_values": [
+            "success",
+            "failed"
+          ]
+        },
+        {
+          "data_path": "action_result.message",
+          "data_type": "string",
+          "example_values": [
+            "Container id: 52079, Artifacts created: 7"
+          ]
+        },
+        {
+          "data_path": "action_result.summary.container_id",
+          "data_type": "numeric",
+          "example_values": [
+            52079
+          ]
+        },
+        {
+          "data_path": "action_result.summary.artifacts_found",
+          "data_type": "numeric",
+          "example_values": [
+            7
+          ]
+        },
+        {
+          "data_path": "action_result.parameter.label",
+          "data_type": "string",
+          "example_values": [
+            "Events"
+          ]
+        },
+        {
+          "data_path": "action_result.parameter.vault_id",
+          "data_type": "string",
+          "example_values": [
+            "0c4ad1e28e5e2e03f2f197e4e4b011c617b89d78"
+          ],
+          "contains": [
+            "vault id"
+          ]
+        },
+        {
+          "data_path": "action_result.parameter.file_type",
+          "data_type": "string",
+          "example_values": [
+            "txt"
+          ]
+        },
+        {
+          "data_path": "action_result.parameter.max_artifacts",
+          "data_type": "numeric",
+          "example_values": [
+            "100"
+          ]
+        },
+        {
+          "data_path": "summary.total_objects",
+          "data_type": "numeric",
+          "example_values": [
+            1
+          ]
+        },
+        {
+          "data_path": "summary.total_objects_successful",
+          "data_type": "numeric",
+          "example_values": [
+            1
+          ]
+        }
+      ],
       "versions": "EQ(*)"
     }
   ]

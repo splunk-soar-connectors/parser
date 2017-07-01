@@ -179,12 +179,15 @@ class TextIOCParser():
             'name': 'URL Artifact',
             'clean': _clean_url,     # Additional cleaning of data from regex (Should return a string)
             'subtypes': [            # Additional IOCs to find in a matched one
+                # If you really wanted to, you could also have subtypes in the subtypes
                 {
                     'cef': 'domain',
                     'name': 'Domain Artifact',
-                    'callback': _extract_domain_from_url  # Method to extract substring
+                    'callback': _extract_domain_from_url   # Method to extract substring
                 }
             ]
+            # We dont need to worry about the case where an IP is the 'main' part of the url, since the two
+            # IP regexes are already going to find those
         },
         {
             'cef': 'fileHash',
@@ -199,7 +202,8 @@ class TextIOCParser():
                 {
                     'cef': 'domain',
                     'name': 'Domain Artifact',
-                    'callback': lambda(x): x[x.rfind('@') + 1:]
+                    'callback': lambda(x): x[x.rfind('@') + 1:],
+                    'validator': lambda(x): not _is_ip(x)
                 }
             ]
         },
@@ -211,7 +215,8 @@ class TextIOCParser():
                 {
                     'cef': 'domain',
                     'name': 'Domain Artifact',
-                    'callback': lambda(x): x[x.rfind('@') + 1:]
+                    'callback': lambda(x): x[x.rfind('@') + 1:],
+                    'validator': lambda(x): not _is_ip(x)
                 }
             ]
         }
@@ -236,10 +241,12 @@ class TextIOCParser():
         callback = subtype.get('callback')
         if callback:
             sub_val = callback(value)
-            if sub_val:
-                self._create_artifact(artifacts, sub_val, subtype['cef'], subtype['name'])
+            self._pass_over_value(artifacts, sub_val, subtype)
 
-    def _pass_over_value(self, artifacts, value, validator, clean, subtypes, ioc):
+    def _pass_over_value(self, artifacts, value, ioc):
+        validator = ioc.get('validator')
+        clean = ioc.get('clean')
+        subtypes = ioc.get('subtypes', [])
         if not value:
             return
         if value in self.found_values:
@@ -257,15 +264,12 @@ class TextIOCParser():
         for ioc in self.patterns:
             regexp = re.compile(ioc['pattern'], re.IGNORECASE)
             found = regexp.findall(text)
-            validator = ioc.get('validator')
-            clean = ioc.get('clean')
-            subtypes = ioc.get('subtypes', [])
             for match in found:
                 if type(match) == tuple:
                     for x in match:
-                        self._pass_over_value(artifacts, x, validator, clean, subtypes, ioc)
+                        self._pass_over_value(artifacts, x, ioc)
                 else:
-                    self._pass_over_value(artifacts, match, validator, clean, subtypes, ioc)
+                    self._pass_over_value(artifacts, match, ioc)
         return artifacts
 
 
