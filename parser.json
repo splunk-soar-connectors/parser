@@ -1,14 +1,14 @@
 {
   "appid": "4004f489-1826-44a1-af12-9c74eea82eb0", 
   "name": "Parser", 
-  "description": "The Phantom parser app can extract IOCs from various files like PDFs of Emails.", 
+  "description": "The Phantom parser app can extract IOCs from various files like PDFs or Emails.", 
   "type": "information", 
   "product_vendor": "Phantom", 
   "logo": "parser.png", 
   "product_name": "Parser", 
   "product_version_regex": ".*", 
   "publisher": "Phantom", 
-  "license": "Copyright Phantom 2017", 
+  "license": "Copyright (c) Phantom 2017", 
   "app_version": "1.0.0", 
   "utctime_updated": "2017-06-27T17:28:04.639331Z", 
   "package_name": "phantom_parser", 
@@ -18,10 +18,10 @@
   "configuration": {}, 
   "actions": [
     {
-      "action": "parse file", 
+      "action": "extract ioc", 
       "identifier": "parse_file", 
       "description": "Create IOC artifacts from a file in the vault", 
-      "verbose": "If the file_type is left blank, the app why try to determine what type of file it is on its own. ", 
+      "verbose": "If the <b>file_type</b> is left blank, the app will try to determine what type of file it is on its own. ", 
       "type": "generic", 
       "read_only": true, 
       "parameters": {
@@ -33,14 +33,13 @@
           "contains": [
             "vault id"
           ], 
-          "value_list": [], 
           "default": "", 
           "order": 0
         }, 
         "label": {
           "description": "Add container to this label",
           "data_type": "string",
-          "required": true,
+          "required": false,
           "primary": false,
           "order": 1
         },
@@ -66,6 +65,13 @@
           "required": false,
           "primary": false,
           "order": 3
+        },
+        "container_id": {
+          "description": "Add created artifacts to this container",
+          "data_type": "numeric",
+          "required": false,
+          "primary": false,
+          "order": 4
         }
       }, 
       "render": {
@@ -133,6 +139,13 @@
           "data_type": "numeric",
           "example_values": [
             "100"
+          ]
+        },
+        {
+          "data_path": "action_result.parameter.container_id",
+          "data_type": "numeric",
+          "example_values": [
+            "1776"
           ]
         },
         {

@@ -1,6 +1,16 @@
-# -----------------------------------------
-# Phantom sample App Connector python file
-# -----------------------------------------
+# --
+# File: parse_methods.py
+#
+# Copyright (c) Phantom Cyber Corporation, 2017
+#
+# This unpublished material is proprietary to Phantom Cyber.
+# All rights reserved. The methods and
+# techniques described herein are considered trade secrets
+# and/or confidential. Reproduction or distribution, in whole
+# or in part, is forbidden except by express written permission
+# of Phantom Cyber Corporation.
+#
+# --
 
 # Phantom App imports
 import phantom.app as phantom
@@ -13,6 +23,7 @@ from phantom.vault import Vault
 import json
 import email
 import threading
+import parser_email
 import parser_methods
 
 
@@ -33,16 +44,7 @@ class RetVal3(tuple):
 class ParserConnector(BaseConnector):
 
     def __init__(self):
-
-        # Call the BaseConnectors init first
         super(ParserConnector, self).__init__()
-
-        self._state = None
-
-        # Variable to hold a base_url in case the app makes REST calls
-        # Do note that the app json defines the asset config, so please
-        # modify this as you deem fit.
-        self._base_url = None
 
     def initialize(self):
         self._lock = threading.Lock()
@@ -107,7 +109,7 @@ class ParserConnector(BaseConnector):
 
         return RetVal(phantom.APP_SUCCESS, file_info)
 
-    def _handle_email(self, action_result, vault_id, label):
+    def _handle_email(self, action_result, vault_id, label, container_id):
         ret_val, email_data, email_id = self._get_email_data_from_vault(vault_id, action_result)
 
         if (phantom.is_fail(ret_val)):
@@ -126,7 +128,7 @@ class ParserConnector(BaseConnector):
                 "extract_ips": True,
                 "extract_urls": True }
 
-        ret_val, response = parser_methods.process_email(self, email_data, email_id, config, label, None)
+        ret_val, response = parser_email.process_email(self, email_data, email_id, config, label, container_id, None)
 
         if (phantom.is_fail(ret_val)):
             return action_result.set_status(phantom.APP_ERROR, response['message'])
@@ -145,7 +147,7 @@ class ParserConnector(BaseConnector):
 
         status, message, container_id = self.save_container(container)
         if phantom.is_fail(status):
-            return action_result.set_status(phantom.APP_ERROR, message)
+            return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
 
         if max_artifacts:
             artifacts = artifacts[:max_artifacts]
@@ -157,9 +159,22 @@ class ParserConnector(BaseConnector):
             return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
         return RetVal(phantom.APP_SUCCESS, container_id)
 
+    def _save_to_existing_container(self, action_result, artifacts, container_id, max_artifacts=None):
+        if max_artifacts:
+            artifacts = artifacts[:max_artifacts]
+        for artifact in artifacts:
+            artifact['container_id'] = container_id
+        status, message, id_list = self.save_artifacts(artifacts)
+        if phantom.is_fail(status):
+            return action_result.set_status(phantom.APP_ERROR, message)
+        return phantom.APP_SUCCESS
+
     def _handle_parse_file(self, param):
         action_result = self.add_action_result(ActionResult(dict(param)))
-        label = param['label']
+        container_id = param.get('container_id')
+        label = param.get('label')
+        if container_id is None and label is None:
+            return action_result.set_status(phantom.APP_ERROR, "A label must be specified if no container ID is provided")
         vault_id = param['vault_id']
         file_type = param.get('file_type')
 
@@ -174,7 +189,7 @@ class ParserConnector(BaseConnector):
 
         if (file_type == 'email'):
             # Emails are handled differently
-            return self._handle_email(action_result, vault_id, label)
+            return self._handle_email(action_result, vault_id, label, container_id)
 
         ret_val, file_info = self._get_file_info_from_vault(action_result, vault_id, file_type)
         if phantom.is_fail(ret_val):
@@ -191,18 +206,23 @@ class ParserConnector(BaseConnector):
             try:
                 max_artifacts = int(max_artifacts)
             except TypeError:
-                return action_result.set_status("max_artifacts must be an integer")
+                return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be an integer")
             if max_artifacts < 1:
-                return action_result.set_status("max_artifacts must be greater than 0")
+                return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be greater than 0")
 
-        ret_val, c_id = self._save_to_container(action_result, artifacts, file_info['name'], label, vault_id, max_artifacts)
-        if phantom.is_fail(ret_val):
-            return ret_val
+        if not container_id:
+            ret_val, container_id = self._save_to_container(action_result, artifacts, file_info['name'], label, vault_id, max_artifacts)
+            if phantom.is_fail(ret_val):
+                return ret_val
+        else:
+            ret_val = self._save_to_existing_container(action_result, artifacts, container_id, max_artifacts)
+            if phantom.is_fail(ret_val):
+                return ret_val
 
         # Add a dictionary that is made up of the most important values from data into the summary
         summary = action_result.update_summary({})
         summary['artifacts_found'] = len(response['artifacts'])
-        summary['container_id'] = c_id
+        summary['container_id'] = container_id
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
