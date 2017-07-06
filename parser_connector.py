@@ -1,5 +1,5 @@
 # --
-# File: parse_methods.py
+# File: parser_connector.py
 #
 # Copyright (c) Phantom Cyber Corporation, 2017
 #
