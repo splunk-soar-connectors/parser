@@ -101,8 +101,6 @@
           "data_type": "string",
           "example_values": [
             "Container id: 52079, Artifacts created: 7",
-            "Container addition failed, reason from server: Error processing \"label\": [u'This field cannot be null.']",
-            "",
             "Container id: 52069, Artifacts found: 27",
             "Container id: 52069, Artifacts found: 13"
           ]
