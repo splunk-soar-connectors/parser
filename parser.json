@@ -18,7 +18,7 @@
   "pip_dependencies": {
     "wheel": [
       {
-        "module": "pdfminer", "input_file": "wheels/pdfminer-20149328-py2-none-any.whl"
+        "module": "pdfminer", "input_file": "wheels/pdfminer-20140328-py2-none-any.whl"
       }
     ]
   },

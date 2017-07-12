@@ -14,33 +14,23 @@
 
 import re
 import os
-import csv
 import magic
 import email
 import socket
 import shutil
 import hashlib
-import zipfile
 import tempfile
 import mimetypes
-from lxml import etree
 import simplejson as json
 from bs4 import BeautifulSoup
-from cStringIO import StringIO
 from collections import OrderedDict
 from email.header import decode_header
+
 
 import phantom.app as phantom
 from phantom.vault import Vault
 import phantom.utils as ph_utils
 
-from pdfminer.layout import LAParams
-from pdfminer.pdfpage import PDFPage
-from pdfminer.converter import TextConverter
-from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
-
-import time
-import threading
 
 # Any globals added here, should be initialized in the init() function
 _base_connector = None
@@ -157,6 +147,7 @@ def is_ipv6(input_ip):
         return False
 
     return True
+
 
 uri_regexc = re.compile(URI_REGEX)
 email_regexc = re.compile(EMAIL_REGEX, re.IGNORECASE)
