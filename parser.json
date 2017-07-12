@@ -100,7 +100,6 @@
           "data_path": "action_result.message",
           "data_type": "string",
           "example_values": [
-            "Container id: 52079, Artifacts created: 7",
             "Container id: 52069, Artifacts found: 27",
             "Container id: 52069, Artifacts found: 13"
           ]
@@ -109,16 +108,17 @@
           "data_path": "action_result.summary.container_id",
           "data_type": "numeric",
           "example_values": [
-            52079,
-            "52069"
-          ]
+            "52079",
+            "1776"
+          ],
+          "column_order": 0,
+          "column_name": "Created Container"
         },
         {
           "data_path": "action_result.summary.artifacts_found",
           "data_type": "numeric",
           "example_values": [
             7,
-            27,
             13
           ]
         },
