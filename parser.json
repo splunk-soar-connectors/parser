@@ -13,7 +13,7 @@
   "utctime_updated": "2017-06-27T17:28:04.639331Z",
   "package_name": "phantom_parser",
   "main_module": "parser_connector.pyc",
-  "min_phantom_version": "3.0.69",
+  "min_phantom_version": "2.1.478",
   "app_wizard_version": "1.0.0",
   "pip_dependencies": {
     "wheel": [

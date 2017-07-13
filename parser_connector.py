@@ -11,7 +11,6 @@
 # of Phantom Cyber Corporation.
 #
 # --
-
 # Phantom App imports
 import phantom.app as phantom
 from phantom.base_connector import BaseConnector

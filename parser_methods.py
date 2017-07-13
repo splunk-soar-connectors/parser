@@ -229,7 +229,6 @@ def _pdf_to_text(action_result, pdf_file):
         manager = PDFResourceManager()
         converter = TextConverter(manager, output, laparams=LAParams())
         interpreter = PDFPageInterpreter(manager, converter)
-
         infile = file(pdf_file, 'rb')
         for page in PDFPage.get_pages(infile, pagenums):
             interpreter.process_page(page)
@@ -237,7 +236,7 @@ def _pdf_to_text(action_result, pdf_file):
         converter.close()
         text = output.getvalue()
         output.close
-        return text
+        return phantom.APP_SUCCESS, text
     except Exception as e:
         return action_result.set_status(phantom.APP_ERROR, "Failed to parse pdf: {0}".format(str(e))), None
 
@@ -288,7 +287,7 @@ def _html_to_text(action_result, html_file):
        read_text = soup.findAll(text=True)
        text = ' '.join(read_text)
        fp.close()
-       return text
+       return phantom.APP_SUCCESS, text
     except Exception as e:
         return action_result.set_status(phantom.APP_ERROR, "Failed to parse html: {0}".format(str(e))), None
 
