@@ -348,5 +348,6 @@ def parse_file(base_connector, action_result, file_info):
         artifacts = tiocp.parse_to_artifacts(raw_text)
     except Exception as e:
         return action_result.set_status(phantom.APP_ERROR, str(e)), None
-    base_connector.debug_print(artifacts)
+    if artifacts:
+        artifacts[-1]['run_automation'] = True
     return phantom.APP_SUCCESS, {'artifacts': artifacts}
