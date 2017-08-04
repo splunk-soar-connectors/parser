@@ -36,9 +36,6 @@ _container_common = {
     "run_automation": False  # Don't run any playbooks, when this artifact is added
 }
 
-_artifact_common = {
-    "run_automation": False  # Don't run any playbooks, when this artifact is added
-}
 
 URI_REGEX = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
 EMAIL_REGEX = r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"
@@ -165,7 +162,6 @@ class TextIOCParser():
 
     def _create_artifact(self, artifacts, value, cef, name):
         artifact = {}
-        artifact.update(_artifact_common)
         artifact['source_data_identifier'] = self.added_artifacts
         artifact['cef'] = {cef: value}
         artifact['name'] = name
@@ -348,5 +344,4 @@ def parse_file(base_connector, action_result, file_info):
         artifacts = tiocp.parse_to_artifacts(raw_text)
     except Exception as e:
         return action_result.set_status(phantom.APP_ERROR, str(e)), None
-    base_connector.debug_print(artifacts)
     return phantom.APP_SUCCESS, {'artifacts': artifacts}
