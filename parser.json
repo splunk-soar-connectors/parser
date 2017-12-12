@@ -1,7 +1,7 @@
 {
   "appid": "4004f489-1826-44a1-af12-9c74eea82eb0",
   "name": "Parser",
-  "description": "The Phantom parser app can extract IOCs from various files such as PDFs or Emails",
+  "description": "This app extracts IOCs from various files such as PDFs or Emails",
   "type": "information",
   "product_vendor": "Phantom",
   "logo": "parser.png",
