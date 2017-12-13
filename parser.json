@@ -113,7 +113,7 @@
             "1776"
           ],
           "column_order": 0,
-          "column_name": "Created Container"
+          "column_name": "Container ID"
         },
         {
           "data_path": "action_result.summary.artifacts_found",
