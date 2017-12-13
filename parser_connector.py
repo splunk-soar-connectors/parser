@@ -193,7 +193,7 @@ class ParserConnector(BaseConnector):
         if max_artifacts:
             try:
                 max_artifacts = int(max_artifacts)
-            except TypeError:
+            except ValueError:
                 return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be an integer")
             if max_artifacts < 1:
                 return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be greater than 0")
