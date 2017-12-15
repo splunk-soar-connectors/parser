@@ -172,6 +172,12 @@ class ParserConnector(BaseConnector):
         label = param.get('label')
         if container_id is None and label is None:
             return action_result.set_status(phantom.APP_ERROR, "A label must be specified if no container ID is provided")
+        if container_id:
+            # Make sure container exists first, provide a better error message than waiting for save_artifacts to fail
+            ret_val, message, _ = self.get_container_info(container_id)
+            if phantom.is_fail(ret_val):
+                return action_result.set_status(phantom.APP_ERROR, "Unable to find container: {}".format(message))
+
         vault_id = param['vault_id']
         file_type = param.get('file_type')
 
