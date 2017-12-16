@@ -81,6 +81,9 @@ class ParserConnector(BaseConnector):
         except Exception as e:
             return RetVal3(action_result.set_status(phantom.APP_ERROR, "Could not get file path for vault item"), None, None)
 
+        if file_path is None:
+            return RetVal3(action_result.set_status(phantom.APP_ERROR, "No file with vault ID found"), None, None)
+
         try:
             with open(file_path, 'r') as f:
                 email_data = f.read()
