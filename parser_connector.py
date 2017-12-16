@@ -81,6 +81,9 @@ class ParserConnector(BaseConnector):
         except Exception as e:
             return RetVal3(action_result.set_status(phantom.APP_ERROR, "Could not get file path for vault item"), None, None)
 
+        if file_path is None:
+            return RetVal3(action_result.set_status(phantom.APP_ERROR, "No file with vault ID found"), None, None)
+
         try:
             with open(file_path, 'r') as f:
                 email_data = f.read()
@@ -138,35 +141,33 @@ class ParserConnector(BaseConnector):
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
-    def _save_to_container(self, action_result, artifacts, file_name, label, sdi, max_artifacts=None):
+    def _save_artifacts(self, action_result, artifacts, container_id, max_artifacts=None):
+        if max_artifacts:
+            artifacts = artifacts[:max_artifacts]
+
+        for artifact in artifacts:
+            artifact['container_id'] = container_id
+        if artifacts:
+            status, message, id_list = self.save_artifacts(artifacts)
+        else:
+            # No IOCS found
+            return action_result.set_status(phantom.APP_SUCCESS)
+        if phantom.is_fail(status):
+            return action_result.set_status(phantom.APP_ERROR, message)
+        return phantom.APP_SUCCESS
+
+    def _save_to_container(self, action_result, artifacts, file_name, label, max_artifacts=None):
         container = {}
         container['name'] = "{0} Parse Results".format(file_name)
         container['label'] = label
-        container['source_data_identifier'] = sdi
 
         status, message, container_id = self.save_container(container)
         if phantom.is_fail(status):
             return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
-
-        if max_artifacts:
-            artifacts = artifacts[:max_artifacts]
-
-        for artifact in artifacts:
-            artifact['container_id'] = container_id
-        status, message, id_list = self.save_artifacts(artifacts)
-        if phantom.is_fail(status):
-            return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
-        return RetVal(phantom.APP_SUCCESS, container_id)
+        return RetVal(self._save_artifacts(action_result, artifacts, container_id, max_artifacts), container_id)
 
     def _save_to_existing_container(self, action_result, artifacts, container_id, max_artifacts=None):
-        if max_artifacts:
-            artifacts = artifacts[:max_artifacts]
-        for artifact in artifacts:
-            artifact['container_id'] = container_id
-        status, message, id_list = self.save_artifacts(artifacts)
-        if phantom.is_fail(status):
-            return action_result.set_status(phantom.APP_ERROR, message)
-        return phantom.APP_SUCCESS
+        return self._save_artifacts(action_result, artifacts, container_id, max_artifacts)
 
     def _handle_parse_file(self, param):
         action_result = self.add_action_result(ActionResult(dict(param)))
@@ -174,17 +175,14 @@ class ParserConnector(BaseConnector):
         label = param.get('label')
         if container_id is None and label is None:
             return action_result.set_status(phantom.APP_ERROR, "A label must be specified if no container ID is provided")
+        if container_id:
+            # Make sure container exists first, provide a better error message than waiting for save_artifacts to fail
+            ret_val, message, _ = self.get_container_info(container_id)
+            if phantom.is_fail(ret_val):
+                return action_result.set_status(phantom.APP_ERROR, "Unable to find container: {}".format(message))
+
         vault_id = param['vault_id']
         file_type = param.get('file_type')
-
-        # NOTE
-        # Theres a bug in 2.1 that occurs when the asset_id is set from a non
-        # ingestion app (like this one) on a new container. where it wont let you
-        # However, the base connector code adds the asset_id, which causes the server to fail
-        # when adding the asset.
-        # This line can probably be removed and should be retested in 3.0
-        # This also means that created containers ARE NOT associated with an asset
-        self._BaseConnector__container_common.pop('asset_id')
 
         if (file_type == 'email'):
             # Emails are handled differently
@@ -204,13 +202,13 @@ class ParserConnector(BaseConnector):
         if max_artifacts:
             try:
                 max_artifacts = int(max_artifacts)
-            except TypeError:
+            except ValueError:
                 return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be an integer")
             if max_artifacts < 1:
                 return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be greater than 0")
 
         if not container_id:
-            ret_val, container_id = self._save_to_container(action_result, artifacts, file_info['name'], label, vault_id, max_artifacts)
+            ret_val, container_id = self._save_to_container(action_result, artifacts, file_info['name'], label, max_artifacts)
             if phantom.is_fail(ret_val):
                 return ret_val
         else:
