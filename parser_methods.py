@@ -14,7 +14,6 @@
 
 import re
 import csv
-import socket
 import zipfile
 from lxml import etree
 from bs4 import BeautifulSoup
@@ -69,6 +68,10 @@ def _is_ip(input_ip):
     return False
 
 
+def is_ipv6(input_ip):
+    return bool(re.match(IPV6_REGEX, input_ip))
+
+
 def _clean_url(url):
     url = url.strip('>),.]\r\n')
 
@@ -83,21 +86,12 @@ def _clean_url(url):
     return url
 
 
-def is_ipv6(input_ip):
-    try:
-        socket.inet_pton(socket.AF_INET6, input_ip)
-    except:  # not a valid v6 address
-        return False
-
-    return True
-
-
 class TextIOCParser():
     BASE_PATTERNS = [
         {
-            'cef': 'ip',             # Name of CEF field
-            'pattern': IP_REGEX,     # Regex to match
-            'name': 'IP Artifact',   # Name of artifact
+            'cef': 'ip',                     # Name of CEF field
+            'pattern': IP_REGEX,             # Regex to match
+            'name': 'IP Artifact',           # Name of artifact
             'validator': _is_ip      # Additional function to verify matched string (Should return true or false)
         },
         {
@@ -277,13 +271,13 @@ def _html_to_text(action_result, html_file):
     """ Similar to CSV, this is also unnecessary. It will trim /some/ of that fat from a normal HTML, however
     """
     try:
-       fp = open(html_file, 'r')
-       html_text = fp.read()
-       soup = BeautifulSoup(html_text, 'html.parser')
-       read_text = soup.findAll(text=True)
-       text = ' '.join(read_text)
-       fp.close()
-       return phantom.APP_SUCCESS, text
+        fp = open(html_file, 'r')
+        html_text = fp.read()
+        soup = BeautifulSoup(html_text, 'html.parser')
+        read_text = soup.findAll(text=True)
+        text = ' '.join(read_text)
+        fp.close()
+        return phantom.APP_SUCCESS, text
     except Exception as e:
         return action_result.set_status(phantom.APP_ERROR, "Failed to parse html: {0}".format(str(e))), None
 
