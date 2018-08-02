@@ -49,6 +49,7 @@ IPV6_REGEX += r'(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f
 IPV6_REGEX += r'(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|'
 IPV6_REGEX += r'(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|'
 IPV6_REGEX += r'(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*'
+DOMAIN_REGEX = r'\b(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
 
 
 def _extract_domain_from_url(url):
@@ -89,9 +90,9 @@ def _clean_url(url):
 class TextIOCParser():
     BASE_PATTERNS = [
         {
-            'cef': 'ip',                     # Name of CEF field
-            'pattern': IP_REGEX,             # Regex to match
-            'name': 'IP Artifact',           # Name of artifact
+            'cef': 'sourceAddress',  # Name of CEF field
+            'pattern': IP_REGEX,     # Regex to match
+            'name': 'IP Artifact',   # Name of artifact
             'validator': _is_ip      # Additional function to verify matched string (Should return true or false)
         },
         {
@@ -108,7 +109,7 @@ class TextIOCParser():
             'subtypes': [            # Additional IOCs to find in a matched one
                 # If you really wanted to, you could also have subtypes in the subtypes
                 {
-                    'cef': 'domain',
+                    'cef': 'destinationDnsDomain',
                     'name': 'Domain Artifact',
                     'callback': _extract_domain_from_url   # Method to extract substring
                 }
@@ -127,7 +128,7 @@ class TextIOCParser():
             'name': 'Email Artifact',
             'subtypes': [
                 {
-                    'cef': 'domain',
+                    'cef': 'destinationDnsDomain',
                     'name': 'Domain Artifact',
                     'callback': lambda(x): x[x.rfind('@') + 1:],
                     'validator': lambda(x): not _is_ip(x)
@@ -140,12 +141,17 @@ class TextIOCParser():
             'name': 'Email Artifact',
             'subtypes': [
                 {
-                    'cef': 'domain',
+                    'cef': 'destinationDnsDomain',
                     'name': 'Domain Artifact',
                     'callback': lambda(x): x[x.rfind('@') + 1:],
                     'validator': lambda(x): not _is_ip(x)
                 }
             ]
+        },
+        {
+            'cef': 'destinationDnsDomain',       # Name of CEF field
+            'pattern': DOMAIN_REGEX,             # Regex to match
+            'name': 'Domain Artifact'
         }
     ]
     found_values = set()
@@ -338,4 +344,25 @@ def parse_file(base_connector, action_result, file_info):
         artifacts = tiocp.parse_to_artifacts(raw_text)
     except Exception as e:
         return action_result.set_status(phantom.APP_ERROR, str(e)), None
+    return phantom.APP_SUCCESS, {'artifacts': artifacts}
+
+
+def parse_structured_file(base_connector, action_result, file_info):
+    if (file_info['type'] == 'csv'):
+        csv_file = file_info['path']
+        artifacts = []
+        try:
+            fp = open(csv_file, 'rb')
+            reader = csv.DictReader(fp)
+            for row in reader:
+                row['source_file'] = file_info['name']
+                artifacts.append({
+                    'name': 'CSV entry',
+                    'cef': {k.lower(): v for k, v in row.items()}  # make keys lowercase
+                })
+            fp.close()
+        except Exception as e:
+            return action_result.set_status(phantom.APP_ERROR, "Failed to parse structured CSV: {0}".format(str(e))), None
+    else:
+        return action_result.set_status(phantom.APP_ERROR, "Strucured extraction only supported for CSV files"), None
     return phantom.APP_SUCCESS, {'artifacts': artifacts}

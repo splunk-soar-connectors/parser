@@ -183,6 +183,7 @@ class ParserConnector(BaseConnector):
 
         vault_id = param['vault_id']
         file_type = param.get('file_type')
+        is_structured = param['is_structured']
 
         if (file_type == 'email'):
             # Emails are handled differently
@@ -193,7 +194,12 @@ class ParserConnector(BaseConnector):
             return ret_val
 
         self.debug_print("File Info", file_info)
-        ret_val, response = parser_methods.parse_file(self, action_result, file_info)
+        if is_structured:
+            # Strucured files are treated differently
+            ret_val, response = parser_methods.parse_structured_file(self, action_result, file_info)
+        else:
+            ret_val, response = parser_methods.parse_file(self, action_result, file_info)
+
         if phantom.is_fail(ret_val):
             return ret_val
 

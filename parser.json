@@ -10,7 +10,7 @@
     "product_version_regex": ".*",
     "publisher": "Phantom",
     "license": "Copyright (c) Phantom Cyber Corporation, 2017-2018",
-    "app_version": "1.0.9",
+    "app_version": "1.0.10",
     "utctime_updated": "2018-02-13T18:18:28.000000Z",
     "package_name": "phantom_parser",
     "main_module": "parser_connector.pyc",
@@ -68,12 +68,20 @@
                     "default": "",
                     "order": 2
                 },
+                "is_structured": {
+                    "description": "Use first row of CSV file as field names",
+                    "data_type": "boolean",
+                    "required": true,
+                    "primary": false,
+                    "default": false,
+                    "order": 3
+                },
                 "max_artifacts": {
                     "description": "Max number of artifacts",
                     "data_type": "numeric",
                     "required": false,
                     "primary": false,
-                    "order": 3
+                    "order": 4
                 },
                 "container_id": {
                     "description": "Add created artifacts to this container",
@@ -150,6 +158,10 @@
                         "txt",
                         "docx"
                     ]
+                },
+                {
+                    "data_path": "action_result.parameter.is_structured",
+                    "data_type": "boolean"
                 },
                 {
                     "data_path": "action_result.parameter.max_artifacts",
