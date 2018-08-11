@@ -181,21 +181,31 @@ class ParserConnector(BaseConnector):
             if phantom.is_fail(ret_val):
                 return action_result.set_status(phantom.APP_ERROR, "Unable to find container: {}".format(message))
 
-        vault_id = param['vault_id']
+        vault_id = param.get('vault_id')
+        text_val = param.get('text')
         file_type = param.get('file_type')
 
-        if (file_type == 'email'):
-            # Emails are handled differently
-            return self._handle_email(action_result, vault_id, label, container_id)
+        if vault_id and text:
+            return action_result.set_status(phantom.APP_ERROR, "Either text can be parsed or a file from the vault can be parsed but both the 'text' and 'vault_id' parameters cannot be used simultaneously.")
+        if text and file_type not in ['txt', 'csv', 'html']:
+            return action_result.set_status(phantom.APP_ERROR, "When using text input, only CSV, HTML, or TXT file types can be used.")
 
-        ret_val, file_info = self._get_file_info_from_vault(action_result, vault_id, file_type)
-        if phantom.is_fail(ret_val):
-            return ret_val
+        if vault_id:
+            if (file_type == 'email'):
+                # Emails are handled differently
+                return self._handle_email(action_result, vault_id, label, container_id)
 
-        self.debug_print("File Info", file_info)
-        ret_val, response = parser_methods.parse_file(self, action_result, file_info)
-        if phantom.is_fail(ret_val):
-            return ret_val
+            ret_val, file_info = self._get_file_info_from_vault(action_result, vault_id, file_type)
+            if phantom.is_fail(ret_val):
+                return ret_val
+
+            self.debug_print("File Info", file_info)
+            ret_val, response = parser_methods.parse_file(self, action_result, file_info)
+            if phantom.is_fail(ret_val):
+                return ret_val
+        else:
+            ret_val, response = parser_methods.parse_text(self, action_result, file_type, text_val)
+
 
         artifacts = response['artifacts']
         max_artifacts = param.get('max_artifacts')
