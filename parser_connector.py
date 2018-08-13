@@ -185,10 +185,12 @@ class ParserConnector(BaseConnector):
         text_val = param.get('text')
         file_type = param.get('file_type')
 
-        if vault_id and text:
+        if vault_id and text_val:
             return action_result.set_status(phantom.APP_ERROR, "Either text can be parsed or a file from the vault can be parsed but both the 'text' and 'vault_id' parameters cannot be used simultaneously.")
-        if text and file_type not in ['txt', 'csv', 'html']:
+        if text_val and file_type not in ['txt', 'csv', 'html']:
             return action_result.set_status(phantom.APP_ERROR, "When using text input, only CSV, HTML, or TXT file types can be used.")
+        elif not(vault_id or text_val):
+            return action_result.set_status(phantom.APP_ERROR, "Either 'text' or 'vault_id' must be sumitted, both cannot be blank.")
 
         if vault_id:
             if (file_type == 'email'):
