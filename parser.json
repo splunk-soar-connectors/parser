@@ -30,7 +30,7 @@
             "action": "extract ioc",
             "identifier": "parse_file",
             "description": "Create IOC artifacts from a file in the vault",
-            "verbose": "If the <b>file_type</b> is left blank, the app will try to determine what type of file it is on its own. ",
+            "verbose": "If the <b>file_type</b> is left blank, the app will try to determine what type of file it is on its own.",
             "type": "generic",
             "read_only": true,
             "parameters": {
@@ -42,7 +42,6 @@
                     "contains": [
                         "vault id"
                     ],
-                    "default": "",
                     "order": 0
                 },
                 "label": {

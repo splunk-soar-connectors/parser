@@ -124,11 +124,12 @@ class ParserConnector(BaseConnector):
         action_result.add_data(header_dict)
 
         config = {
-                "extract_attachments": True,
-                "extract_domains": True,
-                "extract_hashes": True,
-                "extract_ips": True,
-                "extract_urls": True }
+            "extract_attachments": True,
+            "extract_domains": True,
+            "extract_hashes": True,
+            "extract_ips": True,
+            "extract_urls": True
+        }
 
         ret_val, response = parser_email.process_email(self, email_data, email_id, config, label, container_id, None)
 
