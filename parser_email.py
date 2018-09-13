@@ -351,6 +351,22 @@ def _create_artifacts(parsed_mail):
     urls = parsed_mail[PROC_EMAIL_JSON_URLS]
     domains = parsed_mail[PROC_EMAIL_JSON_DOMAINS]
     email_headers = parsed_mail[PROC_EMAIL_JSON_EMAIL_HEADERS]
+    email_bodies = parsed_mail[PROC_EMAIL_JSON_BODIES]
+
+    # Add email_bodies to email_headers
+    for body in email_bodies:
+        with open(body['file_path'], 'r') as f:
+            body_content = f.read()
+
+        content_type = body.get('content-type')
+        if 'text/plain' in content_type:
+            email_headers[0]['cef']['bodyText'] = body_content
+        elif 'text/html' in content_type:
+            email_headers[0]['cef']['bodyHtml'] = body_content
+        else:
+            if not email_headers[0]['cef'].get('bodyOther'):
+                email_headers[0]['cef']['bodyOther'] = {}
+            email_headers[0]['cef']['bodyOther'][content_type] = body_content
 
     # set the default artifact dict
 
@@ -372,7 +388,7 @@ def _create_artifacts(parsed_mail):
     artifact_id += added_artifacts
 
     added_artifacts = _add_email_header_artifacts(email_headers, artifact_id, _artifacts)
-    email_headers = email_headers
+    # email_headers = email_headers  # Why was this here?
     artifact_id += added_artifacts
 
     return phantom.APP_SUCCESS
@@ -405,14 +421,14 @@ def _decode_uni_string(input_str, def_name):
         decoded_string = decoded_strings.get(i)
 
         if (not decoded_string):
-            # notihing to replace with
+            # nothing to replace with
             continue
 
         value = decoded_string.get('value')
         encoding = decoded_string.get('encoding')
 
         if (not encoding or not value):
-            # notihing to replace with
+            # nothing to replace with
             continue
 
         if (encoding != 'utf-8'):
@@ -462,7 +478,7 @@ def _handle_if_body(content_disp, content_id, content_type, part, bodies, file_p
     with open(file_path, 'wb') as f:
         f.write(part_payload)
 
-    bodies.append({'file_path': file_path, 'charset': part.get_content_charset()})
+    bodies.append({'file_path': file_path, 'charset': part.get_content_charset(), 'content-type': content_type})
 
     return (phantom.APP_SUCCESS, False)
 
@@ -540,11 +556,11 @@ def _parse_email_headers(parsed_mail, part, charset=None, add_email_id=None):
     if (not email_headers):
         return 0
 
-    # Convert the header tuple into adictionary
+    # Convert the header tuple into a dictionary
     headers = {}
     [headers.update({x[0]: unicode(x[1], charset)}) for x in email_headers]
 
-    # Handle received seperately
+    # Handle received separately
     received_headers = [unicode(x[1], charset) for x in email_headers if x[0].lower() == 'received']
 
     if (received_headers):
@@ -649,7 +665,7 @@ def _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)
         file_path = "{0}/part_1.text".format(tmp_dir)
         with open(file_path, 'wb') as f:
             f.write(mail.get_payload(decode=True))
-        bodies.append({'file_path': file_path, 'charset': mail.get_content_charset()})
+        bodies.append({'file_path': file_path, 'charset': mail.get_content_charset(), 'content-type': 'text/plain'})
 
     # get the container name
     container_name = _get_container_name(parsed_mail, email_id)
@@ -662,7 +678,7 @@ def _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)
     container = {}
     container_data = dict(parsed_mail)
 
-    # delete the header info, we dont make it a part of the container json
+    # delete the header info, we don't make it a part of the container json
     del(container_data[PROC_EMAIL_JSON_EMAIL_HEADERS])
     container.update(_container_common)
     _container['source_data_identifier'] = email_id
