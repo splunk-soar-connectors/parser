@@ -111,7 +111,7 @@ class ParserConnector(BaseConnector):
 
         return RetVal(phantom.APP_SUCCESS, file_info)
 
-    def _handle_email(self, action_result, vault_id, label, container_id):
+    def _handle_email(self, action_result, vault_id, label, container_id, run_automation=True):
         ret_val, email_data, email_id = self._get_email_data_from_vault(vault_id, action_result)
 
         if (phantom.is_fail(ret_val)):
@@ -128,7 +128,8 @@ class ParserConnector(BaseConnector):
             "extract_domains": True,
             "extract_hashes": True,
             "extract_ips": True,
-            "extract_urls": True
+            "extract_urls": True,
+            "run_automation": run_automation
         }
 
         ret_val, response = parser_email.process_email(self, email_data, email_id, config, label, container_id, None)
@@ -185,9 +186,13 @@ class ParserConnector(BaseConnector):
         vault_id = param.get('vault_id')
         text_val = param.get('text')
         file_type = param.get('file_type')
+        run_automation = param.get('run_automation', True)
 
         if vault_id and text_val:
-            return action_result.set_status(phantom.APP_ERROR, "Either text can be parsed or a file from the vault can be parsed but both the 'text' and 'vault_id' parameters cannot be used simultaneously.")
+            return action_result.set_status(
+                phantom.APP_ERROR,
+                "Either text can be parsed or a file from the vault can be parsed but both the 'text' and 'vault_id' parameters cannot be used simultaneously."
+            )
         if text_val and file_type not in ['txt', 'csv', 'html']:
             return action_result.set_status(phantom.APP_ERROR, "When using text input, only CSV, HTML, or TXT file types can be used.")
         elif not(vault_id or text_val):
@@ -196,7 +201,7 @@ class ParserConnector(BaseConnector):
         if vault_id:
             if (file_type == 'email'):
                 # Emails are handled differently
-                return self._handle_email(action_result, vault_id, label, container_id)
+                return self._handle_email(action_result, vault_id, label, container_id, run_automation)
 
             ret_val, file_info = self._get_file_info_from_vault(action_result, vault_id, file_type)
             if phantom.is_fail(ret_val):
@@ -208,7 +213,6 @@ class ParserConnector(BaseConnector):
                 return ret_val
         else:
             ret_val, response = parser_methods.parse_text(self, action_result, file_type, text_val)
-
 
         artifacts = response['artifacts']
         max_artifacts = param.get('max_artifacts')

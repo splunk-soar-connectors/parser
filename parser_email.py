@@ -86,6 +86,7 @@ PROC_EMAIL_JSON_EXTRACT_URLS = "extract_urls"
 PROC_EMAIL_JSON_EXTRACT_IPS = "extract_ips"
 PROC_EMAIL_JSON_EXTRACT_DOMAINS = "extract_domains"
 PROC_EMAIL_JSON_EXTRACT_HASHES = "extract_hashes"
+PROC_EMAIL_JSON_RUN_AUTOMATION = "run_automation"
 PROC_EMAIL_JSON_IPS = "ips"
 PROC_EMAIL_JSON_HASHES = "hashes"
 PROC_EMAIL_JSON_URLS = "urls"
@@ -388,7 +389,6 @@ def _create_artifacts(parsed_mail):
     artifact_id += added_artifacts
 
     added_artifacts = _add_email_header_artifacts(email_headers, artifact_id, _artifacts)
-    # email_headers = email_headers  # Why was this here?
     artifact_id += added_artifacts
 
     return phantom.APP_SUCCESS
@@ -793,12 +793,12 @@ def process_email(base_connector, rfc822_email, email_id, config, label, contain
     if (not ret_val):
         return (phantom.APP_ERROR, {'message': message, 'content_id': None})
 
-    cid = _parse_results(results, label, container_id)
+    cid = _parse_results(results, label, container_id, _config[PROC_EMAIL_JSON_RUN_AUTOMATION])
 
     return (phantom.APP_SUCCESS, {'message': 'Email Processed', 'container_id': cid})
 
 
-def _parse_results(results, label, update_container_id):
+def _parse_results(results, label, update_container_id, run_automation=True):
 
     global _base_connector
 
@@ -873,10 +873,11 @@ def _parse_results(results, label, update_container_id):
             artifact['container_id'] = container_id
             _set_sdi((j + vault_artifacts_added), artifact)
 
-            # if it is the last artifact of the last container
-            if ((j + 1) == len_artifacts):
-                # mark it such that active playbooks get executed
-                artifact['run_automation'] = True
+            if run_automation:
+                # if it is the last artifact of the last container
+                if ((j + 1) == len_artifacts):
+                    # mark it such that active playbooks get executed
+                    artifact['run_automation'] = True
 
             ret_val, status_string, artifact_id = _base_connector.save_artifact(artifact)
             _base_connector.debug_print("save_artifact returns, value: {0}, reason: {1}, id: {2}".format(ret_val, status_string, artifact_id))

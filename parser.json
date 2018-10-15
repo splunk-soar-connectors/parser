@@ -88,6 +88,14 @@
                     "required": false,
                     "primary": false,
                     "order": 5
+                },
+                "run_automation": {
+                    "description": "Enable run_automation for newly created artifacts",
+                    "data_type": "boolean",
+                    "default": true,
+                    "required": false,
+                    "primary": false,
+                    "order": 6
                 }
             },
             "render": {

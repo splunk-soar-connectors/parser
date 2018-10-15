@@ -343,6 +343,7 @@ def parse_file(base_connector, action_result, file_info):
         return action_result.set_status(phantom.APP_ERROR, str(e)), None
     return phantom.APP_SUCCESS, {'artifacts': artifacts}
 
+
 def parse_text(base_connector, action_result, file_type, text_val):
     """ Parse a non-email file """
     raw_text = None
