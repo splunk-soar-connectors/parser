@@ -122,6 +122,10 @@
                     ]
                 },
                 {
+                    "data_path": "action_result.data",
+                    "data_type": "string"
+                },
+                {
                     "data_path": "action_result.summary.container_id",
                     "data_type": "numeric",
                     "example_values": [
@@ -167,6 +171,13 @@
                     ]
                 },
                 {
+                    "data_path": "action_result.parameter.text",
+                    "data_type": "string",
+                    "example_values": [
+                        ""
+                    ]
+                },
+                {
                     "data_path": "action_result.parameter.max_artifacts",
                     "data_type": "numeric",
                     "example_values": [
@@ -179,6 +190,13 @@
                     "example_values": [
                         "1776",
                         "52069"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.run_automation",
+                    "data_type": "boolean",
+                    "example_values": [
+                        true
                     ]
                 },
                 {
