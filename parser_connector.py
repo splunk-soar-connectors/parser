@@ -143,12 +143,15 @@ class ParserConnector(BaseConnector):
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
-    def _save_artifacts(self, action_result, artifacts, container_id, max_artifacts=None):
+    def _save_artifacts(self, action_result, artifacts, container_id, max_artifacts=None, run_automation=True):
         if max_artifacts:
             artifacts = artifacts[:max_artifacts]
 
         for artifact in artifacts:
             artifact['container_id'] = container_id
+            if not run_automation:
+                artifact['run_automation'] = False
+
         if artifacts:
             status, message, id_list = self.save_artifacts(artifacts)
         else:
@@ -158,7 +161,7 @@ class ParserConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR, message)
         return phantom.APP_SUCCESS
 
-    def _save_to_container(self, action_result, artifacts, file_name, label, max_artifacts=None):
+    def _save_to_container(self, action_result, artifacts, file_name, label, max_artifacts=None, run_automation=True):
         container = {}
         container['name'] = "{0} Parse Results".format(file_name)
         container['label'] = label
@@ -166,10 +169,10 @@ class ParserConnector(BaseConnector):
         status, message, container_id = self.save_container(container)
         if phantom.is_fail(status):
             return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
-        return RetVal(self._save_artifacts(action_result, artifacts, container_id, max_artifacts), container_id)
+        return RetVal(self._save_artifacts(action_result, artifacts, container_id, max_artifacts, run_automation), container_id)
 
-    def _save_to_existing_container(self, action_result, artifacts, container_id, max_artifacts=None):
-        return self._save_artifacts(action_result, artifacts, container_id, max_artifacts)
+    def _save_to_existing_container(self, action_result, artifacts, container_id, max_artifacts=None, run_automation=True):
+        return self._save_artifacts(action_result, artifacts, container_id, max_artifacts, run_automation)
 
     def _handle_parse_file(self, param):
         action_result = self.add_action_result(ActionResult(dict(param)))
@@ -225,11 +228,11 @@ class ParserConnector(BaseConnector):
                 return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be greater than 0")
 
         if not container_id:
-            ret_val, container_id = self._save_to_container(action_result, artifacts, file_info['name'], label, max_artifacts)
+            ret_val, container_id = self._save_to_container(action_result, artifacts, file_info['name'], label, max_artifacts, run_automation)
             if phantom.is_fail(ret_val):
                 return ret_val
         else:
-            ret_val = self._save_to_existing_container(action_result, artifacts, container_id, max_artifacts)
+            ret_val = self._save_to_existing_container(action_result, artifacts, container_id, max_artifacts, run_automation)
             if phantom.is_fail(ret_val):
                 return ret_val
 
