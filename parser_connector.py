@@ -1,14 +1,10 @@
 # --
 # File: parser_connector.py
 #
-# Copyright (c) Phantom Cyber Corporation, 2017-2018
+# Copyright (c) 2017-2018 Splunk Inc.
 #
-# This unpublished material is proprietary to Phantom Cyber.
-# All rights reserved. The methods and
-# techniques described herein are considered trade secrets
-# and/or confidential. Reproduction or distribution, in whole
-# or in part, is forbidden except by express written permission
-# of Phantom Cyber Corporation.
+# SPLUNK CONFIDENTIAL – Use or disclosure of this material in whole or in part
+# without a valid written license from Splunk Inc. is PROHIBITED.
 #
 # --
 # Phantom App imports
@@ -95,6 +91,7 @@ class ParserConnector(BaseConnector):
     def _get_file_info_from_vault(self, action_result, vault_id, file_type=None):
         file_info = {}
         file_info['id'] = vault_id
+
         try:
             info = Vault.get_file_info(vault_id=vault_id)[0]
         except IndexError:
@@ -187,7 +184,8 @@ class ParserConnector(BaseConnector):
         file_type = param.get('file_type')
 
         if vault_id and text_val:
-            return action_result.set_status(phantom.APP_ERROR, "Either text can be parsed or a file from the vault can be parsed but both the 'text' and 'vault_id' parameters cannot be used simultaneously.")
+            return action_result.set_status(phantom.APP_ERROR,
+                "Either text can be parsed or a file from the vault can be parsed but both the 'text' and 'vault_id' parameters cannot be used simultaneously.")
         if text_val and file_type not in ['txt', 'csv', 'html']:
             return action_result.set_status(phantom.APP_ERROR, "When using text input, only CSV, HTML, or TXT file types can be used.")
         elif not(vault_id or text_val):
@@ -209,9 +207,11 @@ class ParserConnector(BaseConnector):
         else:
             ret_val, response = parser_methods.parse_text(self, action_result, file_type, text_val)
 
-
         artifacts = response['artifacts']
         max_artifacts = param.get('max_artifacts')
+
+        if max_artifacts is not None and max_artifacts < 1:
+                return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be greater than 0")
         if max_artifacts:
             try:
                 max_artifacts = int(max_artifacts)

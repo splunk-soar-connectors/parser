@@ -9,12 +9,12 @@
     "product_name": "Parser",
     "product_version_regex": ".*",
     "publisher": "Phantom",
-    "license": "Copyright (c) Phantom Cyber Corporation, 2017-2018",
+    "license": "Copyright (c) 2017-2018 Splunk Inc.",
     "app_version": "1.0.10",
     "utctime_updated": "2018-09-24T19:59:02.000000Z",
     "package_name": "phantom_parser",
     "main_module": "parser_connector.pyc",
-    "min_phantom_version": "3.0.251",
+    "min_phantom_version": "3.5.210",
     "app_wizard_version": "1.0.0",
     "pip_dependencies": {
         "wheel": [
@@ -48,7 +48,7 @@
                 "file_type": {
                     "description": "Data Type",
                     "data_type": "string",
-                    "required": true,
+                    "required": false,
                     "primary": false,
                     "value_list": [
                         "txt",
