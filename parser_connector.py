@@ -191,6 +191,18 @@ class ParserConnector(BaseConnector):
         elif not(vault_id or text_val):
             return action_result.set_status(phantom.APP_ERROR, "Either 'text' or 'vault_id' must be sumitted, both cannot be blank.")
 
+        max_artifacts = param.get('max_artifacts')
+
+        # Added if for max_artifacts = 0
+        if max_artifacts is not None and max_artifacts < 1:
+                return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be greater than 0.")
+
+        if max_artifacts:
+            try:
+                max_artifacts = int(max_artifacts)
+            except ValueError:
+                return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be an integer")
+
         if vault_id:
             if (file_type == 'email'):
                 # Emails are handled differently
@@ -208,17 +220,6 @@ class ParserConnector(BaseConnector):
             ret_val, response = parser_methods.parse_text(self, action_result, file_type, text_val)
 
         artifacts = response['artifacts']
-        max_artifacts = param.get('max_artifacts')
-
-        if max_artifacts is not None and max_artifacts < 1:
-                return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be greater than 0")
-        if max_artifacts:
-            try:
-                max_artifacts = int(max_artifacts)
-            except ValueError:
-                return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be an integer")
-            if max_artifacts < 1:
-                return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be greater than 0")
 
         if not container_id:
             ret_val, container_id = self._save_to_container(action_result, artifacts, file_info['name'], label, max_artifacts)

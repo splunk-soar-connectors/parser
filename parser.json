@@ -30,7 +30,7 @@
             "action": "extract ioc",
             "identifier": "parse_file",
             "description": "Create IOC artifacts from a file in the vault or raw text",
-            "verbose": "Specify either text or vault_id. If text is used only file_types of CSV, HTML, and TXT can be selected. <br /><br />If vault_id is used and the <b>file_type</b> is left blank, the app will try to determine what type of file it is on its own. ",
+            "verbose": "Specify either text or vault_id. If text is used only file_types of CSV, HTML, and TXT can be selected. <br /><br />If vault_id is used and the <b>file_type</b> is left blank, the app will try to determine what type of file it is on its own. <br/><br/> If parsing email file (.eml), then it needs to be specify the <b>file_type</b> as an Email.  <br/> <br/> <b>Label</b> or <b>Container ID</b> is mandatory to run an action. It will display an error message if both of them are not mentioned.",
             "type": "generic",
             "read_only": true,
             "parameters": {
