@@ -20,6 +20,8 @@ import email
 import threading
 import parser_email
 import parser_methods
+import time
+import calendar
 
 
 class RetVal(tuple):
@@ -171,6 +173,7 @@ class ParserConnector(BaseConnector):
         action_result = self.add_action_result(ActionResult(dict(param)))
         container_id = param.get('container_id')
         label = param.get('label')
+        file_info = {}
         if container_id is None and label is None:
             return action_result.set_status(phantom.APP_ERROR, "A label must be specified if no container ID is provided")
         if container_id:
@@ -218,6 +221,7 @@ class ParserConnector(BaseConnector):
                 return ret_val
         else:
             ret_val, response = parser_methods.parse_text(self, action_result, file_type, text_val)
+            file_info['name'] = 'Parser_Container_{0}'.format(calendar.timegm(time.gmtime()))
 
         artifacts = response['artifacts']
 
