@@ -1,5 +1,5 @@
 # --
-# File: parser/__init__.py
+# File: __init__.py
 #
 # Copyright (c) 2017-2018 Splunk Inc.
 #

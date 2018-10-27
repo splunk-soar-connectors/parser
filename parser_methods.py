@@ -1,5 +1,5 @@
 # --
-# File: parse_methods.py
+# File: parser_methods.py
 #
 # Copyright (c) 2017-2018 Splunk Inc.
 #
