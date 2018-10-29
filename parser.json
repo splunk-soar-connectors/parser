@@ -10,8 +10,8 @@
     "product_version_regex": ".*",
     "publisher": "Phantom",
     "license": "Copyright (c) 2017-2018 Splunk Inc.",
-    "app_version": "1.0.10",
-    "utctime_updated": "2018-09-24T19:59:02.000000Z",
+    "app_version": "1.0.11",
+    "utctime_updated": "2018-10-29T22:23:21.000000Z",
     "package_name": "phantom_parser",
     "main_module": "parser_connector.pyc",
     "min_phantom_version": "3.0.251",
@@ -30,7 +30,7 @@
             "action": "extract ioc",
             "identifier": "parse_file",
             "description": "Create IOC artifacts from a file in the vault or raw text",
-            "verbose": "Specify either text or vault_id. If text is used only file_types of CSV, HTML, and TXT can be selected. <br /><br />If vault_id is used and the <b>file_type</b> is left blank, the app will try to determine what type of file it is on its own. ",
+            "verbose": "Specify either text or vault_id. If text is used only file_types of CSV, HTML, and TXT can be selected. <br /><br />If vault_id is used and the <b>file_type</b> is left blank, the app will try to determine what type of file it is on its own. <br/><br/> When parsing an email file (.eml), the <b>file_type</b> parameter must be set to <b>Email</b>.  <br/> <br/> <b>Label</b> or <b>Container ID</b> is mandatory to run an action. It will display an error message if both of them are not mentioned.",
             "type": "generic",
             "read_only": true,
             "parameters": {
@@ -48,7 +48,7 @@
                 "file_type": {
                     "description": "Data Type",
                     "data_type": "string",
-                    "required": true,
+                    "required": false,
                     "primary": false,
                     "value_list": [
                         "txt",
