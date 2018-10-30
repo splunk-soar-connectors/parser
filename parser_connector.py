@@ -9,8 +9,6 @@ from phantom.base_connector import BaseConnector
 from phantom.action_result import ActionResult
 from phantom.vault import Vault
 
-# Usage of the consts file is recommended
-# from parser_consts import *
 import json
 import email
 import threading
