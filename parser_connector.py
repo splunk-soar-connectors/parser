@@ -1,20 +1,14 @@
-# --
 # File: parser_connector.py
-#
 # Copyright (c) 2017-2018 Splunk Inc.
 #
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
-#
-# --
 # Phantom App imports
 import phantom.app as phantom
 from phantom.base_connector import BaseConnector
 from phantom.action_result import ActionResult
 from phantom.vault import Vault
 
-# Usage of the consts file is recommended
-# from parser_consts import *
 import json
 import email
 import threading
@@ -110,7 +104,7 @@ class ParserConnector(BaseConnector):
 
         return RetVal(phantom.APP_SUCCESS, file_info)
 
-    def _handle_email(self, action_result, vault_id, label, container_id):
+    def _handle_email(self, action_result, vault_id, label, container_id, run_automation=True):
         ret_val, email_data, email_id = self._get_email_data_from_vault(vault_id, action_result)
 
         if (phantom.is_fail(ret_val)):
@@ -127,7 +121,8 @@ class ParserConnector(BaseConnector):
             "extract_domains": True,
             "extract_hashes": True,
             "extract_ips": True,
-            "extract_urls": True
+            "extract_urls": True,
+            "run_automation": run_automation
         }
 
         ret_val, response = parser_email.process_email(self, email_data, email_id, config, label, container_id, None)
@@ -141,12 +136,15 @@ class ParserConnector(BaseConnector):
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
-    def _save_artifacts(self, action_result, artifacts, container_id, max_artifacts=None):
+    def _save_artifacts(self, action_result, artifacts, container_id, max_artifacts=None, run_automation=True):
         if max_artifacts:
             artifacts = artifacts[:max_artifacts]
 
         for artifact in artifacts:
             artifact['container_id'] = container_id
+            if not run_automation:
+                artifact['run_automation'] = False
+
         if artifacts:
             status, message, id_list = self.save_artifacts(artifacts)
         else:
@@ -156,7 +154,7 @@ class ParserConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR, message)
         return phantom.APP_SUCCESS
 
-    def _save_to_container(self, action_result, artifacts, file_name, label, max_artifacts=None):
+    def _save_to_container(self, action_result, artifacts, file_name, label, max_artifacts=None, run_automation=True):
         container = {}
         container['name'] = "{0} Parse Results".format(file_name)
         container['label'] = label
@@ -164,10 +162,10 @@ class ParserConnector(BaseConnector):
         status, message, container_id = self.save_container(container)
         if phantom.is_fail(status):
             return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
-        return RetVal(self._save_artifacts(action_result, artifacts, container_id, max_artifacts), container_id)
+        return RetVal(self._save_artifacts(action_result, artifacts, container_id, max_artifacts, run_automation), container_id)
 
-    def _save_to_existing_container(self, action_result, artifacts, container_id, max_artifacts=None):
-        return self._save_artifacts(action_result, artifacts, container_id, max_artifacts)
+    def _save_to_existing_container(self, action_result, artifacts, container_id, max_artifacts=None, run_automation=True):
+        return self._save_artifacts(action_result, artifacts, container_id, max_artifacts, run_automation)
 
     def _handle_parse_file(self, param):
         action_result = self.add_action_result(ActionResult(dict(param)))
@@ -185,31 +183,22 @@ class ParserConnector(BaseConnector):
         vault_id = param.get('vault_id')
         text_val = param.get('text')
         file_type = param.get('file_type')
+        run_automation = param.get('run_automation', True)
 
         if vault_id and text_val:
-            return action_result.set_status(phantom.APP_ERROR,
-                "Either text can be parsed or a file from the vault can be parsed but both the 'text' and 'vault_id' parameters cannot be used simultaneously.")
+            return action_result.set_status(
+                phantom.APP_ERROR,
+                "Either text can be parsed or a file from the vault can be parsed but both the 'text' and 'vault_id' parameters cannot be used simultaneously."
+            )
         if text_val and file_type not in ['txt', 'csv', 'html']:
             return action_result.set_status(phantom.APP_ERROR, "When using text input, only CSV, HTML, or TXT file types can be used.")
         elif not(vault_id or text_val):
             return action_result.set_status(phantom.APP_ERROR, "Either 'text' or 'vault_id' must be sumitted, both cannot be blank.")
 
-        max_artifacts = param.get('max_artifacts')
-
-        # Added if for max_artifacts = 0
-        if max_artifacts is not None and max_artifacts < 1:
-                return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be greater than 0.")
-
-        if max_artifacts:
-            try:
-                max_artifacts = int(max_artifacts)
-            except ValueError:
-                return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be an integer")
-
         if vault_id:
             if (file_type == 'email'):
                 # Emails are handled differently
-                return self._handle_email(action_result, vault_id, label, container_id)
+                return self._handle_email(action_result, vault_id, label, container_id, run_automation)
 
             ret_val, file_info = self._get_file_info_from_vault(action_result, vault_id, file_type)
             if phantom.is_fail(ret_val):
@@ -224,13 +213,21 @@ class ParserConnector(BaseConnector):
             file_info['name'] = 'Parser_Container_{0}'.format(calendar.timegm(time.gmtime()))
 
         artifacts = response['artifacts']
+        max_artifacts = param.get('max_artifacts')
+        if max_artifacts:
+            try:
+                max_artifacts = int(max_artifacts)
+            except ValueError:
+                return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be an integer")
+            if max_artifacts < 1:
+                return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be greater than 0")
 
         if not container_id:
-            ret_val, container_id = self._save_to_container(action_result, artifacts, file_info['name'], label, max_artifacts)
+            ret_val, container_id = self._save_to_container(action_result, artifacts, file_info['name'], label, max_artifacts, run_automation)
             if phantom.is_fail(ret_val):
                 return ret_val
         else:
-            ret_val = self._save_to_existing_container(action_result, artifacts, container_id, max_artifacts)
+            ret_val = self._save_to_existing_container(action_result, artifacts, container_id, max_artifacts, run_automation)
             if phantom.is_fail(ret_val):
                 return ret_val
 

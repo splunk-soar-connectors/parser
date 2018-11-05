@@ -14,7 +14,7 @@
     "utctime_updated": "2018-10-29T22:23:21.000000Z",
     "package_name": "phantom_parser",
     "main_module": "parser_connector.pyc",
-    "min_phantom_version": "3.5.210",
+    "min_phantom_version": "3.0.251",
     "app_wizard_version": "1.0.0",
     "pip_dependencies": {
         "wheel": [
@@ -88,6 +88,14 @@
                     "required": false,
                     "primary": false,
                     "order": 5
+                },
+                "run_automation": {
+                    "description": "Enable run_automation for newly created artifacts",
+                    "data_type": "boolean",
+                    "default": true,
+                    "required": false,
+                    "primary": false,
+                    "order": 6
                 }
             },
             "render": {
@@ -112,6 +120,10 @@
                         "Container id: 52069, Artifacts found: 27",
                         "Container id: 52069, Artifacts found: 13"
                     ]
+                },
+                {
+                    "data_path": "action_result.data",
+                    "data_type": "string"
                 },
                 {
                     "data_path": "action_result.summary.container_id",
@@ -159,6 +171,13 @@
                     ]
                 },
                 {
+                    "data_path": "action_result.parameter.text",
+                    "data_type": "string",
+                    "example_values": [
+                        ""
+                    ]
+                },
+                {
                     "data_path": "action_result.parameter.max_artifacts",
                     "data_type": "numeric",
                     "example_values": [
@@ -171,6 +190,13 @@
                     "example_values": [
                         "1776",
                         "52069"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.run_automation",
+                    "data_type": "boolean",
+                    "example_values": [
+                        true
                     ]
                 },
                 {
