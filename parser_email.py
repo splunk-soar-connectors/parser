@@ -352,14 +352,15 @@ def _create_artifacts(parsed_mail):
             body_content = f.read()
 
         content_type = body.get('content-type')
+        charset = body.get('charset', None)
         if 'text/plain' in content_type:
-            email_headers[0]['cef']['bodyText'] = body_content
+            email_headers[0]['cef']['bodyText'] = unicode(body_content, charset)
         elif 'text/html' in content_type:
-            email_headers[0]['cef']['bodyHtml'] = body_content
+            email_headers[0]['cef']['bodyHtml'] = unicode(body_content, charset)
         else:
             if not email_headers[0]['cef'].get('bodyOther'):
                 email_headers[0]['cef']['bodyOther'] = {}
-            email_headers[0]['cef']['bodyOther'][content_type] = body_content
+            email_headers[0]['cef']['bodyOther'][content_type] = unicode(body_content, charset)
 
     # set the default artifact dict
 
