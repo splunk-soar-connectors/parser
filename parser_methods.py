@@ -342,7 +342,6 @@ def parse_file(base_connector, action_result, file_info):
     return phantom.APP_SUCCESS, {'artifacts': artifacts}
 
 
-<<<<<<< HEAD
 def parse_structured_file(base_connector, action_result, file_info):
     if (file_info['type'] == 'csv'):
         csv_file = file_info['path']
@@ -361,7 +360,8 @@ def parse_structured_file(base_connector, action_result, file_info):
             return action_result.set_status(phantom.APP_ERROR, "Failed to parse structured CSV: {0}".format(str(e))), None
     else:
         return action_result.set_status(phantom.APP_ERROR, "Strucured extraction only supported for CSV files"), None
-=======
+
+
 def parse_text(base_connector, action_result, file_type, text_val):
     """ Parse a non-email file """
     raw_text = None
@@ -380,5 +380,5 @@ def parse_text(base_connector, action_result, file_type, text_val):
         artifacts = tiocp.parse_to_artifacts(raw_text)
     except Exception as e:
         return action_result.set_status(phantom.APP_ERROR, str(e)), None
->>>>>>> 4839adefaa442d81184c2a3b593146c306212f24
+
     return phantom.APP_SUCCESS, {'artifacts': artifacts}
