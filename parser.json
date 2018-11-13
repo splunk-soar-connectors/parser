@@ -1,7 +1,7 @@
 {
     "appid": "4004f489-1826-44a1-af12-9c74eea82eb0",
     "name": "Parser",
-    "description": "This app extracts IOCs from various files such as PDFs or Emails",
+    "description": "This app extracts IOCs from various files such as PDFs or Emails, or raw text",
     "type": "information",
     "product_vendor": "Phantom",
     "logo": "logo_phantom.svg",
@@ -9,12 +9,12 @@
     "product_name": "Parser",
     "product_version_regex": ".*",
     "publisher": "Phantom",
-    "license": "Copyright (c) Phantom Cyber Corporation, 2017-2018",
-    "app_version": "1.0.8",
-    "utctime_updated": "2018-01-26T00:49:52.000000Z",
+    "license": "Copyright (c) 2017-2018 Splunk Inc.",
+    "app_version": "1.0.11",
+    "utctime_updated": "2018-10-29T22:23:21.000000Z",
     "package_name": "phantom_parser",
     "main_module": "parser_connector.pyc",
-    "min_phantom_version": "3.0.251",
+    "min_phantom_version": "3.5.210",
     "app_wizard_version": "1.0.0",
     "pip_dependencies": {
         "wheel": [
@@ -29,15 +29,15 @@
         {
             "action": "extract ioc",
             "identifier": "parse_file",
-            "description": "Create IOC artifacts from a file in the vault",
-            "verbose": "If the <b>file_type</b> is left blank, the app will try to determine what type of file it is on its own. ",
+            "description": "Create IOC artifacts from a file in the vault or raw text",
+            "verbose": "Specify either text or vault_id. If text is used only file_types of CSV, HTML, and TXT can be selected. <br /><br />If vault_id is used and the <b>file_type</b> is left blank, the app will try to determine what type of file it is on its own. <br/><br/> When parsing an email file (.eml), the <b>file_type</b> parameter must be set to <b>Email</b>.  <br/> <br/> <b>Label</b> or <b>Container ID</b> is mandatory to run an action. It will display an error message if both of them are not mentioned.",
             "type": "generic",
             "read_only": true,
             "parameters": {
                 "vault_id": {
                     "description": "Vault ID",
                     "data_type": "string",
-                    "required": true,
+                    "required": false,
                     "primary": true,
                     "contains": [
                         "vault id"
@@ -45,15 +45,8 @@
                     "default": "",
                     "order": 0
                 },
-                "label": {
-                    "description": "Add container to this label",
-                    "data_type": "string",
-                    "required": false,
-                    "primary": false,
-                    "order": 1
-                },
                 "file_type": {
-                    "description": "The type of file",
+                    "description": "Data Type",
                     "data_type": "string",
                     "required": false,
                     "primary": false,
@@ -66,21 +59,43 @@
                         "html"
                     ],
                     "default": "",
+                    "order": 1
+                },
+                "text": {
+                    "description": "Raw text from which to extract IOCs",
+                    "data_type": "string",
+                    "primary": false,
+                    "default": "",
                     "order": 2
+                },
+                "label": {
+                    "description": "Add container to this label",
+                    "data_type": "string",
+                    "required": false,
+                    "primary": false,
+                    "order": 3
                 },
                 "max_artifacts": {
                     "description": "Max number of artifacts",
                     "data_type": "numeric",
                     "required": false,
                     "primary": false,
-                    "order": 3
+                    "order": 4
                 },
                 "container_id": {
                     "description": "Add created artifacts to this container",
                     "data_type": "numeric",
                     "required": false,
                     "primary": false,
-                    "order": 4
+                    "order": 5
+                },
+                "run_automation": {
+                    "description": "Enable run_automation for newly created artifacts",
+                    "data_type": "boolean",
+                    "default": true,
+                    "required": false,
+                    "primary": false,
+                    "order": 6
                 }
             },
             "render": {
@@ -105,6 +120,10 @@
                         "Container id: 52069, Artifacts found: 27",
                         "Container id: 52069, Artifacts found: 13"
                     ]
+                },
+                {
+                    "data_path": "action_result.data",
+                    "data_type": "string"
                 },
                 {
                     "data_path": "action_result.summary.container_id",
@@ -152,6 +171,13 @@
                     ]
                 },
                 {
+                    "data_path": "action_result.parameter.text",
+                    "data_type": "string",
+                    "example_values": [
+                        ""
+                    ]
+                },
+                {
                     "data_path": "action_result.parameter.max_artifacts",
                     "data_type": "numeric",
                     "example_values": [
@@ -164,6 +190,13 @@
                     "example_values": [
                         "1776",
                         "52069"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.run_automation",
+                    "data_type": "boolean",
+                    "example_values": [
+                        true
                     ]
                 },
                 {
