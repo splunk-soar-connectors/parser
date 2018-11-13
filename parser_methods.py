@@ -1,16 +1,8 @@
-# --
-# File: parse_methods.py
+# File: parser_methods.py
+# Copyright (c) 2017-2018 Splunk Inc.
 #
-# Copyright (c) Phantom Cyber Corporation, 2017-2018
-#
-# This unpublished material is proprietary to Phantom Cyber.
-# All rights reserved. The methods and
-# techniques described herein are considered trade secrets
-# and/or confidential. Reproduction or distribution, in whole
-# or in part, is forbidden except by express written permission
-# of Phantom Cyber Corporation.
-#
-# --
+# SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
+# without a valid written license from Splunk Inc. is PROHIBITED.
 
 import re
 import csv
@@ -96,7 +88,7 @@ class TextIOCParser():
             'validator': _is_ip      # Additional function to verify matched string (Should return true or false)
         },
         {
-            'cef': 'ip',
+            'cef': 'sourceAddress',
             'pattern': IPV6_REGEX,
             'name': 'IP Artifact',
             'validator': _is_ip
@@ -273,16 +265,19 @@ def _csv_to_text(action_result, csv_file):
         return action_result.set_status(phantom.APP_ERROR, "Failed to parse csv: {0}".format(str(e))), None
 
 
-def _html_to_text(action_result, html_file):
+def _html_to_text(action_result, html_file, text_val=None):
     """ Similar to CSV, this is also unnecessary. It will trim /some/ of that fat from a normal HTML, however
     """
     try:
-        fp = open(html_file, 'r')
-        html_text = fp.read()
+        if text_val is None:
+            fp = open(html_file, 'r')
+            html_text = fp.read()
+            fp.close()
+        else:
+            html_text = text_val
         soup = BeautifulSoup(html_text, 'html.parser')
         read_text = soup.findAll(text=True)
         text = ' '.join(read_text)
-        fp.close()
         return phantom.APP_SUCCESS, text
     except Exception as e:
         return action_result.set_status(phantom.APP_ERROR, "Failed to parse html: {0}".format(str(e))), None
@@ -347,6 +342,7 @@ def parse_file(base_connector, action_result, file_info):
     return phantom.APP_SUCCESS, {'artifacts': artifacts}
 
 
+<<<<<<< HEAD
 def parse_structured_file(base_connector, action_result, file_info):
     if (file_info['type'] == 'csv'):
         csv_file = file_info['path']
@@ -365,4 +361,24 @@ def parse_structured_file(base_connector, action_result, file_info):
             return action_result.set_status(phantom.APP_ERROR, "Failed to parse structured CSV: {0}".format(str(e))), None
     else:
         return action_result.set_status(phantom.APP_ERROR, "Strucured extraction only supported for CSV files"), None
+=======
+def parse_text(base_connector, action_result, file_type, text_val):
+    """ Parse a non-email file """
+    raw_text = None
+    if (file_type == 'html'):
+        ret_val, raw_text = _html_to_text(action_result, None, text_val=text_val)
+    elif file_type == 'txt' or file_type == 'csv':
+        ret_val, raw_text = phantom.APP_SUCCESS, text_val
+    else:
+        return action_result.set_status(phantom.APP_ERROR, "Unexpected file type"), None
+    if phantom.is_fail(ret_val):
+        return ret_val, None
+
+    tiocp = TextIOCParser()
+    base_connector.save_progress('Parsing for IOCs')
+    try:
+        artifacts = tiocp.parse_to_artifacts(raw_text)
+    except Exception as e:
+        return action_result.set_status(phantom.APP_ERROR, str(e)), None
+>>>>>>> 4839adefaa442d81184c2a3b593146c306212f24
     return phantom.APP_SUCCESS, {'artifacts': artifacts}
