@@ -353,7 +353,7 @@ def parse_structured_file(base_connector, action_result, file_info):
         artifacts = []
         try:
             fp = open(csv_file, 'rb')
-            reader = csv.DictReader(fp)
+            reader = csv.DictReader(fp, restkey='other')  # need to handle lines terminated in commas
             for row in reader:
                 row['source_file'] = file_info['name']
                 artifacts.append({
