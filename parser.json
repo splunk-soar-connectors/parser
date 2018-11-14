@@ -68,26 +68,34 @@
                     "default": "",
                     "order": 2
                 },
+                "is_structured": {
+                    "description": "Use first row of CSV file as field names",
+                    "data_type": "boolean",
+                    "required": true,
+                    "primary": false,
+                    "default": false,
+                    "order": 3
+                }
                 "label": {
                     "description": "Add container to this label",
                     "data_type": "string",
                     "required": false,
                     "primary": false,
-                    "order": 3
+                    "order": 4
                 },
                 "max_artifacts": {
                     "description": "Max number of artifacts",
                     "data_type": "numeric",
                     "required": false,
                     "primary": false,
-                    "order": 4
+                    "order": 5
                 },
                 "container_id": {
                     "description": "Add created artifacts to this container",
                     "data_type": "numeric",
                     "required": false,
                     "primary": false,
-                    "order": 5
+                    "order": 6
                 },
                 "run_automation": {
                     "description": "Enable run_automation for newly created artifacts",
@@ -95,7 +103,7 @@
                     "default": true,
                     "required": false,
                     "primary": false,
-                    "order": 6
+                    "order": 7
                 }
             },
             "render": {
@@ -173,6 +181,13 @@
                 {
                     "data_path": "action_result.parameter.text",
                     "data_type": "string",
+                    "example_values": [
+                        ""
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.is_structured",
+                    "data_type": "boolean"
                     "example_values": [
                         ""
                     ]
