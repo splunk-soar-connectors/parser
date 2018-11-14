@@ -359,7 +359,7 @@ def parse_structured_file(base_connector, action_result, file_info):
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR, "Failed to parse structured CSV: {0}".format(str(e))), None
     else:
-        return action_result.set_status(phantom.APP_ERROR, "Strucured extraction only supported for CSV files"), None
+        return action_result.set_status(phantom.APP_ERROR, "Structured extraction only supported for CSV files"), None
 
 
 def parse_text(base_connector, action_result, file_type, text_val):
