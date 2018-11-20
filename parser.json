@@ -187,7 +187,7 @@
                 },
                 {
                     "data_path": "action_result.parameter.is_structured",
-                    "data_type": "boolean"
+                    "data_type": "boolean",
                     "example_values": [
                         ""
                     ]
