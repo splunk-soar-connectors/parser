@@ -75,7 +75,7 @@
                     "primary": false,
                     "default": false,
                     "order": 3
-                }
+                },
                 "label": {
                     "description": "Add container to this label",
                     "data_type": "string",
