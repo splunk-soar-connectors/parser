@@ -1,4 +1,4 @@
 [submodule "wheels"]
 	path = wheels
-	url = ssh://git@bitbucket.phantom.us:7999/per/phparser-deps.git
+	url = git@cd.splunkdev.com:phantom-external/deps.git
 	ignore = dirty
