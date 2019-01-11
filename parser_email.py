@@ -1,5 +1,5 @@
 # File: parser_email.py
-# Copyright (c) 2017-2018 Splunk Inc.
+# Copyright (c) 2017-2019 Splunk Inc.
 #
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
@@ -752,7 +752,10 @@ def _int_process_email(rfc822_email, email_id, start_time_epoch):
 
     ret_val = phantom.APP_SUCCESS
 
-    tmp_dir = tempfile.mkdtemp(prefix='ph_email')
+    if hasattr(Vault, 'get_vault_tmp_dir'):
+        tmp_dir = tempfile.mkdtemp(prefix='ph_email', dir=Vault.get_vault_tmp_dir())
+    else:
+        tmp_dir = tempfile.mkdtemp(prefix='ph_email')
 
     try:
         ret_val = _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)

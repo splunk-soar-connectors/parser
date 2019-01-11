@@ -9,12 +9,12 @@
     "product_name": "Parser",
     "product_version_regex": ".*",
     "publisher": "Phantom",
-    "license": "Copyright (c) 2017-2018 Splunk Inc.",
+    "license": "Copyright (c) 2017-2019 Splunk Inc.",
     "app_version": "1.0.14",
     "utctime_updated": "2018-12-20T21:24:29.000000Z",
     "package_name": "phantom_parser",
     "main_module": "parser_connector.pyc",
-    "min_phantom_version": "3.5.210",
+    "min_phantom_version": "4.0.1068",
     "app_wizard_version": "1.0.0",
     "pip_dependencies": {
         "wheel": [
@@ -122,33 +122,26 @@
                     ]
                 },
                 {
-                    "data_path": "action_result.message",
-                    "data_type": "string",
+                    "data_path": "action_result.parameter.container_id",
+                    "data_type": "numeric",
                     "example_values": [
-                        "Container id: 52069, Artifacts found: 27",
-                        "Container id: 52069, Artifacts found: 13"
+                        "1776",
+                        "52069"
                     ]
                 },
                 {
-                    "data_path": "action_result.data",
-                    "data_type": "string"
+                    "data_path": "action_result.parameter.file_type",
+                    "data_type": "string",
+                    "example_values": [
+                        "txt",
+                        "docx"
+                    ]
                 },
                 {
-                    "data_path": "action_result.summary.container_id",
-                    "data_type": "numeric",
+                    "data_path": "action_result.parameter.is_structured",
+                    "data_type": "boolean",
                     "example_values": [
-                        "52079",
-                        "1776"
-                    ],
-                    "column_order": 0,
-                    "column_name": "Container ID"
-                },
-                {
-                    "data_path": "action_result.summary.artifacts_found",
-                    "data_type": "numeric",
-                    "example_values": [
-                        7,
-                        13
+                        ""
                     ]
                 },
                 {
@@ -156,6 +149,27 @@
                     "data_type": "string",
                     "example_values": [
                         "Events"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.max_artifacts",
+                    "data_type": "numeric",
+                    "example_values": [
+                        "100"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.run_automation",
+                    "data_type": "boolean",
+                    "example_values": [
+                        true
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.text",
+                    "data_type": "string",
+                    "example_values": [
+                        ""
                     ]
                 },
                 {
@@ -171,47 +185,33 @@
                     ]
                 },
                 {
-                    "data_path": "action_result.parameter.file_type",
-                    "data_type": "string",
-                    "example_values": [
-                        "txt",
-                        "docx"
-                    ]
+                    "data_path": "action_result.data",
+                    "data_type": "string"
                 },
                 {
-                    "data_path": "action_result.parameter.text",
-                    "data_type": "string",
-                    "example_values": [
-                        ""
-                    ]
-                },
-                {
-                    "data_path": "action_result.parameter.is_structured",
-                    "data_type": "boolean",
-                    "example_values": [
-                        ""
-                    ]
-                },
-                {
-                    "data_path": "action_result.parameter.max_artifacts",
+                    "data_path": "action_result.summary.artifacts_found",
                     "data_type": "numeric",
                     "example_values": [
-                        "100"
+                        7,
+                        13
                     ]
                 },
                 {
-                    "data_path": "action_result.parameter.container_id",
+                    "data_path": "action_result.summary.container_id",
                     "data_type": "numeric",
                     "example_values": [
-                        "1776",
-                        "52069"
-                    ]
+                        "52079",
+                        "1776"
+                    ],
+                    "column_order": 0,
+                    "column_name": "Container ID"
                 },
                 {
-                    "data_path": "action_result.parameter.run_automation",
-                    "data_type": "boolean",
+                    "data_path": "action_result.message",
+                    "data_type": "string",
                     "example_values": [
-                        true
+                        "Container id: 52069, Artifacts found: 27",
+                        "Container id: 52069, Artifacts found: 13"
                     ]
                 },
                 {
