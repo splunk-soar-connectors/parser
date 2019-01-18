@@ -71,7 +71,6 @@
                 "is_structured": {
                     "description": "Use first row of CSV file as field names",
                     "data_type": "boolean",
-                    "required": true,
                     "primary": false,
                     "default": false,
                     "order": 3

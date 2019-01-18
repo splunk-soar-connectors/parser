@@ -183,7 +183,7 @@ class ParserConnector(BaseConnector):
         vault_id = param.get('vault_id')
         text_val = param.get('text')
         file_type = param.get('file_type')
-        is_structured = param['is_structured']
+        is_structured = param.get('is_structured')
         run_automation = param.get('run_automation', True)
 
         if vault_id and text_val:
