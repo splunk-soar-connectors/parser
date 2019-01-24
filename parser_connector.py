@@ -1,5 +1,5 @@
 # File: parser_connector.py
-# Copyright (c) 2017-2018 Splunk Inc.
+# Copyright (c) 2017-2019 Splunk Inc.
 #
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
@@ -183,6 +183,7 @@ class ParserConnector(BaseConnector):
         vault_id = param.get('vault_id')
         text_val = param.get('text')
         file_type = param.get('file_type')
+        is_structured = param.get('is_structured')
         run_automation = param.get('run_automation', True)
 
         if vault_id and text_val:
@@ -205,7 +206,11 @@ class ParserConnector(BaseConnector):
                 return ret_val
 
             self.debug_print("File Info", file_info)
-            ret_val, response = parser_methods.parse_file(self, action_result, file_info)
+            if is_structured:
+                # Strucured files are treated differently
+                ret_val, response = parser_methods.parse_structured_file(self, action_result, file_info)
+            else:
+                ret_val, response = parser_methods.parse_file(self, action_result, file_info)
             if phantom.is_fail(ret_val):
                 return ret_val
         else:
