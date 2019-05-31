@@ -223,7 +223,7 @@ def _pdf_to_text(action_result, pdf_file):
         infile.close()
         converter.close()
         text = output.getvalue()
-        output.close
+        output.close()
         return phantom.APP_SUCCESS, text
     except Exception as e:
         return action_result.set_status(phantom.APP_ERROR, "Failed to parse pdf: {0}".format(str(e))), None
@@ -360,6 +360,7 @@ def parse_structured_file(base_connector, action_result, file_info):
             return action_result.set_status(phantom.APP_ERROR, "Failed to parse structured CSV: {0}".format(str(e))), None
     else:
         return action_result.set_status(phantom.APP_ERROR, "Structured extraction only supported for CSV files"), None
+    return phantom.APP_SUCCESS, {'artifacts': artifacts}
 
 
 def parse_text(base_connector, action_result, file_type, text_val):
