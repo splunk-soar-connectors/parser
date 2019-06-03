@@ -194,7 +194,7 @@ class ParserConnector(BaseConnector):
         if text_val and file_type not in ['txt', 'csv', 'html']:
             return action_result.set_status(phantom.APP_ERROR, "When using text input, only CSV, HTML, or TXT file types can be used.")
         elif not(vault_id or text_val):
-            return action_result.set_status(phantom.APP_ERROR, "Either 'text' or 'vault_id' must be sumitted, both cannot be blank.")
+            return action_result.set_status(phantom.APP_ERROR, "Either 'text' or 'vault_id' must be submitted, both cannot be blank.")
 
         if vault_id:
             if (file_type == 'email'):
@@ -207,7 +207,7 @@ class ParserConnector(BaseConnector):
 
             self.debug_print("File Info", file_info)
             if is_structured:
-                # Strucured files are treated differently
+                # Structured files are treated differently
                 ret_val, response = parser_methods.parse_structured_file(self, action_result, file_info)
             else:
                 ret_val, response = parser_methods.parse_file(self, action_result, file_info)
