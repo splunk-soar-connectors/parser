@@ -115,9 +115,7 @@
                     "data_path": "action_result.parameter.file_type",
                     "data_type": "string",
                     "example_values": [
-                        "txt",
-                        "docx",
-                        "csv"
+                        "txt"
                     ]
                 },
                 {
