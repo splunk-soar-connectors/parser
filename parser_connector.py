@@ -199,14 +199,14 @@ class ParserConnector(BaseConnector):
         if vault_id and text_val:
             return action_result.set_status(
                 phantom.APP_ERROR,
-                "Either text can be parsed or a file from the vault can be parsed but both the 'text' and 'vault_id' parameters cannot be used simultaneously."
+                "Either text can be parsed or a file from the vault can be parsed but both the 'text' and 'vault_id' parameters cannot be used simultaneously"
             )
         if text_val and file_type not in ['txt', 'csv', 'html']:
             return action_result.set_status(phantom.APP_ERROR,
-                                        "When using text input, only CSV, HTML, or TXT file types can be used.")
+                                        "When using text input, only csv, html, or txt file_type can be used")
         elif not(vault_id or text_val):
             return action_result.set_status(phantom.APP_ERROR,
-                                        "Either 'text' or 'vault_id' must be submitted, both cannot be blank.")
+                                        "Either 'text' or 'vault_id' must be submitted, both cannot be blank")
 
         if vault_id:
             if file_type == 'email':
@@ -229,13 +229,9 @@ class ParserConnector(BaseConnector):
 
         artifacts = response['artifacts']
         max_artifacts = param.get('max_artifacts')
-        self.debug_print("TYPE====", type(max_artifacts))
         if max_artifacts is not None:
-            self.debug_print("Hello123")
             try:
-                self.debug_print("try")
                 max_artifacts = int(max_artifacts)
-                self.debug_print("try end")
             except ValueError:
                 return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be an integer")
         if (max_artifacts and not str(max_artifacts).isdigit()) or max_artifacts == 0:
@@ -250,7 +246,7 @@ class ParserConnector(BaseConnector):
             if phantom.is_fail(ret_val):
                 return ret_val
         else:
-            ret_val = self._save_to_existing_container(action_result, 
+            ret_val = self._save_to_existing_container(action_result,
                                                     artifacts, container_id, max_artifacts, run_automation)
             if phantom.is_fail(ret_val):
                 return ret_val

