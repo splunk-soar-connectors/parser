@@ -49,12 +49,16 @@ class ParserConnector(BaseConnector):
         try:
             mail = email.message_from_string(email_data)
         except:
-            return RetVal2(action_result.set_status(phantom.APP_ERROR, "Unable to create email object from data. Does not seem to be valid email"), None)
+            return RetVal2(action_result.set_status(phantom.APP_ERROR,
+                                        "Unable to create email object from data. Does not seem to be valid email"),
+                                        None)
 
         headers = mail.__dict__.get('_headers')
 
-        if (not headers):
-            return RetVal2(action_result.set_status(phantom.APP_ERROR, "Could not extract header info from email object data. Does not seem to be valid email"), None)
+        if not headers:
+            return RetVal2(action_result.set_status(phantom.APP_ERROR,
+                        "Could not extract header info from email object data. Does not seem to be valid email"),
+                         None)
 
         ret_val = {}
         for header in headers:
@@ -71,7 +75,10 @@ class ParserConnector(BaseConnector):
         try:
             file_path = Vault.get_file_path(vault_id)
         except Exception as e:
-            return RetVal3(action_result.set_status(phantom.APP_ERROR, "Could not get file path for vault item"), None, None)
+            return RetVal3(action_result.set_status(phantom.APP_ERROR,
+                                                "Could not get file path for vault item"),
+                                                None,
+                                                None)
 
         if file_path is None:
             return RetVal3(action_result.set_status(phantom.APP_ERROR, "No file with vault ID found"), None, None)
@@ -80,7 +87,8 @@ class ParserConnector(BaseConnector):
             with open(file_path, 'r') as f:
                 email_data = f.read()
         except Exception as e:
-            return RetVal3(action_result.set_status(phantom.APP_ERROR, "Could not read file contents for vault item", e), None, None)
+            return RetVal3(action_result.set_status(phantom.APP_ERROR,
+                                                "Could not read file contents for vault item", e), None, None)
 
         return RetVal3(phantom.APP_SUCCESS, email_data, email_id)
 
@@ -93,7 +101,8 @@ class ParserConnector(BaseConnector):
         except IndexError:
             return RetVal(action_result.set_status(phantom.APP_ERROR, "No file with vault ID found"), None)
         except Exception as e:
-            return RetVal(action_result.set_status(phantom.APP_ERROR, "Error retrieving file from vault: {0}".format(str(e))), None)
+            return RetVal(action_result.set_status(phantom.APP_ERROR,
+                                                "Error retrieving file from vault: {0}".format(str(e))), None)
         file_info['path'] = info['path']
         file_info['name'] = info['name']
         if file_type:
@@ -107,11 +116,11 @@ class ParserConnector(BaseConnector):
     def _handle_email(self, action_result, vault_id, label, container_id, run_automation=True):
         ret_val, email_data, email_id = self._get_email_data_from_vault(vault_id, action_result)
 
-        if (phantom.is_fail(ret_val)):
+        if phantom.is_fail(ret_val):
             return action_result.get_status()
 
         ret_val, header_dict = self._get_mail_header_dict(email_data, action_result)
-        if (phantom.is_fail(ret_val)):
+        if phantom.is_fail(ret_val):
             return action_result.get_status()
 
         action_result.add_data(header_dict)
@@ -127,7 +136,7 @@ class ParserConnector(BaseConnector):
 
         ret_val, response = parser_email.process_email(self, email_data, email_id, config, label, container_id, None)
 
-        if (phantom.is_fail(ret_val)):
+        if phantom.is_fail(ret_val):
             return action_result.set_status(phantom.APP_ERROR, response['message'])
 
         container_id = response['container_id']
@@ -148,7 +157,6 @@ class ParserConnector(BaseConnector):
         if artifacts:
             status, message, id_list = self.save_artifacts(artifacts)
         else:
-            # No IOCS found
             return action_result.set_status(phantom.APP_SUCCESS)
         if phantom.is_fail(status):
             return action_result.set_status(phantom.APP_ERROR, message)
@@ -162,9 +170,11 @@ class ParserConnector(BaseConnector):
         status, message, container_id = self.save_container(container)
         if phantom.is_fail(status):
             return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
-        return RetVal(self._save_artifacts(action_result, artifacts, container_id, max_artifacts, run_automation), container_id)
+        return RetVal(self._save_artifacts(action_result,
+                                        artifacts, container_id, max_artifacts, run_automation), container_id)
 
-    def _save_to_existing_container(self, action_result, artifacts, container_id, max_artifacts=None, run_automation=True):
+    def _save_to_existing_container(self, action_result, artifacts,
+                                    container_id, max_artifacts=None, run_automation=True):
         return self._save_artifacts(action_result, artifacts, container_id, max_artifacts, run_automation)
 
     def _handle_parse_file(self, param):
@@ -173,9 +183,9 @@ class ParserConnector(BaseConnector):
         label = param.get('label')
         file_info = {}
         if container_id is None and label is None:
-            return action_result.set_status(phantom.APP_ERROR, "A label must be specified if no container ID is provided")
+            return action_result.set_status(phantom.APP_ERROR,
+                                            "A label must be specified if no container ID is provided")
         if container_id:
-            # Make sure container exists first, provide a better error message than waiting for save_artifacts to fail
             ret_val, message, _ = self.get_container_info(container_id)
             if phantom.is_fail(ret_val):
                 return action_result.set_status(phantom.APP_ERROR, "Unable to find container: {}".format(message))
@@ -189,16 +199,17 @@ class ParserConnector(BaseConnector):
         if vault_id and text_val:
             return action_result.set_status(
                 phantom.APP_ERROR,
-                "Either text can be parsed or a file from the vault can be parsed but both the 'text' and 'vault_id' parameters cannot be used simultaneously."
+                "Either text can be parsed or a file from the vault can be parsed but both the 'text' and 'vault_id' parameters cannot be used simultaneously"
             )
         if text_val and file_type not in ['txt', 'csv', 'html']:
-            return action_result.set_status(phantom.APP_ERROR, "When using text input, only CSV, HTML, or TXT file types can be used.")
+            return action_result.set_status(phantom.APP_ERROR,
+                                        "When using text input, only csv, html, or txt file_type can be used")
         elif not(vault_id or text_val):
-            return action_result.set_status(phantom.APP_ERROR, "Either 'text' or 'vault_id' must be submitted, both cannot be blank.")
+            return action_result.set_status(phantom.APP_ERROR,
+                                        "Either 'text' or 'vault_id' must be submitted, both cannot be blank")
 
         if vault_id:
-            if (file_type == 'email'):
-                # Emails are handled differently
+            if file_type == 'email':
                 return self._handle_email(action_result, vault_id, label, container_id, run_automation)
 
             ret_val, file_info = self._get_file_info_from_vault(action_result, vault_id, file_type)
@@ -207,7 +218,6 @@ class ParserConnector(BaseConnector):
 
             self.debug_print("File Info", file_info)
             if is_structured:
-                # Structured files are treated differently
                 ret_val, response = parser_methods.parse_structured_file(self, action_result, file_info)
             else:
                 ret_val, response = parser_methods.parse_file(self, action_result, file_info)
@@ -219,24 +229,28 @@ class ParserConnector(BaseConnector):
 
         artifacts = response['artifacts']
         max_artifacts = param.get('max_artifacts')
-        if max_artifacts:
+        if max_artifacts is not None:
             try:
                 max_artifacts = int(max_artifacts)
             except ValueError:
                 return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be an integer")
-            if max_artifacts < 1:
-                return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be greater than 0")
+        if (max_artifacts and not str(max_artifacts).isdigit()) or max_artifacts == 0:
+            return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be greater than 0")
 
         if not container_id:
-            ret_val, container_id = self._save_to_container(action_result, artifacts, file_info['name'], label, max_artifacts, run_automation)
+            ret_val, container_id = self._save_to_container(action_result,
+                                                        artifacts,
+                                                        file_info['name'],
+                                                        label,
+                                                        max_artifacts, run_automation)
             if phantom.is_fail(ret_val):
                 return ret_val
         else:
-            ret_val = self._save_to_existing_container(action_result, artifacts, container_id, max_artifacts, run_automation)
+            ret_val = self._save_to_existing_container(action_result,
+                                                    artifacts, container_id, max_artifacts, run_automation)
             if phantom.is_fail(ret_val):
                 return ret_val
 
-        # Add a dictionary that is made up of the most important values from data into the summary
         summary = action_result.update_summary({})
         summary['artifacts_found'] = len(response['artifacts'])
         summary['container_id'] = container_id
@@ -247,7 +261,6 @@ class ParserConnector(BaseConnector):
 
         ret_val = phantom.APP_SUCCESS
 
-        # Get the action that we are supposed to execute for this App Run
         action_id = self.get_action_identifier()
 
         self.debug_print("action_id", self.get_action_identifier())
@@ -264,7 +277,7 @@ if __name__ == '__main__':
     import pudb
     pudb.set_trace()
 
-    if (len(sys.argv) < 2):
+    if len(sys.argv) < 2:
         print "No test json specified as input"
         exit(0)
 
