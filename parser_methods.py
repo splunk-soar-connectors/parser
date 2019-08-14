@@ -41,7 +41,7 @@ IPV6_REGEX += r'(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f
 IPV6_REGEX += r'(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|'
 IPV6_REGEX += r'(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|'
 IPV6_REGEX += r'(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*'
-DOMAIN_REGEX = r'\b(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+DOMAIN_REGEX = r'(?!:\/\/)((?:[a-zA-Z0-9-_]+\.)*[a-zA-Z0-9][a-zA-Z0-9-_]+\.[a-zA-Z]{2,11})'
 
 
 def _extract_domain_from_url(url):
@@ -223,7 +223,7 @@ def _pdf_to_text(action_result, pdf_file):
         infile.close()
         converter.close()
         text = output.getvalue()
-        output.close
+        output.close()
         return phantom.APP_SUCCESS, text
     except Exception as e:
         return action_result.set_status(phantom.APP_ERROR, "Failed to parse pdf: {0}".format(str(e))), None
@@ -360,6 +360,7 @@ def parse_structured_file(base_connector, action_result, file_info):
             return action_result.set_status(phantom.APP_ERROR, "Failed to parse structured CSV: {0}".format(str(e))), None
     else:
         return action_result.set_status(phantom.APP_ERROR, "Structured extraction only supported for CSV files"), None
+    return phantom.APP_SUCCESS, {'artifacts': artifacts}
 
 
 def parse_text(base_connector, action_result, file_type, text_val):
