@@ -102,7 +102,7 @@
                 "custom_remap_json": {
                     "description": "Custom set of CEF field name mappings. This is a serialized json dictionary (json.dumps) of Key/Value pairs where Key is an existing field name and Value is the resultant name",
                     "data_type": "string",
-                    "default": "",
+                    "default": "{}",
                     "required": false,
                     "order": 8
                 },

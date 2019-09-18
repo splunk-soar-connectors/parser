@@ -246,6 +246,8 @@ class ParserConnector(BaseConnector):
         def _apply_remap(artifacts, mapping):
             if not isinstance(artifacts, list) or not isinstance(mapping, dict):
                 return artifacts
+            if len(artifacts) == 0 or len(mapping) == 0:
+                return artifacts
             for a in artifacts:
                 newcef = dict()
                 for k, v in a['cef'].items():
