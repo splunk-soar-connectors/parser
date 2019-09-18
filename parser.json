@@ -87,12 +87,31 @@
                     "required": false,
                     "order": 6
                 },
+                "remap_cef_fields": {
+                    "description": "Remap the CEF fields with new field names; Optionally, also apply an internal CEF -> CIM field name mapping. Note: (source|destination)Address will be mapped to (src|dest)_ip respectively instead of src|dest",
+                    "data_type": "string",
+                    "required": false,
+                    "default": "Do not apply CEF -> CIM remapping, only apply custom remap",
+                    "value_list": [
+                        "Do not apply CEF -> CIM remapping, only apply custom remap",
+                        "Apply CEF -> CIM remapping before applying custom remap",
+                        "Apply custom remap and apply CEF -> CIM remapping after"
+                    ],
+                    "order": 7
+                },
+                "custom_remap_json": {
+                    "description": "Custom set of CEF field name mappings. This is a serialized json dictionary (json.dumps) of Key/Value pairs where Key is an existing field name and Value is the resultant name",
+                    "data_type": "string",
+                    "default": "",
+                    "required": false,
+                    "order": 8
+                },
                 "run_automation": {
                     "description": "Enable run_automation for newly created artifacts",
                     "data_type": "boolean",
                     "default": true,
                     "required": false,
-                    "order": 7
+                    "order": 9
                 }
             },
             "output": [
@@ -170,6 +189,14 @@
                         "vault id"
                     ]
                 },
+		{
+		    "data_path": "action_result.parameter.remap_cef_fields",
+		    "data_type": "string"
+		},
+		{
+		    "data_path": "action_result.parameter.custom_remap_json",
+		    "data_type": "string"
+		},
                 {
                     "data_path": "action_result.data",
                     "data_type": "string"
