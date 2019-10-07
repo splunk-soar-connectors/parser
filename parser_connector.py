@@ -17,6 +17,7 @@ import parser_methods
 import time
 import calendar
 
+from parser_const import *
 
 class RetVal(tuple):
     def __new__(cls, val1, val2):
@@ -196,6 +197,18 @@ class ParserConnector(BaseConnector):
         is_structured = param.get('is_structured')
         run_automation = param.get('run_automation', True)
 
+        # --- remap cef fields ---
+        custom_remap_json = param.get("custom_remap_json", "{}")
+        custom_mapping = None
+        if custom_remap_json:
+            try:
+                custom_mapping = json.loads(custom_remap_json)
+            except Exception as e:
+                return action_result.set_status(phantom.APP_ERROR, "Error: custom_remap_json parameter is not valid json; {}".format(e))
+        if not isinstance(custom_mapping, dict):
+            return action_result.set_status(phantom.APP_ERROR, "Error: custom_remap_json parameter is not a dictionary")
+        # ---
+
         if vault_id and text_val:
             return action_result.set_status(
                 phantom.APP_ERROR,
@@ -228,6 +241,37 @@ class ParserConnector(BaseConnector):
             file_info['name'] = 'Parser_Container_{0}'.format(calendar.timegm(time.gmtime()))
 
         artifacts = response['artifacts']
+
+        # --- remap cef fields ---
+        def _apply_remap(artifacts, mapping):
+            if not isinstance(artifacts, list) or not isinstance(mapping, dict):
+                return artifacts
+            if len(artifacts) == 0 or len(mapping) == 0:
+                return artifacts
+            for a in artifacts:
+                newcef = dict()
+                for k, v in a['cef'].items():
+                    if k in mapping:
+                        newcef[mapping[k]] = v
+                    else:
+                        newcef[k] = v
+                a['cef'] = newcef
+            return artifacts
+
+        remap_cef_fields = param.get("remap_cef_fields", "").lower()
+        if "do not" in remap_cef_fields:
+            # --- do not perform CEF -> CIM remapping
+            artifacts = _apply_remap(artifacts, custom_mapping)
+        elif "before" in remap_cef_fields:
+            # --- apply CEF -> CIM remapping and then custom remapping
+            artifacts = _apply_remap(artifacts, CEF2CIM_MAPPING)
+            artifacts = _apply_remap(artifacts, custom_mapping)
+        elif "after" in remap_cef_fields:
+            # --- apply custom remapping and then CEF -> CIM remapping
+            artifacts = _apply_remap(artifacts, custom_mapping)
+            artifacts = _apply_remap(artifacts, CEF2CIM_MAPPING)
+        # ---
+
         max_artifacts = param.get('max_artifacts')
         if max_artifacts is not None:
             try:
