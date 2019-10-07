@@ -10,8 +10,8 @@
     "product_version_regex": ".*",
     "publisher": "Splunk",
     "license": "Copyright (c) 2017-2019 Splunk Inc.",
-    "app_version": "1.0.21",
-    "utctime_updated": "2019-08-14T03:20:38.000000Z",
+    "app_version": "1.0.22",
+    "utctime_updated": "2019-10-07T19:42:24.000000Z",
     "package_name": "phantom_parser",
     "main_module": "parser_connector.pyc",
     "min_phantom_version": "4.2.7532",
@@ -189,14 +189,14 @@
                         "vault id"
                     ]
                 },
-		{
-		    "data_path": "action_result.parameter.remap_cef_fields",
-		    "data_type": "string"
-		},
-		{
-		    "data_path": "action_result.parameter.custom_remap_json",
-		    "data_type": "string"
-		},
+                {
+                    "data_path": "action_result.parameter.remap_cef_fields",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.custom_remap_json",
+                    "data_type": "string"
+                },
                 {
                     "data_path": "action_result.data",
                     "data_type": "string"
