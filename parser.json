@@ -112,6 +112,13 @@
                     "default": true,
                     "required": false,
                     "order": 9
+                },
+                "severity": {
+                    "required": false,
+                    "description": "Severity for the newly created artifacts",
+                    "data_type": "string",
+                    "default": "medium",
+                    "order": 10
                 }
             },
             "output": [
@@ -170,6 +177,13 @@
                     "example_values": [
                         true,
                         false
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.severity",
+                    "data_type": "string",
+                    "example_values": [
+                        "low"
                     ]
                 },
                 {

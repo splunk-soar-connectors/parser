@@ -9,6 +9,7 @@ from phantom.base_connector import BaseConnector
 from phantom.action_result import ActionResult
 from phantom.vault import Vault
 
+import requests
 import json
 import email
 import threading
@@ -146,12 +147,13 @@ class ParserConnector(BaseConnector):
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
-    def _save_artifacts(self, action_result, artifacts, container_id, max_artifacts=None, run_automation=True):
+    def _save_artifacts(self, action_result, artifacts, container_id, severity, max_artifacts=None, run_automation=True):
         if max_artifacts:
             artifacts = artifacts[:max_artifacts]
 
         for artifact in artifacts:
             artifact['container_id'] = container_id
+            artifact['severity'] = severity
             if not run_automation:
                 artifact['run_automation'] = False
 
@@ -163,20 +165,21 @@ class ParserConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR, message)
         return phantom.APP_SUCCESS
 
-    def _save_to_container(self, action_result, artifacts, file_name, label, max_artifacts=None, run_automation=True):
+    def _save_to_container(self, action_result, artifacts, file_name, label, severity, max_artifacts=None, run_automation=True):
         container = {}
         container['name'] = "{0} Parse Results".format(file_name)
         container['label'] = label
+        container['severity'] = severity
 
         status, message, container_id = self.save_container(container)
         if phantom.is_fail(status):
             return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
         return RetVal(self._save_artifacts(action_result,
-                                        artifacts, container_id, max_artifacts, run_automation), container_id)
+                                        artifacts, container_id, severity, max_artifacts, run_automation), container_id)
 
     def _save_to_existing_container(self, action_result, artifacts,
-                                    container_id, max_artifacts=None, run_automation=True):
-        return self._save_artifacts(action_result, artifacts, container_id, max_artifacts, run_automation)
+                                    container_id, severity, max_artifacts=None, run_automation=True):
+        return self._save_artifacts(action_result, artifacts, container_id, severity, max_artifacts, run_automation)
 
     def _handle_parse_file(self, param):
         action_result = self.add_action_result(ActionResult(dict(param)))
@@ -196,6 +199,10 @@ class ParserConnector(BaseConnector):
         file_type = param.get('file_type')
         is_structured = param.get('is_structured')
         run_automation = param.get('run_automation', True)
+        severity = param.get('severity', 'medium').lower()
+        ret_val, message = self._validate_custom_severity(action_result, severity)
+        if phantom.is_fail(ret_val):
+            return action_result.get_status()
 
         # --- remap cef fields ---
         custom_remap_json = param.get("custom_remap_json", "{}")
@@ -285,13 +292,13 @@ class ParserConnector(BaseConnector):
             ret_val, container_id = self._save_to_container(action_result,
                                                         artifacts,
                                                         file_info['name'],
-                                                        label,
+                                                        label, severity,
                                                         max_artifacts, run_automation)
             if phantom.is_fail(ret_val):
                 return ret_val
         else:
             ret_val = self._save_to_existing_container(action_result,
-                                                    artifacts, container_id, max_artifacts, run_automation)
+                                                    artifacts, container_id, severity, max_artifacts, run_automation)
             if phantom.is_fail(ret_val):
                 return ret_val
 
@@ -300,6 +307,25 @@ class ParserConnector(BaseConnector):
         summary['container_id'] = container_id
 
         return action_result.set_status(phantom.APP_SUCCESS)
+
+    def _validate_custom_severity(self, action_result, severity):
+
+        try:
+            r = requests.get('{0}rest/severity'.format(self._get_phantom_base_url()), verify=False)
+            resp_json = r.json()
+        except Exception as e:
+            return RetVal(action_result.set_status(phantom.APP_ERROR, "Could not get severities from platform: {0}".format(e)))
+
+        if r.status_code != 200:
+            return RetVal(action_result.set_status(phantom.APP_ERROR, "Could not get severities from platform: {0}".format(resp_json.get('message', 'Unknown Error'))))
+
+        severities = [s['name'] for s in resp_json['data']]
+
+        if severity not in severities:
+            return RetVal(action_result.set_status(phantom.APP_ERROR,
+                            "Supplied severity, {0}, not found in configured severities: {1}".format(severity, ', '.join(severities))))
+        else:
+            return RetVal(phantom.APP_SUCCESS, {})
 
     def handle_action(self, param):
 
