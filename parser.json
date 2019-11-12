@@ -180,6 +180,13 @@
                     ]
                 },
                 {
+                    "data_path": "action_result.parameter.severity",
+                    "data_type": "string",
+                    "example_values": [
+                        "low"
+                    ]
+                },
+                {
                     "data_path": "action_result.parameter.text",
                     "data_type": "string",
                     "example_values": [
