@@ -24,7 +24,7 @@
         "wheel": [
             {
                 "module": "pdfminer",
-                "input_file": "wheels/pdfminer-20191125-cp37-none-any.whl"
+                "input_file": "wheels/pdfminer-20191125.tar.gz"
             }
         ]
     },

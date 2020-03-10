@@ -9,7 +9,6 @@ import csv
 import zipfile
 from lxml import etree
 from bs4 import BeautifulSoup
-# from cStringIO import StringIO
 from io import StringIO
 
 import phantom.app as phantom
