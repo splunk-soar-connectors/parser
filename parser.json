@@ -9,18 +9,22 @@
     "product_name": "Parser",
     "product_version_regex": ".*",
     "publisher": "Splunk",
-    "license": "Copyright (c) 2017-2019 Splunk Inc.",
-    "app_version": "1.0.24",
+    "license": "Copyright (c) 2017-2020 Splunk Inc.",
+    "app_version": "2.0.0",
     "utctime_updated": "2019-11-19T20:25:04.000000Z",
     "package_name": "phantom_parser",
-    "main_module": "parser_connector.pyc",
-    "min_phantom_version": "4.2.7532",
+    "main_module": "parser_connector.py",
+    "min_phantom_version": "4.6.19142",
+    "python_version": "3",
+    "latest_tested_versions": [
+        "Phantom 4.8 on 3/10/2020"
+    ],
     "app_wizard_version": "1.0.0",
     "pip_dependencies": {
         "wheel": [
             {
                 "module": "pdfminer",
-                "input_file": "wheels/pdfminer-20140328-py2-none-any.whl"
+                "input_file": "wheels/pdfminer-20191125-cp37-none-any.whl"
             }
         ]
     },

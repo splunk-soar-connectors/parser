@@ -1,5 +1,5 @@
 # File: parser_email.py
-# Copyright (c) 2017-2019 Splunk Inc.
+# Copyright (c) 2017-2020 Splunk Inc.
 #
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
@@ -13,6 +13,7 @@ import shutil
 import hashlib
 import tempfile
 import mimetypes
+import operator
 import simplejson as json
 from bs4 import BeautifulSoup
 from collections import OrderedDict
@@ -354,13 +355,13 @@ def _create_artifacts(parsed_mail):
         content_type = body.get('content-type')
         charset = body.get('charset', None)
         if 'text/plain' in content_type:
-            email_headers[0]['cef']['bodyText'] = unicode(body_content, charset)
+            email_headers[0]['cef']['bodyText'] = str(body_content, charset)
         elif 'text/html' in content_type:
-            email_headers[0]['cef']['bodyHtml'] = unicode(body_content, charset)
+            email_headers[0]['cef']['bodyHtml'] = str(body_content, charset)
         else:
             if not email_headers[0]['cef'].get('bodyOther'):
                 email_headers[0]['cef']['bodyOther'] = {}
-            email_headers[0]['cef']['bodyOther'][content_type] = unicode(body_content, charset)
+            email_headers[0]['cef']['bodyOther'][content_type] = str(body_content, charset)
 
     # set the default artifact dict
 
@@ -425,7 +426,7 @@ def _decode_uni_string(input_str, def_name):
             continue
 
         if (encoding != 'utf-8'):
-            value = unicode(value, encoding).encode('utf-8')
+            value = str(value, encoding).encode('utf-8')
 
         # substitute the encoded string with the decoded one
         input_str = input_str.replace(encoded_string, value)
@@ -538,7 +539,7 @@ def _parse_email_headers(parsed_mail, part, charset=None, add_email_id=None):
 
     email_header_artifacts = parsed_mail[PROC_EMAIL_JSON_EMAIL_HEADERS]
 
-    email_headers = part.items()
+    email_headers = list(part.items())
 
     if (charset is None):
         charset = part.get_content_charset()
@@ -551,10 +552,10 @@ def _parse_email_headers(parsed_mail, part, charset=None, add_email_id=None):
 
     # Convert the header tuple into a dictionary
     headers = {}
-    [headers.update({x[0]: unicode(x[1], charset)}) for x in email_headers]
+    [headers.update({x[0]: str(x[1], charset)}) for x in email_headers]
 
     # Handle received separately
-    received_headers = [unicode(x[1], charset) for x in email_headers if x[0].lower() == 'received']
+    received_headers = [str(x[1], charset) for x in email_headers if x[0].lower() == 'received']
 
     if (received_headers):
         headers['Received'] = received_headers
@@ -995,9 +996,9 @@ def _set_sdi(default_id, input_dict):
     if (not phantom_version):
         dict_hash = _create_dict_hash(input_dict)
     else:
-        ver_cmp = cmp(phantom_version, HASH_FIXED_PHANTOM_VERSION)
+        ver_cmp = operator.eq(phantom_version, HASH_FIXED_PHANTOM_VERSION)
 
-        if (ver_cmp == -1):
+        if (ver_cmp is False):
             dict_hash = _create_dict_hash(input_dict)
 
     if (dict_hash):

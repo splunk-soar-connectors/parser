@@ -1,5 +1,5 @@
 # File: parser_methods.py
-# Copyright (c) 2017-2019 Splunk Inc.
+# Copyright (c) 2017-2020 Splunk Inc.
 #
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
@@ -9,7 +9,8 @@ import csv
 import zipfile
 from lxml import etree
 from bs4 import BeautifulSoup
-from cStringIO import StringIO
+# from cStringIO import StringIO
+from io import StringIO
 
 import phantom.app as phantom
 import phantom.utils as ph_utils
@@ -122,8 +123,8 @@ class TextIOCParser():
                 {
                     'cef': 'destinationDnsDomain',
                     'name': 'Domain Artifact',
-                    'callback': lambda(x): x[x.rfind('@') + 1:],
-                    'validator': lambda(x): not _is_ip(x)
+                    'callback': lambda x: x[x.rfind('@') + 1:],
+                    'validator': lambda x: not _is_ip(x)
                 }
             ]
         },
@@ -135,8 +136,8 @@ class TextIOCParser():
                 {
                     'cef': 'destinationDnsDomain',
                     'name': 'Domain Artifact',
-                    'callback': lambda(x): x[x.rfind('@') + 1:],
-                    'validator': lambda(x): not _is_ip(x)
+                    'callback': lambda x: x[x.rfind('@') + 1:],
+                    'validator': lambda x: not _is_ip(x)
                 }
             ]
         },
@@ -202,7 +203,7 @@ def _grab_raw_text(action_result, txt_file):
         html, rtf, and the list could go on
     """
     try:
-        fp = file(txt_file, 'r')
+        fp = open(txt_file, 'r')
         text = fp.read()
         fp.close()
         return phantom.APP_SUCCESS, text
@@ -217,7 +218,7 @@ def _pdf_to_text(action_result, pdf_file):
         manager = PDFResourceManager()
         converter = TextConverter(manager, output, laparams=LAParams())
         interpreter = PDFPageInterpreter(manager, converter)
-        infile = file(pdf_file, 'rb')
+        infile = open(pdf_file, 'rb')
         for page in PDFPage.get_pages(infile, pagenums):
             interpreter.process_page(page)
         infile.close()
@@ -248,13 +249,13 @@ def _docx_to_text(action_result, docx_file):
 
 
 def _csv_to_text(action_result, csv_file):
-    """ This function really only exists due to a misunderating on how word boundries (\b) work
-        As it turns out, only word characters can invalidate word boundries. So stuff like commas,
+    """ This function really only exists due to a misunderstanding on how word boundaries (\b) work
+        As it turns out, only word characters can invalidate word boundaries. So stuff like commas,
         brackets, gt and lt signs, etc. do not
     """
     text = ""
     try:
-        fp = open(csv_file, 'rb')
+        fp = open(csv_file, 'rt')
         reader = csv.reader(fp)
         for row in reader:
             text += ' '.join(row)
@@ -353,7 +354,7 @@ def parse_structured_file(base_connector, action_result, file_info):
                 row['source_file'] = file_info['name']
                 artifacts.append({
                     'name': 'CSV entry',
-                    'cef': {k.lower(): v for k, v in row.items()}  # make keys lowercase
+                    'cef': {k.lower(): v for k, v in list(row.items())}  # make keys lowercase
                 })
             fp.close()
         except Exception as e:
