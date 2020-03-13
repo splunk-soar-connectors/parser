@@ -1,3 +1,9 @@
+# File: parser_const.py
+# Copyright (c) 2017-2020 Splunk Inc.
+#
+# SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
+# without a valid written license from Splunk Inc. is PROHIBITED.
+
 _CEF2CIM_override = {
     "fileHash": "file_hash",
     "sourceAddress": "src_ip",

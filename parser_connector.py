@@ -1,8 +1,9 @@
 # File: parser_connector.py
-# Copyright (c) 2017-2019 Splunk Inc.
+# Copyright (c) 2017-2020 Splunk Inc.
 #
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
+
 # Phantom App imports
 import phantom.app as phantom
 from phantom.base_connector import BaseConnector
@@ -18,6 +19,7 @@ import time
 import calendar
 
 from parser_const import *
+
 
 class RetVal(tuple):
     def __new__(cls, val1, val2):
@@ -75,7 +77,7 @@ class ParserConnector(BaseConnector):
 
         try:
             file_path = Vault.get_file_path(vault_id)
-        except Exception as e:
+        except Exception:
             return RetVal3(action_result.set_status(phantom.APP_ERROR,
                                                 "Could not get file path for vault item"),
                                                 None,
@@ -181,7 +183,7 @@ class ParserConnector(BaseConnector):
                                     container_id, severity, max_artifacts=None, run_automation=True):
         return self._save_artifacts(action_result, artifacts, container_id, severity, max_artifacts, run_automation)
 
-    def _handle_parse_file(self, param):
+    def _handle_parse_file(self, param):  # noqa
         action_result = self.add_action_result(ActionResult(dict(param)))
         container_id = param.get('container_id')
         label = param.get('label')
@@ -254,7 +256,7 @@ class ParserConnector(BaseConnector):
                 return artifacts
             for a in artifacts:
                 newcef = dict()
-                for k, v in a['cef'].items():
+                for k, v in list(a['cef'].items()):
                     if k in mapping:
                         newcef[mapping[k]] = v
                     else:
@@ -323,10 +325,38 @@ if __name__ == '__main__':
 
     import sys
     import pudb
+    import argparse
+    import requests
     pudb.set_trace()
 
-    if len(sys.argv) < 2:
-        print "No test json specified as input"
+    argparser = argparse.ArgumentParser()
+
+    argparser.add_argument('input_test_json', help='Input Test JSON file')
+    argparser.add_argument('-u', '--username', help='username', required=False)
+    argparser.add_argument('-p', '--password', help='password', required=False)
+
+    args = argparser.parse_args()
+    session_id = None
+
+    if (args.username and args.password):
+        login_url = BaseConnector._get_phantom_base_url() + "login"
+        try:
+            print("Accessing the Login page")
+            r = requests.get(login_url, verify=False)
+            csrftoken = r.cookies['csrftoken']
+            data = {'username': args.username, 'password': args.password, 'csrfmiddlewaretoken': csrftoken}
+            headers = {'Cookie': 'csrftoken={0}'.format(csrftoken), 'Referer': login_url}
+
+            print("Logging into Platform to get the session id")
+            r2 = requests.post(login_url, verify=False, data=data, headers=headers)
+            session_id = r2.cookies['sessionid']
+
+        except Exception as e:
+            print(("Unable to get session id from the platform. Error: {0}".format(str(e))))
+            exit(1)
+
+    if (len(sys.argv) < 2):
+        print("No test json specified as input")
         exit(0)
 
     with open(sys.argv[1]) as f:
@@ -336,7 +366,11 @@ if __name__ == '__main__':
 
         connector = ParserConnector()
         connector.print_progress_message = True
+
+        if (session_id is not None):
+            in_json['user_session_token'] = session_id
+
         ret_val = connector._handle_action(json.dumps(in_json), None)
-        print (json.dumps(json.loads(ret_val), indent=4))
+        print(json.dumps(json.loads(ret_val), indent=4))
 
     exit(0)
