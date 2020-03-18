@@ -24,6 +24,14 @@
         "wheel": [
             {
                 "module": "pdfminer",
+                "input_file": "wheels/pdfminer-20140328-py2-none-any.whl"
+            }
+        ]
+    },
+    "pip3_dependencies": {
+        "wheel": [
+            {
+                "module": "pdfminer",
                 "input_file": "wheels/pdfminer-20191125.tar.gz"
             }
         ]

@@ -4,12 +4,17 @@
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
 
+import sys
 import re
 import csv
 import zipfile
 from lxml import etree
 from bs4 import BeautifulSoup
-from io import StringIO
+
+try:
+    from cStringIO import StringIO
+except:
+    from io import StringIO
 
 import phantom.app as phantom
 import phantom.utils as ph_utils
@@ -202,7 +207,10 @@ def _grab_raw_text(action_result, txt_file):
         html, rtf, and the list could go on
     """
     try:
-        fp = open(txt_file, 'r')
+        if sys.version_info[0] == 3:
+            fp = open(txt_file, 'r')
+        elif sys.version_info[0] < 3:
+            fp = file(txt_file, 'r')
         text = fp.read()
         fp.close()
         return phantom.APP_SUCCESS, text
@@ -217,7 +225,10 @@ def _pdf_to_text(action_result, pdf_file):
         manager = PDFResourceManager()
         converter = TextConverter(manager, output, laparams=LAParams())
         interpreter = PDFPageInterpreter(manager, converter)
-        infile = open(pdf_file, 'rb')
+        if sys.version_info[0] == 3:
+            infile = open(pdf_file, 'rb')
+        elif sys.version_info[0] < 3:
+            infile = file(pdf_file, 'rb')
         for page in PDFPage.get_pages(infile, pagenums):
             interpreter.process_page(page)
         infile.close()
@@ -254,7 +265,10 @@ def _csv_to_text(action_result, csv_file):
     """
     text = ""
     try:
-        fp = open(csv_file, 'rt')
+        if sys.version_info[0] == 3:
+            fp = open(csv_file, 'rt')
+        elif sys.version_info[0] < 3:
+            fp = open(csv_file, 'rb')
         reader = csv.reader(fp)
         for row in reader:
             text += ' '.join(row)
