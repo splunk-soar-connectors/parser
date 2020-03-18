@@ -355,13 +355,22 @@ def _create_artifacts(parsed_mail):
         content_type = body.get('content-type')
         charset = body.get('charset', None)
         if 'text/plain' in content_type:
-            email_headers[0]['cef']['bodyText'] = str(body_content, charset)
+            try:
+                email_headers[0]['cef']['bodyText'] = unicode(body_content, charset)
+            except:
+                email_headers[0]['cef']['bodyText'] = str(body_content, charset)
         elif 'text/html' in content_type:
-            email_headers[0]['cef']['bodyHtml'] = str(body_content, charset)
+            try:
+                email_headers[0]['cef']['bodyHtml'] = unicode(body_content, charset)
+            except:
+                email_headers[0]['cef']['bodyHtml'] = str(body_content, charset)
         else:
             if not email_headers[0]['cef'].get('bodyOther'):
                 email_headers[0]['cef']['bodyOther'] = {}
-            email_headers[0]['cef']['bodyOther'][content_type] = str(body_content, charset)
+            try:
+                email_headers[0]['cef']['bodyOther'][content_type] = unicode(body_content, charset)
+            except:
+                email_headers[0]['cef']['bodyOther'][content_type] = str(body_content, charset)
 
     # set the default artifact dict
 
@@ -426,7 +435,10 @@ def _decode_uni_string(input_str, def_name):
             continue
 
         if (encoding != 'utf-8'):
-            value = str(value, encoding).encode('utf-8')
+            try:
+                value = unicode(value, encoding).encode('utf-8')
+            except:
+                value = str(value, encoding).encode('utf-8')
 
         # substitute the encoded string with the decoded one
         input_str = input_str.replace(encoded_string, value)
@@ -552,10 +564,16 @@ def _parse_email_headers(parsed_mail, part, charset=None, add_email_id=None):
 
     # Convert the header tuple into a dictionary
     headers = {}
-    [headers.update({x[0]: str(x[1], charset)}) for x in email_headers]
+    try:
+        [headers.update({x[0]: unicode(x[1], charset)}) for x in email_headers]
+    except:
+        [headers.update({x[0]: str(x[1], charset)}) for x in email_headers]
 
     # Handle received separately
-    received_headers = [str(x[1], charset) for x in email_headers if x[0].lower() == 'received']
+    try:
+        received_headers = [unicode(x[1], charset) for x in email_headers if x[0].lower() == 'received']
+    except:
+        received_headers = [str(x[1], charset) for x in email_headers if x[0].lower() == 'received']
 
     if (received_headers):
         headers['Received'] = received_headers
@@ -730,7 +748,10 @@ def _set_email_id_contains(email_id):
     if (not _base_connector):
         return
 
-    email_id = str(email_id)
+    try:
+        email_id = unicode(email_id)
+    except:
+        email_id = str(email_id)
 
     if ((_base_connector.get_app_id() == EXCHANGE_ONPREM_APP_ID) and (email_id.endswith('='))):
         _email_id_contains = [ "exchange email id" ]
