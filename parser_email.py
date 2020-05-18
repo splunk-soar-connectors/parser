@@ -567,7 +567,7 @@ def _parse_email_headers(parsed_mail, part, charset=None, add_email_id=None):
     try:
         [headers.update({x[0]: unicode(x[1], charset)}) for x in email_headers]
     except:
-        [headers.update({x[0]: str(x[1], charset)}) for x in email_headers]
+        [headers.update({x[0]: unicode(str(x[1]), charset)}) for x in email_headers]
 
     # Handle received separately
     try:
@@ -769,6 +769,7 @@ def _int_process_email(rfc822_email, email_id, start_time_epoch):
 
     global _base_connector
     global _config
+    global tmp_dir
 
     mail = email.message_from_string(rfc822_email)
 
@@ -958,20 +959,19 @@ def _handle_file(curr_file, vault_ids, container_id, artifact_id):
     vault_attach_dict[phantom.APP_JSON_ACTION_NAME] = _base_connector.get_action_name()
     vault_attach_dict[phantom.APP_JSON_APP_RUN_ID] = _base_connector.get_app_run_id()
 
-    vault_ret = {}
+    ret_val = {}
 
     file_name = _decode_uni_string(file_name, file_name)
 
     try:
-        vault_ret = Vault.add_attachment(local_file_path, container_id, file_name, vault_attach_dict)
+        ret_val = Vault.create_attachment("{}/{}".format(tmp_dir, file_name), container_id, file_name)
+        _base_connector.debug_print(ret_val)
     except Exception as e:
         _base_connector.debug_print(phantom.APP_ERR_FILE_ADD_TO_VAULT.format(e))
-        return (phantom.APP_ERROR, phantom.APP_ERROR)
+        return (phantom.APP_ERROR)
 
-    # _base_connector.debug_print("vault_ret_dict", vault_ret_dict)
-
-    if (not vault_ret.get('succeeded')):
-        _base_connector.debug_print("Failed to add file to Vault: {0}".format(json.dumps(vault_ret)))
+    if (not ret_val.get('succeeded')):
+        _base_connector.debug_print("Failed to add file to Vault: {0}".format(json.dumps(ret_val)))
         return (phantom.APP_ERROR, phantom.APP_ERROR)
 
     # add the vault id artifact to the container
@@ -979,13 +979,13 @@ def _handle_file(curr_file, vault_ids, container_id, artifact_id):
     if (file_name):
         cef_artifact.update({'fileName': file_name})
 
-    if (phantom.APP_JSON_HASH in vault_ret):
-        cef_artifact.update({'vaultId': vault_ret[phantom.APP_JSON_HASH],
-            'cs6': vault_ret[phantom.APP_JSON_HASH],
+    if (phantom.APP_JSON_HASH in ret_val):
+        cef_artifact.update({'vaultId': ret_val[phantom.APP_JSON_HASH],
+            'cs6': ret_val[phantom.APP_JSON_HASH],
             'cs6Label': 'Vault ID'})
 
         # now get the rest of the hashes and add them to the cef artifact
-        _add_vault_hashes_to_dictionary(cef_artifact, vault_ret[phantom.APP_JSON_HASH])
+        _add_vault_hashes_to_dictionary(cef_artifact, ret_val[phantom.APP_JSON_HASH])
 
     if (not cef_artifact):
         return (phantom.APP_SUCCESS, phantom.APP_ERROR)
