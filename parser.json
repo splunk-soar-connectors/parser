@@ -3,9 +3,9 @@
     "name": "Parser",
     "description": "This app extracts IOCs from various files such as PDFs, emails, or raw text",
     "type": "information",
-    "product_vendor": "Phantom",
-    "logo": "logo_phantom.svg",
-    "logo_dark": "logo_phantom_dark.svg",
+    "product_vendor": "Splunk",
+    "logo": "logo_splunk.svg",
+    "logo_dark": "logo_splunk_dark.svg",
     "product_name": "Parser",
     "product_version_regex": ".*",
     "publisher": "Splunk",
@@ -17,7 +17,7 @@
     "min_phantom_version": "4.6.19142",
     "python_version": "3",
     "latest_tested_versions": [
-        "Phantom 4.8 on 3/10/2020"
+        "Phantom 4.8 on 6/11/2020"
     ],
     "app_wizard_version": "1.0.0",
     "pip_dependencies": {
@@ -42,7 +42,7 @@
             "action": "extract ioc",
             "identifier": "parse_file",
             "description": "Create IOC artifacts from a file in the vault or raw text",
-            "verbose": "Specify either text or vault_id. If text is used only file_types of csv, html, and txt can be selected. <br/><br/>If vault_id is used and the <b>file_type</b> is left blank, the app will try to determine what type of file it is on its own. <br/><br/> When parsing an email file (.eml), the <b>file_type</b> parameter must be set to <b>email</b>. <br/> <br/> <b>Label</b> or <b>Container ID</b> is mandatory to run an action. It will display an error message if both of them are not mentioned.",
+            "verbose": "Specify either text or vault_id. If text is used only file_types of csv, html, and txt can be selected. <br/><br/>If vault_id is used and the [file_type] is left blank, the app will try to determine what type of file it is on its own. <br/><br/> When parsing an email file (.eml), the <b>file_type</b> parameter must be set to <b>email</b>. <br/> <br/> <b>Label</b> or <b>Container ID</b> is mandatory to run an action. It will display an error message if both of them are not mentioned. <br/> <br/> <b> Caveats:</b> You will have unexpected output scenario if the [file_type] that you pick in related with [vault_id] is incorrect.",
             "type": "generic",
             "read_only": true,
             "parameters": {
@@ -88,7 +88,7 @@
                     "order": 4
                 },
                 "max_artifacts": {
-                    "description": "Max number of artifacts",
+                    "description": "Maximum number of artifacts (not applicable to .eml filetype)",
                     "data_type": "numeric",
                     "required": false,
                     "order": 5
@@ -100,7 +100,7 @@
                     "order": 6
                 },
                 "remap_cef_fields": {
-                    "description": "Remap the CEF fields with new field names; Optionally, also apply an internal CEF -> CIM field name mapping. Note: (source|destination)Address will be mapped to (src|dest)_ip respectively instead of src|dest",
+                    "description": "Remap the CEF fields with new field names; Optionally, also apply an internal CEF -> CIM field name mapping. Note: (source|destination)Address will be mapped to (src|dest)_ip respectively instead of src|dest (not applicable to .eml filetype)",
                     "data_type": "string",
                     "required": false,
                     "default": "Do not apply CEF -> CIM remapping, only apply custom remap",
@@ -112,7 +112,7 @@
                     "order": 7
                 },
                 "custom_remap_json": {
-                    "description": "Custom set of CEF field name mappings. This is a serialized json dictionary (json.dumps) of Key/Value pairs where Key is an existing field name and Value is the resultant name",
+                    "description": "Custom set of CEF field name mappings. This is a serialized json dictionary (json.dumps) of Key/Value pairs where Key is an existing field name and Value is the resultant name (not applicable to .eml filetype)",
                     "data_type": "string",
                     "default": "{}",
                     "required": false,

@@ -9,7 +9,7 @@ import re
 import csv
 import zipfile
 from lxml import etree
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, UnicodeDammit
 
 try:
     from cStringIO import StringIO
@@ -31,6 +31,7 @@ import threading
 _container_common = {
     "run_automation": False  # Don't run any playbooks, when this artifact is added
 }
+_python_version = None
 
 
 URI_REGEX = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
@@ -82,6 +83,57 @@ def _clean_url(url):
         url = url[:url.find('>')]
 
     return url
+
+
+def _handle_py_ver_compat_for_input_str(base_connector, input_str):
+    """
+    This method returns the encoded|original string based on the Python version.
+
+    :param python_version: Information of the Python version
+    :param input_str: Input string to be processed
+    :return: input_str (Processed input string based on following logic 'input_str - Python 3; encoded input_str - Python 2')
+    """
+
+    global _python_version
+
+    try:
+        if input_str and _python_version == 2:
+            input_str = UnicodeDammit(input_str).unicode_markup.encode('utf-8')
+    except:
+        base_connector.debug_print("Error occurred while handling python 2to3 compatibility for the input string")
+
+    return input_str
+
+
+def _get_error_message_from_exception(base_connector, e):
+    """ This method is used to get appropriate error message from the exception.
+    :param e: Exception object
+    :return: error message
+    """
+
+    try:
+        if hasattr(e, 'args'):
+            if len(e.args) > 1:
+                error_code = e.args[0]
+                error_msg = e.args[1]
+            elif len(e.args) == 1:
+                error_code = "Error code unavailable"
+                error_msg = e.args[0]
+        else:
+            error_code = "Error code unavailable"
+            error_msg = "Error message unavailable. Please check the action parameters."
+    except:
+        error_code = "Error code unavailable"
+        error_msg = "Error message unavailable. Please check the action parameters."
+
+    try:
+        error_msg = _handle_py_ver_compat_for_input_str(base_connector, error_msg)
+    except TypeError:
+        error_msg = "Error Occurred. Please check the action parameters."
+    except:
+        error_msg = "Error message unavailable. Please check the action parameters."
+
+    return error_code, error_msg
 
 
 class TextIOCParser():
@@ -156,6 +208,11 @@ class TextIOCParser():
     def __init__(self, patterns=None):
         self.patterns = self.BASE_PATTERNS if patterns is None else patterns
         self.added_artifacts = 0
+        global _python_version
+        try:
+            _python_version = int(sys.version_info[0])
+        except:
+            raise Exception("Error occurred while getting the Phantom server's Python major version.")
 
     def _create_artifact(self, artifacts, value, cef, name):
         artifact = {}
@@ -202,33 +259,35 @@ class TextIOCParser():
         return artifacts
 
 
-def _grab_raw_text(action_result, txt_file):
+def _grab_raw_text(action_result, base_connector, txt_file):
     """ This function will actually really work for any file which is basically raw text.
         html, rtf, and the list could go on
     """
     try:
-        if sys.version_info[0] == 3:
-            fp = open(txt_file, 'r')
-        elif sys.version_info[0] < 3:
-            fp = file(txt_file, 'r')
+        # if sys.version_info[0] == 3:
+        fp = open(txt_file, 'r')
+        # elif sys.version_info[0] < 3:
+        #     fp = file(txt_file, 'r')
         text = fp.read()
         fp.close()
         return phantom.APP_SUCCESS, text
     except Exception as e:
-        return action_result.set_status(phantom.APP_ERROR, e), None
+        error_code, error_msg = _get_error_message_from_exception(base_connector, e)
+        err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+        return action_result.set_status(phantom.APP_ERROR, err), None
 
 
-def _pdf_to_text(action_result, pdf_file):
+def _pdf_to_text(action_result, base_connector, pdf_file):
     try:
         pagenums = set()
         output = StringIO()
         manager = PDFResourceManager()
         converter = TextConverter(manager, output, laparams=LAParams())
         interpreter = PDFPageInterpreter(manager, converter)
-        if sys.version_info[0] == 3:
-            infile = open(pdf_file, 'rb')
-        elif sys.version_info[0] < 3:
-            infile = file(pdf_file, 'rb')
+        # if sys.version_info[0] == 3:
+        infile = open(pdf_file, 'rb')
+        # elif sys.version_info[0] < 3:
+        #     infile = file(pdf_file, 'rb')
         for page in PDFPage.get_pages(infile, pagenums):
             interpreter.process_page(page)
         infile.close()
@@ -237,35 +296,46 @@ def _pdf_to_text(action_result, pdf_file):
         output.close()
         return phantom.APP_SUCCESS, text
     except Exception as e:
-        return action_result.set_status(phantom.APP_ERROR, "Failed to parse pdf: {0}".format(str(e))), None
+        error_code, error_msg = _get_error_message_from_exception(base_connector, e)
+        err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+        return action_result.set_status(phantom.APP_ERROR, "Failed to parse pdf: {0}".format(err)), None
 
 
-def _docx_to_text(action_result, docx_file):
+def _docx_to_text(action_result, base_connector, docx_file):
     """ docx is literally a zip file, and all the words in the document are in one xml document
         doc does not work this way at all
     """
+    WORD_NAMESPACE = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
+    PARA = WORD_NAMESPACE + 'p'
+    TEXT = WORD_NAMESPACE + 't'
+
     try:
         zf = zipfile.ZipFile(docx_file)
         fp = zf.open('word/document.xml')
         txt = fp.read()
         fp.close()
         root = etree.fromstring(txt)
-        doc_txt = ""
-        for text_el in root.iter('{*}t'):
-            doc_txt += text_el.text
-        return phantom.APP_SUCCESS, doc_txt
+        paragraphs = []
+        for paragraph in root.getiterator(PARA):
+            texts = [_handle_py_ver_compat_for_input_str(base_connector, node.text) for node in paragraph.getiterator(TEXT) if node.text]
+            if texts:
+                paragraphs.append(''.join(texts))
+
+        return phantom.APP_SUCCESS, '\n\n'.join(paragraphs)
     except Exception as e:
-        return action_result.set_status(phantom.APP_ERROR, "Failed to parse docx: {0}".format(str(e))), None
+        error_code, error_msg = _get_error_message_from_exception(base_connector, e)
+        err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+        return action_result.set_status(phantom.APP_ERROR, "Failed to parse docx: {0}".format(err)), None
 
 
-def _csv_to_text(action_result, csv_file):
+def _csv_to_text(action_result, base_connector, csv_file):
     """ This function really only exists due to a misunderstanding on how word boundaries (\b) work
         As it turns out, only word characters can invalidate word boundaries. So stuff like commas,
         brackets, gt and lt signs, etc. do not
     """
     text = ""
     try:
-        if sys.version_info[0] == 3:
+        if sys.version_info[0] >= 3:
             fp = open(csv_file, 'rt')
         elif sys.version_info[0] < 3:
             fp = open(csv_file, 'rb')
@@ -276,10 +346,12 @@ def _csv_to_text(action_result, csv_file):
         fp.close()
         return phantom.APP_SUCCESS, text
     except Exception as e:
-        return action_result.set_status(phantom.APP_ERROR, "Failed to parse csv: {0}".format(str(e))), None
+        error_code, error_msg = _get_error_message_from_exception(base_connector, e)
+        err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+        return action_result.set_status(phantom.APP_ERROR, "Failed to parse csv: {0}".format(err)), None
 
 
-def _html_to_text(action_result, html_file, text_val=None):
+def _html_to_text(action_result, base_connector, html_file, text_val=None):
     """ Similar to CSV, this is also unnecessary. It will trim /some/ of that fat from a normal HTML, however
     """
     try:
@@ -294,7 +366,9 @@ def _html_to_text(action_result, html_file, text_val=None):
         text = ' '.join(read_text)
         return phantom.APP_SUCCESS, text
     except Exception as e:
-        return action_result.set_status(phantom.APP_ERROR, "Failed to parse html: {0}".format(str(e))), None
+        error_code, error_msg = _get_error_message_from_exception(base_connector, e)
+        err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+        return action_result.set_status(phantom.APP_ERROR, "Failed to parse html: {0}".format(err)), None
 
 
 def _join_thread(base_connector, thread):
@@ -321,6 +395,12 @@ def _wait_for_parse(base_connector):
 
 def parse_file(base_connector, action_result, file_info):
     """ Parse a non-email file """
+
+    try:
+        tiocp = TextIOCParser()
+    except Exception as e:
+        return action_result.set_status(phantom.APP_ERROR, str(e)), None
+
     raw_text = None
     if (file_info['type'] == 'pdf'):
         """ Parsing a PDF document over like, 10 pages starts to take a while
@@ -331,37 +411,45 @@ def parse_file(base_connector, action_result, file_info):
         """
         thread = threading.Thread(target=_wait_for_parse, args=[base_connector])
         thread.start()
-        ret_val, raw_text = _pdf_to_text(action_result, file_info['path'])
+        ret_val, raw_text = _pdf_to_text(action_result, base_connector, file_info['path'])
         _join_thread(base_connector, thread)
     elif (file_info['type'] == 'txt'):
-        ret_val, raw_text = _grab_raw_text(action_result, file_info['path'])
+        ret_val, raw_text = _grab_raw_text(action_result, base_connector, file_info['path'])
     elif (file_info['type'] == 'docx'):
-        ret_val, raw_text = _docx_to_text(action_result, file_info['path'])
+        ret_val, raw_text = _docx_to_text(action_result, base_connector, file_info['path'])
     elif (file_info['type'] == 'csv'):
-        ret_val, raw_text = _csv_to_text(action_result, file_info['path'])
-        base_connector.debug_print(raw_text)
+        ret_val, raw_text = _csv_to_text(action_result, base_connector, file_info['path'])
     elif (file_info['type'] == 'html'):
-        ret_val, raw_text = _html_to_text(action_result, file_info['path'])
+        ret_val, raw_text = _html_to_text(action_result, base_connector, file_info['path'])
     else:
         return action_result.set_status(phantom.APP_ERROR, "Unexpected file type"), None
     if phantom.is_fail(ret_val):
         return ret_val, None
 
-    tiocp = TextIOCParser()
     base_connector.save_progress('Parsing for IOCs')
     try:
         artifacts = tiocp.parse_to_artifacts(raw_text)
     except Exception as e:
-        return action_result.set_status(phantom.APP_ERROR, str(e)), None
+        error_code, error_msg = _get_error_message_from_exception(base_connector, e)
+        err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+        return action_result.set_status(phantom.APP_ERROR, err), None
     return phantom.APP_SUCCESS, {'artifacts': artifacts}
 
 
 def parse_structured_file(base_connector, action_result, file_info):
+    try:
+        TextIOCParser()
+    except Exception as e:
+        return action_result.set_status(phantom.APP_ERROR, str(e)), None
+
     if (file_info['type'] == 'csv'):
         csv_file = file_info['path']
         artifacts = []
         try:
-            fp = open(csv_file, 'rb')
+            if sys.version_info[0] >= 3:
+                fp = open(csv_file, 'rt')
+            elif sys.version_info[0] < 3:
+                fp = open(csv_file, 'rb')
             reader = csv.DictReader(fp, restkey='other')  # need to handle lines terminated in commas
             for row in reader:
                 row['source_file'] = file_info['name']
@@ -371,7 +459,9 @@ def parse_structured_file(base_connector, action_result, file_info):
                 })
             fp.close()
         except Exception as e:
-            return action_result.set_status(phantom.APP_ERROR, "Failed to parse structured CSV: {0}".format(str(e))), None
+            error_code, error_msg = _get_error_message_from_exception(base_connector, e)
+            err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+            return action_result.set_status(phantom.APP_ERROR, "Failed to parse structured CSV: {0}".format(err)), None
     else:
         return action_result.set_status(phantom.APP_ERROR, "Structured extraction only supported for CSV files"), None
     return phantom.APP_SUCCESS, {'artifacts': artifacts}
@@ -379,9 +469,15 @@ def parse_structured_file(base_connector, action_result, file_info):
 
 def parse_text(base_connector, action_result, file_type, text_val):
     """ Parse a non-email file """
+
+    try:
+        tiocp = TextIOCParser()
+    except Exception as e:
+        return action_result.set_status(phantom.APP_ERROR, str(e)), None
+
     raw_text = None
     if (file_type == 'html'):
-        ret_val, raw_text = _html_to_text(action_result, None, text_val=text_val)
+        ret_val, raw_text = _html_to_text(action_result, base_connector, None, text_val=text_val)
     elif file_type == 'txt' or file_type == 'csv':
         ret_val, raw_text = phantom.APP_SUCCESS, text_val
     else:
@@ -389,11 +485,12 @@ def parse_text(base_connector, action_result, file_type, text_val):
     if phantom.is_fail(ret_val):
         return ret_val, None
 
-    tiocp = TextIOCParser()
     base_connector.save_progress('Parsing for IOCs')
     try:
         artifacts = tiocp.parse_to_artifacts(raw_text)
     except Exception as e:
-        return action_result.set_status(phantom.APP_ERROR, str(e)), None
+        error_code, error_msg = _get_error_message_from_exception(base_connector, e)
+        err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+        return action_result.set_status(phantom.APP_ERROR, err), None
 
     return phantom.APP_SUCCESS, {'artifacts': artifacts}
