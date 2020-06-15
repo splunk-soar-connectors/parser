@@ -35,6 +35,7 @@ _container = dict()
 _artifacts = list()
 _attachments = list()
 _python_version = None
+_tmp_dirs = list()
 
 _container_common = {
     "run_automation": False  # Don't run any playbooks, when this artifact is added
@@ -901,11 +902,18 @@ def _set_email_id_contains(email_id):
     return
 
 
+def _del_tmp_dirs():
+    """Remove any tmp_dirs that were created."""
+    global _tmp_dirs
+    for tmp_dir in _tmp_dirs:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 def _int_process_email(rfc822_email, email_id, start_time_epoch):
 
     global _base_connector
     global _config
-    global tmp_dir
+    global _tmp_dirs
 
     mail = email.message_from_string(rfc822_email)
 
@@ -914,9 +922,11 @@ def _int_process_email(rfc822_email, email_id, start_time_epoch):
     phantom_home_dir = _base_connector.get_phantom_home()
 
     if os.path.isdir(phantom_home_dir) and phantom_home_dir == "/home/phanru/phantomcyber":
-        tmp_dir = tempfile.mkdtemp(prefix='ph_email', dir=Vault.get_vault_tmp_dir())
+        tmp_dir = tempfile.mkdtemp(prefix='ph_email_phparser', dir=Vault.get_vault_tmp_dir())
     else:
-        tmp_dir = tempfile.mkdtemp(prefix='ph_email')
+        tmp_dir = tempfile.mkdtemp(prefix='ph_email_phparser')
+
+    _tmp_dirs.append(tmp_dir)
 
     try:
         ret_val = _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)
@@ -956,9 +966,14 @@ def process_email(base_connector, rfc822_email, email_id, config, label, contain
     ret_val, message, results = _int_process_email(rfc822_email, email_id, epoch)
 
     if (not ret_val):
+        _del_tmp_dirs()
         return (phantom.APP_ERROR, {'message': message, 'content_id': None})
 
-    cid = _parse_results(results, label, container_id, _config[PROC_EMAIL_JSON_RUN_AUTOMATION])
+    try:
+        cid = _parse_results(results, label, container_id, _config[PROC_EMAIL_JSON_RUN_AUTOMATION])
+    except Exception:
+        _del_tmp_dirs()
+        raise
 
     return (phantom.APP_SUCCESS, {'message': 'Email Processed', 'container_id': cid})
 
