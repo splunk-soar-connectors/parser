@@ -455,7 +455,7 @@ def parse_structured_file(base_connector, action_result, file_info):
                 row['source_file'] = file_info['name']
                 artifacts.append({
                     'name': 'CSV entry',
-                    'cef': {k: v for k, v in list(row.items())}  # make keys lowercase
+                    'cef': {k: v for k, v in list(row.items())}  # make CSV entry artifact
                 })
             fp.close()
         except Exception as e:
