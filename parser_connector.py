@@ -210,7 +210,7 @@ class ParserConnector(BaseConnector):
 
         return RetVal(phantom.APP_SUCCESS, file_info)
 
-    def _handle_email(self, action_result, vault_id, label, container_id, run_automation=True):
+    def _handle_email(self, action_result, vault_id, label, container_id, run_automation=True, parse_domains=True):
         ret_val, email_data, email_id = self._get_email_data_from_vault(vault_id, action_result)
 
         if phantom.is_fail(ret_val):
@@ -228,7 +228,8 @@ class ParserConnector(BaseConnector):
             "extract_hashes": True,
             "extract_ips": True,
             "extract_urls": True,
-            "run_automation": run_automation
+            "run_automation": run_automation,
+            "parse_domains": parse_domains
         }
 
         ret_val, response = parser_email.process_email(self, email_data, email_id, config, label, container_id, None)
@@ -303,6 +304,7 @@ class ParserConnector(BaseConnector):
         file_type = self._handle_py_ver_compat_for_input_str(param.get('file_type'))
         is_structured = param.get('is_structured', False)
         run_automation = param.get('run_automation', True)
+        parse_domains = param.get('parse_domains', True)
         severity = self._handle_py_ver_compat_for_input_str(param.get('severity', 'medium').lower())
 
         # --- remap cef fields ---
@@ -333,7 +335,7 @@ class ParserConnector(BaseConnector):
 
         if vault_id:
             if file_type == 'email':
-                return self._handle_email(action_result, vault_id, label, container_id, run_automation)
+                return self._handle_email(action_result, vault_id, label, container_id, run_automation, parse_domains)
 
             ret_val, file_info = self._get_file_info_from_vault(action_result, vault_id, file_type)
             if phantom.is_fail(ret_val):
@@ -343,12 +345,12 @@ class ParserConnector(BaseConnector):
             if is_structured:
                 ret_val, response = parser_methods.parse_structured_file(self, action_result, file_info)
             else:
-                ret_val, response = parser_methods.parse_file(self, action_result, file_info)
+                ret_val, response = parser_methods.parse_file(self, action_result, file_info, parse_domains)
 
             if phantom.is_fail(ret_val):
                 return ret_val
         else:
-            ret_val, response = parser_methods.parse_text(self, action_result, file_type, text_val)
+            ret_val, response = parser_methods.parse_text(self, action_result, file_type, text_val, parse_domains)
             file_info['name'] = 'Parser_Container_{0}'.format(calendar.timegm(time.gmtime()))
 
         artifacts = response['artifacts']

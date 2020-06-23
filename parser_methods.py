@@ -196,17 +196,19 @@ class TextIOCParser():
                     'validator': lambda x: not _is_ip(x)
                 }
             ]
-        },
-        {
+        }
+    ]
+    DOMAIN_PATTERN = {
             'cef': 'destinationDnsDomain',       # Name of CEF field
             'pattern': DOMAIN_REGEX,             # Regex to match
             'name': 'Domain Artifact'
-        }
-    ]
+    }
+
     found_values = set()
 
-    def __init__(self, patterns=None):
+    def __init__(self, parse_domains, patterns=None):
         self.patterns = self.BASE_PATTERNS if patterns is None else patterns
+        self.patterns.append(self.DOMAIN_PATTERN) if parse_domains is True else self.patterns
         self.added_artifacts = 0
         global _python_version
         try:
@@ -393,11 +395,11 @@ def _wait_for_parse(base_connector):
     return
 
 
-def parse_file(base_connector, action_result, file_info):
+def parse_file(base_connector, action_result, file_info, parse_domains=True):
     """ Parse a non-email file """
 
     try:
-        tiocp = TextIOCParser()
+        tiocp = TextIOCParser(parse_domains)
     except Exception as e:
         return action_result.set_status(phantom.APP_ERROR, str(e)), None
 
@@ -437,10 +439,14 @@ def parse_file(base_connector, action_result, file_info):
 
 
 def parse_structured_file(base_connector, action_result, file_info):
+
+    global _python_version
     try:
-        TextIOCParser()
-    except Exception as e:
-        return action_result.set_status(phantom.APP_ERROR, str(e)), None
+        # We need the value of the global variable '_python_version' for the below used exception handler method
+        # '_get_error_message_from_exception' --> '_handle_py_ver_compat_for_input_str'
+        _python_version = int(sys.version_info[0])
+    except:
+        return action_result.set_status(phantom.APP_ERROR, "Error occurred while getting the Phantom server's Python major version"), None
 
     if (file_info['type'] == 'csv'):
         csv_file = file_info['path']
@@ -467,11 +473,11 @@ def parse_structured_file(base_connector, action_result, file_info):
     return phantom.APP_SUCCESS, {'artifacts': artifacts}
 
 
-def parse_text(base_connector, action_result, file_type, text_val):
+def parse_text(base_connector, action_result, file_type, text_val, parse_domains=True):
     """ Parse a non-email file """
 
     try:
-        tiocp = TextIOCParser()
+        tiocp = TextIOCParser(parse_domains)
     except Exception as e:
         return action_result.set_status(phantom.APP_ERROR, str(e)), None
 

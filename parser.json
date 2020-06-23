@@ -131,6 +131,13 @@
                     "data_type": "string",
                     "default": "medium",
                     "order": 10
+                },
+                "parse_domains": {
+                    "required": false,
+                    "description": "Parse domains from artifacts",
+                    "data_type": "boolean",
+                    "default": true,
+                    "order": 11
                 }
             },
             "output": [
