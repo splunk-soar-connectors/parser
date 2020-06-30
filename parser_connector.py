@@ -202,6 +202,9 @@ class ParserConnector(BaseConnector):
 
         file_info['path'] = file_meta['path']
         file_info['name'] = file_meta['name']
+
+        # We set the file type to the provided type in the action run
+        # instead of keeping it as the default detected file type.
         if file_type:
             file_info['type'] = file_type
         else:
@@ -224,12 +227,11 @@ class ParserConnector(BaseConnector):
 
         config = {
             "extract_attachments": True,
-            "extract_domains": True,
+            "extract_domains": parse_domains,
             "extract_hashes": True,
             "extract_ips": True,
             "extract_urls": True,
-            "run_automation": run_automation,
-            "parse_domains": parse_domains
+            "run_automation": run_automation
         }
 
         ret_val, response = parser_email.process_email(self, email_data, email_id, config, label, container_id, None)

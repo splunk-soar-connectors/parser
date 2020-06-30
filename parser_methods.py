@@ -154,17 +154,7 @@ class TextIOCParser():
             'cef': 'requestURL',
             'pattern': URI_REGEX,
             'name': 'URL Artifact',
-            'clean': _clean_url,     # Additional cleaning of data from regex (Should return a string)
-            'subtypes': [            # Additional IOCs to find in a matched one
-                # If you really wanted to, you could also have subtypes in the subtypes
-                {
-                    'cef': 'destinationDnsDomain',
-                    'name': 'Domain Artifact',
-                    'callback': _extract_domain_from_url   # Method to extract substring
-                }
-            ]
-            # We dont need to worry about the case where an IP is the 'main' part of the url, since the two
-            # IP regexes are already going to find those
+            'clean': _clean_url     # Additional cleaning of data from regex (Should return a string)
         },
         {
             'cef': 'fileHash',
@@ -174,28 +164,12 @@ class TextIOCParser():
         {
             'cef': 'email',
             'pattern': EMAIL_REGEX,
-            'name': 'Email Artifact',
-            'subtypes': [
-                {
-                    'cef': 'destinationDnsDomain',
-                    'name': 'Domain Artifact',
-                    'callback': lambda x: x[x.rfind('@') + 1:],
-                    'validator': lambda x: not _is_ip(x)
-                }
-            ]
+            'name': 'Email Artifact'
         },
         {
             'cef': 'email',
             'pattern': EMAIL_REGEX2,
-            'name': 'Email Artifact',
-            'subtypes': [
-                {
-                    'cef': 'destinationDnsDomain',
-                    'name': 'Domain Artifact',
-                    'callback': lambda x: x[x.rfind('@') + 1:],
-                    'validator': lambda x: not _is_ip(x)
-                }
-            ]
+            'name': 'Email Artifact'
         }
     ]
     DOMAIN_PATTERN = {
@@ -204,11 +178,44 @@ class TextIOCParser():
             'name': 'Domain Artifact'
     }
 
+    URL_DOMAIN_SUBTYPES_DICT = {
+            'subtypes': [            # Additional IOCs to find in a matched one
+                # If you really wanted to, you could also have subtypes in the subtypes
+                {
+                    'cef': 'destinationDnsDomain',
+                    'name': 'Domain Artifact',
+                    'callback': _extract_domain_from_url   # Method to extract substring
+                }
+            ]
+        }
+
+    EMAILS_DOMAIN_SUBTYPES_DICT = {
+                                    'subtypes': [
+                                            {
+                                                'cef': 'destinationDnsDomain',
+                                                'name': 'Domain Artifact',
+                                                'callback': lambda x: x[x.rfind('@') + 1:],
+                                                'validator': lambda x: not _is_ip(x)
+                                            }
+                                        ]
+                                }
+
     found_values = set()
 
     def __init__(self, parse_domains, patterns=None):
         self.patterns = self.BASE_PATTERNS if patterns is None else patterns
-        self.patterns.append(self.DOMAIN_PATTERN) if parse_domains is True else self.patterns
+
+        if parse_domains:
+            # Add the parent domain parsing functions only if parse_domains is True
+            self.patterns.append(self.DOMAIN_PATTERN)
+
+            # Add the subtypes somain parsing functions only if parse_domains is True
+            for pattern_dict in self.patterns:
+                if pattern_dict.get("cef") == "requestURL" and pattern_dict.get("pattern") == URI_REGEX:
+                    pattern_dict.update(self.URL_DOMAIN_SUBTYPES_DICT)
+                elif pattern_dict.get("cef") == "email" and pattern_dict.get("pattern") in [EMAIL_REGEX, EMAIL_REGEX2]:
+                    pattern_dict.update(self.EMAILS_DOMAIN_SUBTYPES_DICT)
+
         self.added_artifacts = 0
         global _python_version
         try:
