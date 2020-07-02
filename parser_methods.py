@@ -273,11 +273,12 @@ def _grab_raw_text(action_result, base_connector, txt_file):
         html, rtf, and the list could go on
     """
     try:
-        # if sys.version_info[0] == 3:
-        fp = open(txt_file, 'r')
-        # elif sys.version_info[0] < 3:
-        #     fp = file(txt_file, 'r')
-        text = fp.read()
+        if base_connector._python_version >= 3:
+            fp = open(txt_file, 'rb')
+            text = UnicodeDammit(fp.read()).unicode_markup
+        elif base_connector._python_version < 3:
+            fp = open(txt_file, 'r')
+            text = fp.read()
         fp.close()
         return phantom.APP_SUCCESS, text
     except Exception as e:
@@ -344,10 +345,10 @@ def _csv_to_text(action_result, base_connector, csv_file):
     """
     text = ""
     try:
-        if sys.version_info[0] >= 3:
+        if base_connector._python_version >= 3:
             fp = open(csv_file, 'rt')
-        elif sys.version_info[0] < 3:
-            fp = open(csv_file, 'rb')
+        elif base_connector._python_version < 3:
+            fp = open(csv_file, 'r')
         reader = csv.reader(fp)
         for row in reader:
             text += ' '.join(row)
@@ -365,8 +366,12 @@ def _html_to_text(action_result, base_connector, html_file, text_val=None):
     """
     try:
         if text_val is None:
-            fp = open(html_file, 'r')
-            html_text = fp.read()
+            if base_connector._python_version >= 3:
+                fp = open(html_file, 'rb')
+                html_text = UnicodeDammit(fp.read()).unicode_markup
+            elif base_connector._python_version < 3:
+                fp = open(html_file, 'r')
+                html_text = fp.read()
             fp.close()
         else:
             html_text = text_val
