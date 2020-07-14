@@ -157,8 +157,12 @@ class ParserConnector(BaseConnector):
             return RetVal3(action_result.set_status(phantom.APP_ERROR, "No file with vault ID found"), None, None)
 
         try:
-            with open(file_path, 'r') as f:
-                email_data = f.read()
+            if self._python_version >= 3:
+                with open(file_path, 'rb') as f:
+                    email_data = UnicodeDammit(f.read()).unicode_markup
+            elif self._python_version < 3:
+                with open(file_path, 'r') as f:
+                    email_data = f.read()
         except Exception as e:
             error_code, error_msg = self._get_error_message_from_exception(e)
             error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)

@@ -191,6 +191,14 @@
                     ]
                 },
                 {
+                    "data_path": "action_result.parameter.parse_domains",
+                    "data_type": "boolean",
+                    "example_values": [
+                        true,
+                        false
+                    ]
+                },
+                {
                     "data_path": "action_result.parameter.run_automation",
                     "data_type": "boolean",
                     "example_values": [
