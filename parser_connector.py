@@ -1,14 +1,16 @@
 # File: parser_connector.py
-# Copyright (c) 2017-2019 Splunk Inc.
+# Copyright (c) 2017-2020 Splunk Inc.
 #
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
+
 # Phantom App imports
 import phantom.app as phantom
 from phantom.base_connector import BaseConnector
 from phantom.action_result import ActionResult
 from phantom.vault import Vault
 
+import sys
 import json
 import email
 import threading
@@ -16,6 +18,9 @@ import parser_email
 import parser_methods
 import time
 import calendar
+from bs4 import UnicodeDammit
+
+from parser_const import *
 
 
 class RetVal(tuple):
@@ -40,7 +45,75 @@ class ParserConnector(BaseConnector):
     def initialize(self):
         self._lock = threading.Lock()
         self._done = False
+
+        try:
+            self._python_version = int(sys.version_info[0])
+        except:
+            return self.set_status(phantom.APP_ERROR, "Error occurred while getting the Phantom server's Python major version.")
+
         return phantom.APP_SUCCESS
+
+    def _get_string(self, input_str, charset):
+        try:
+            if input_str:
+                if self._python_version == 2:
+                    input_str = UnicodeDammit(input_str).unicode_markup.encode(charset)
+                else:
+                    input_str = UnicodeDammit(input_str).unicode_markup.encode(charset).decode(charset)
+        except:
+            self.debug_print("Error occurred while converting to string with specific encoding")
+
+        return input_str
+
+    def _handle_py_ver_compat_for_input_str(self, input_str):
+        """
+        This method returns the encoded|original string based on the Python version.
+
+        :param python_version: Information of the Python version
+        :param input_str: Input string to be processed
+        :return: input_str (Processed input string based on following logic 'input_str - Python 3; encoded input_str - Python 2')
+        """
+
+        try:
+            if input_str and self._python_version == 2:
+                input_str = UnicodeDammit(input_str).unicode_markup.encode('utf-8')
+        except:
+            self.debug_print("Error occurred while handling python 2to3 compatibility for the input string")
+
+        return input_str
+
+    def _get_error_message_from_exception(self, e):
+        """ This method is used to get appropriate error message from the exception.
+        :param e: Exception object
+        :return: error message
+        """
+
+        try:
+            if hasattr(e, 'args'):
+                if len(e.args) > 1:
+                    error_code = e.args[0]
+                    error_msg = e.args[1]
+                elif len(e.args) == 1:
+                    error_code = "Error code unavailable"
+                    error_msg = e.args[0]
+            else:
+                error_code = "Error code unavailable"
+                error_msg = "Error message unavailable. Please check the action parameters."
+        except:
+            error_code = "Error code unavailable"
+            error_msg = "Error message unavailable. Please check the action parameters."
+
+        try:
+            error_msg = self._handle_py_ver_compat_for_input_str(error_msg)
+        except TypeError:
+            error_msg = "Error Occurred. Please check the action parameters."
+        except:
+            error_msg = "Error message unavailable. Please check the action parameters."
+
+        if type(error_msg) == bytes:
+            error_msg = self._get_string(error_msg, 'utf-8')
+
+        return error_code, error_msg
 
     def finalize(self):
         return phantom.APP_SUCCESS
@@ -74,7 +147,7 @@ class ParserConnector(BaseConnector):
 
         try:
             file_path = Vault.get_file_path(vault_id)
-        except Exception as e:
+        except Exception:
             return RetVal3(action_result.set_status(phantom.APP_ERROR,
                                                 "Could not get file path for vault item"),
                                                 None,
@@ -84,11 +157,17 @@ class ParserConnector(BaseConnector):
             return RetVal3(action_result.set_status(phantom.APP_ERROR, "No file with vault ID found"), None, None)
 
         try:
-            with open(file_path, 'r') as f:
-                email_data = f.read()
+            if self._python_version >= 3:
+                with open(file_path, 'rb') as f:
+                    email_data = UnicodeDammit(f.read()).unicode_markup
+            elif self._python_version < 3:
+                with open(file_path, 'r') as f:
+                    email_data = f.read()
         except Exception as e:
+            error_code, error_msg = self._get_error_message_from_exception(e)
+            error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
             return RetVal3(action_result.set_status(phantom.APP_ERROR,
-                                                "Could not read file contents for vault item", e), None, None)
+                                                "Could not read file contents for vault item. {}".format(error_text)), None, None)
 
         return RetVal3(phantom.APP_SUCCESS, email_data, email_id)
 
@@ -96,24 +175,49 @@ class ParserConnector(BaseConnector):
         file_info = {}
         file_info['id'] = vault_id
 
+        # Check for file in vault
         try:
-            info = Vault.get_file_info(vault_id=vault_id)[0]
-        except IndexError:
-            return RetVal(action_result.set_status(phantom.APP_ERROR, "No file with vault ID found"), None)
-        except Exception as e:
-            return RetVal(action_result.set_status(phantom.APP_ERROR,
-                                                "Error retrieving file from vault: {0}".format(str(e))), None)
-        file_info['path'] = info['path']
-        file_info['name'] = info['name']
+            vault_meta = Vault.get_file_info(vault_id=vault_id)  # Vault IDs are unique
+
+            if (not vault_meta):
+                self.debug_print("Error while fetching meta information for vault ID: {}".format(vault_id))
+                return RetVal(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None)
+
+        except:
+            return RetVal(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None)
+
+        file_meta = None
+        try:
+            for meta in vault_meta:
+                if meta.get("container_id") == self.get_container_id():
+                    file_meta = meta
+                    break
+            else:
+                self.debug_print("Unable to find a file for the vault ID: '{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
+        except:
+            self.debug_print("Error occurred while finding a file for the vault ID: '{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
+            self.debug_print("Considering the first file as the required file")
+            file_meta = vault_meta[0]
+
+        if not file_meta:
+            self.debug_print("Unable to find a file for the vault ID: '{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
+            self.debug_print("Considering the first file as the required file")
+            file_meta = vault_meta[0]
+
+        file_info['path'] = file_meta['path']
+        file_info['name'] = file_meta['name']
+
+        # We set the file type to the provided type in the action run
+        # instead of keeping it as the default detected file type.
         if file_type:
             file_info['type'] = file_type
         else:
-            file_type = info['name'].split('.')[-1]
+            file_type = file_meta['name'].split('.')[-1]
             file_info['type'] = file_type
 
         return RetVal(phantom.APP_SUCCESS, file_info)
 
-    def _handle_email(self, action_result, vault_id, label, container_id, run_automation=True):
+    def _handle_email(self, action_result, vault_id, label, container_id, run_automation=True, parse_domains=True):
         ret_val, email_data, email_id = self._get_email_data_from_vault(vault_id, action_result)
 
         if phantom.is_fail(ret_val):
@@ -127,7 +231,7 @@ class ParserConnector(BaseConnector):
 
         config = {
             "extract_attachments": True,
-            "extract_domains": True,
+            "extract_domains": parse_domains,
             "extract_hashes": True,
             "extract_ips": True,
             "extract_urls": True,
@@ -145,12 +249,13 @@ class ParserConnector(BaseConnector):
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
-    def _save_artifacts(self, action_result, artifacts, container_id, max_artifacts=None, run_automation=True):
+    def _save_artifacts(self, action_result, artifacts, container_id, severity, max_artifacts=None, run_automation=True):
         if max_artifacts:
             artifacts = artifacts[:max_artifacts]
 
         for artifact in artifacts:
             artifact['container_id'] = container_id
+            artifact['severity'] = severity
             if not run_automation:
                 artifact['run_automation'] = False
 
@@ -159,28 +264,38 @@ class ParserConnector(BaseConnector):
         else:
             return action_result.set_status(phantom.APP_SUCCESS)
         if phantom.is_fail(status):
+            message = message + '. Please validate severity parameter'
             return action_result.set_status(phantom.APP_ERROR, message)
         return phantom.APP_SUCCESS
 
-    def _save_to_container(self, action_result, artifacts, file_name, label, max_artifacts=None, run_automation=True):
+    def _save_to_container(self, action_result, artifacts, file_name, label, severity, max_artifacts=None, run_automation=True):
         container = {}
         container['name'] = "{0} Parse Results".format(file_name)
         container['label'] = label
+        container['severity'] = severity
 
         status, message, container_id = self.save_container(container)
         if phantom.is_fail(status):
             return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
         return RetVal(self._save_artifacts(action_result,
-                                        artifacts, container_id, max_artifacts, run_automation), container_id)
+                                        artifacts, container_id, severity, max_artifacts, run_automation), container_id)
 
     def _save_to_existing_container(self, action_result, artifacts,
-                                    container_id, max_artifacts=None, run_automation=True):
-        return self._save_artifacts(action_result, artifacts, container_id, max_artifacts, run_automation)
+                                    container_id, severity, max_artifacts=None, run_automation=True):
+        return self._save_artifacts(action_result, artifacts, container_id, severity, max_artifacts, run_automation)
 
-    def _handle_parse_file(self, param):
+    def _handle_parse_file(self, param):  # noqa
+
         action_result = self.add_action_result(ActionResult(dict(param)))
+
         container_id = param.get('container_id')
-        label = param.get('label')
+        try:
+            if container_id is not None:
+                container_id = int(container_id)
+        except:
+            return action_result.set_status(phantom.APP_ERROR, "Please provide a valid integer value in container_id")
+
+        label = self._handle_py_ver_compat_for_input_str(param.get('label'))
         file_info = {}
         if container_id is None and label is None:
             return action_result.set_status(phantom.APP_ERROR,
@@ -190,11 +305,27 @@ class ParserConnector(BaseConnector):
             if phantom.is_fail(ret_val):
                 return action_result.set_status(phantom.APP_ERROR, "Unable to find container: {}".format(message))
 
-        vault_id = param.get('vault_id')
-        text_val = param.get('text')
-        file_type = param.get('file_type')
-        is_structured = param.get('is_structured')
+        vault_id = self._handle_py_ver_compat_for_input_str(param.get('vault_id'))
+        text_val = self._handle_py_ver_compat_for_input_str(param.get('text'))
+        file_type = self._handle_py_ver_compat_for_input_str(param.get('file_type'))
+        is_structured = param.get('is_structured', False)
         run_automation = param.get('run_automation', True)
+        parse_domains = param.get('parse_domains', True)
+        severity = self._handle_py_ver_compat_for_input_str(param.get('severity', 'medium').lower())
+
+        # --- remap cef fields ---
+        custom_remap_json = self._handle_py_ver_compat_for_input_str(param.get("custom_remap_json", "{}"))
+        custom_mapping = None
+        if custom_remap_json:
+            try:
+                custom_mapping = json.loads(custom_remap_json)
+            except Exception as e:
+                error_code, error_msg = self._get_error_message_from_exception(e)
+                error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+                return action_result.set_status(phantom.APP_ERROR, "Error: custom_remap_json parameter is not valid json. {}".format(error_text))
+        if not isinstance(custom_mapping, dict):
+            return action_result.set_status(phantom.APP_ERROR, "Error: custom_remap_json parameter is not a dictionary")
+        # ---
 
         if vault_id and text_val:
             return action_result.set_status(
@@ -210,7 +341,7 @@ class ParserConnector(BaseConnector):
 
         if vault_id:
             if file_type == 'email':
-                return self._handle_email(action_result, vault_id, label, container_id, run_automation)
+                return self._handle_email(action_result, vault_id, label, container_id, run_automation, parse_domains)
 
             ret_val, file_info = self._get_file_info_from_vault(action_result, vault_id, file_type)
             if phantom.is_fail(ret_val):
@@ -220,39 +351,77 @@ class ParserConnector(BaseConnector):
             if is_structured:
                 ret_val, response = parser_methods.parse_structured_file(self, action_result, file_info)
             else:
-                ret_val, response = parser_methods.parse_file(self, action_result, file_info)
+                ret_val, response = parser_methods.parse_file(self, action_result, file_info, parse_domains)
+
             if phantom.is_fail(ret_val):
                 return ret_val
         else:
-            ret_val, response = parser_methods.parse_text(self, action_result, file_type, text_val)
+            ret_val, response = parser_methods.parse_text(self, action_result, file_type, text_val, parse_domains)
             file_info['name'] = 'Parser_Container_{0}'.format(calendar.timegm(time.gmtime()))
 
         artifacts = response['artifacts']
+
+        # --- remap cef fields ---
+        def _apply_remap(artifacts, mapping):
+            if not isinstance(artifacts, list) or not isinstance(mapping, dict):
+                return artifacts
+            if len(artifacts) == 0 or len(mapping) == 0:
+                return artifacts
+            for a in artifacts:
+                newcef = dict()
+                for k, v in list(a['cef'].items()):
+                    if k in mapping:
+                        newcef[mapping[k]] = v
+                    else:
+                        newcef[k] = v
+                a['cef'] = newcef
+            return artifacts
+
+        remap_cef_fields = self._handle_py_ver_compat_for_input_str(param.get("remap_cef_fields", "").lower())
+        if "do not" in remap_cef_fields:
+            # --- do not perform CEF -> CIM remapping
+            artifacts = _apply_remap(artifacts, custom_mapping)
+        elif "before" in remap_cef_fields:
+            # --- apply CEF -> CIM remapping and then custom remapping
+            artifacts = _apply_remap(artifacts, CEF2CIM_MAPPING)
+            artifacts = _apply_remap(artifacts, custom_mapping)
+        elif "after" in remap_cef_fields:
+            # --- apply custom remapping and then CEF -> CIM remapping
+            artifacts = _apply_remap(artifacts, custom_mapping)
+            artifacts = _apply_remap(artifacts, CEF2CIM_MAPPING)
+        # ---
+
         max_artifacts = param.get('max_artifacts')
         if max_artifacts is not None:
             try:
                 max_artifacts = int(max_artifacts)
-            except ValueError:
-                return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be an integer")
-        if (max_artifacts and not str(max_artifacts).isdigit()) or max_artifacts == 0:
-            return action_result.set_status(phantom.APP_ERROR, "max_artifacts must be greater than 0")
+                if max_artifacts <= 0:
+                    return action_result.set_status(phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
+            except:
+                return action_result.set_status(phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
 
         if not container_id:
             ret_val, container_id = self._save_to_container(action_result,
                                                         artifacts,
                                                         file_info['name'],
-                                                        label,
+                                                        label, severity,
                                                         max_artifacts, run_automation)
             if phantom.is_fail(ret_val):
                 return ret_val
         else:
             ret_val = self._save_to_existing_container(action_result,
-                                                    artifacts, container_id, max_artifacts, run_automation)
+                                                    artifacts, container_id, severity, max_artifacts, run_automation)
             if phantom.is_fail(ret_val):
                 return ret_val
 
+        if max_artifacts:
+            len_artifacts = len(artifacts[:max_artifacts])
+        else:
+            len_artifacts = len(artifacts)
+
         summary = action_result.update_summary({})
         summary['artifacts_found'] = len(response['artifacts'])
+        summary['artifacts_ingested'] = len_artifacts
         summary['container_id'] = container_id
 
         return action_result.set_status(phantom.APP_SUCCESS)
@@ -273,12 +442,39 @@ class ParserConnector(BaseConnector):
 
 if __name__ == '__main__':
 
-    import sys
     import pudb
+    import argparse
+    import requests
     pudb.set_trace()
 
-    if len(sys.argv) < 2:
-        print "No test json specified as input"
+    argparser = argparse.ArgumentParser()
+
+    argparser.add_argument('input_test_json', help='Input Test JSON file')
+    argparser.add_argument('-u', '--username', help='username', required=False)
+    argparser.add_argument('-p', '--password', help='password', required=False)
+
+    args = argparser.parse_args()
+    session_id = None
+
+    if (args.username and args.password):
+        login_url = BaseConnector._get_phantom_base_url() + "login"
+        try:
+            print("Accessing the Login page")
+            r = requests.get(login_url, verify=False)
+            csrftoken = r.cookies['csrftoken']
+            data = {'username': args.username, 'password': args.password, 'csrfmiddlewaretoken': csrftoken}
+            headers = {'Cookie': 'csrftoken={0}'.format(csrftoken), 'Referer': login_url}
+
+            print("Logging into Platform to get the session id")
+            r2 = requests.post(login_url, verify=False, data=data, headers=headers)
+            session_id = r2.cookies['sessionid']
+
+        except Exception as e:
+            print(("Unable to get session id from the platform. Error: {0}".format(str(e))))
+            exit(1)
+
+    if (len(sys.argv) < 2):
+        print("No test json specified as input")
         exit(0)
 
     with open(sys.argv[1]) as f:
@@ -288,7 +484,11 @@ if __name__ == '__main__':
 
         connector = ParserConnector()
         connector.print_progress_message = True
+
+        if (session_id is not None):
+            in_json['user_session_token'] = session_id
+
         ret_val = connector._handle_action(json.dumps(in_json), None)
-        print (json.dumps(json.loads(ret_val), indent=4))
+        print(json.dumps(json.loads(ret_val), indent=4))
 
     exit(0)
