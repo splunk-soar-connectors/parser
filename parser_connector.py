@@ -68,52 +68,41 @@ class ParserConnector(BaseConnector):
     def _handle_py_ver_compat_for_input_str(self, input_str):
         """
         This method returns the encoded|original string based on the Python version.
-
-        :param python_version: Information of the Python version
         :param input_str: Input string to be processed
         :return: input_str (Processed input string based on following logic 'input_str - Python 3; encoded input_str - Python 2')
         """
-
         try:
-            if input_str and self._python_version == 2:
+            if input_str and self._python_version < 3:
                 input_str = UnicodeDammit(input_str).unicode_markup.encode('utf-8')
         except:
             self.debug_print("Error occurred while handling python 2to3 compatibility for the input string")
-
         return input_str
 
     def _get_error_message_from_exception(self, e):
-        """ This method is used to get appropriate error message from the exception.
+        """ This function is used to get appropriate error message from the exception.
         :param e: Exception object
         :return: error message
         """
-
+        error_msg = "Unknown error occurred. Please check the asset configuration and|or action parameters."
+        error_code = "Error code unavailable"
+        error = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
         try:
-            if hasattr(e, 'args'):
+            if e.args:
                 if len(e.args) > 1:
                     error_code = e.args[0]
                     error_msg = e.args[1]
                 elif len(e.args) == 1:
                     error_code = "Error code unavailable"
                     error_msg = e.args[0]
-            else:
-                error_code = "Error code unavailable"
-                error_msg = "Error message unavailable. Please check the action parameters."
         except:
-            error_code = "Error code unavailable"
-            error_msg = "Error message unavailable. Please check the action parameters."
-
+            return error
         try:
             error_msg = self._handle_py_ver_compat_for_input_str(error_msg)
         except TypeError:
-            error_msg = "Error Occurred. Please check the action parameters."
+            error_msg = "Error occurred while connecting to the Parser server. Please check the asset configuration and|or the action parameters."
         except:
-            error_msg = "Error message unavailable. Please check the action parameters."
-
-        if type(error_msg) == bytes:
-            error_msg = self._get_string(error_msg, 'utf-8')
-
-        return error_code, error_msg
+            return error
+        return "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
 
     def finalize(self):
         return phantom.APP_SUCCESS
@@ -164,8 +153,7 @@ class ParserConnector(BaseConnector):
                 with open(file_path, 'r') as f:
                     email_data = f.read()
         except Exception as e:
-            error_code, error_msg = self._get_error_message_from_exception(e)
-            error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+            error_text = self._get_error_message_from_exception(e)
             return RetVal3(action_result.set_status(phantom.APP_ERROR,
                                                 "Could not read file contents for vault item. {}".format(error_text)), None, None)
 
@@ -320,8 +308,7 @@ class ParserConnector(BaseConnector):
             try:
                 custom_mapping = json.loads(custom_remap_json)
             except Exception as e:
-                error_code, error_msg = self._get_error_message_from_exception(e)
-                error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+                error_text = self._get_error_message_from_exception(e)
                 return action_result.set_status(phantom.APP_ERROR, "Error: custom_remap_json parameter is not valid json. {}".format(error_text))
         if not isinstance(custom_mapping, dict):
             return action_result.set_status(phantom.APP_ERROR, "Error: custom_remap_json parameter is not a dictionary")
