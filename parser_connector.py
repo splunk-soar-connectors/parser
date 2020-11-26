@@ -53,18 +53,6 @@ class ParserConnector(BaseConnector):
 
         return phantom.APP_SUCCESS
 
-    def _get_string(self, input_str, charset):
-        try:
-            if input_str:
-                if self._python_version == 2:
-                    input_str = UnicodeDammit(input_str).unicode_markup.encode(charset)
-                else:
-                    input_str = UnicodeDammit(input_str).unicode_markup.encode(charset).decode(charset)
-        except:
-            self.debug_print("Error occurred while converting to string with specific encoding")
-
-        return input_str
-
     def _handle_py_ver_compat_for_input_str(self, input_str):
         """
         This method returns the encoded|original string based on the Python version.
@@ -355,13 +343,13 @@ class ParserConnector(BaseConnector):
             if len(artifacts) == 0 or len(mapping) == 0:
                 return artifacts
             for a in artifacts:
-                newcef = dict()
+                new_cef = dict()
                 for k, v in list(a['cef'].items()):
                     if k in mapping:
-                        newcef[mapping[k]] = v
+                        new_cef[mapping[k]] = v
                     else:
-                        newcef[k] = v
-                a['cef'] = newcef
+                        new_cef[k] = v
+                a['cef'] = new_cef
             return artifacts
 
         remap_cef_fields = self._handle_py_ver_compat_for_input_str(param.get("remap_cef_fields", "").lower())
