@@ -75,13 +75,16 @@ class ParserConnector(BaseConnector):
         error_code = "Error code unavailable"
         error = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
         try:
-            if e.args:
+            if hasattr(e, 'args'):
                 if len(e.args) > 1:
                     error_code = e.args[0]
                     error_msg = e.args[1]
                 elif len(e.args) == 1:
                     error_code = "Error code unavailable"
                     error_msg = e.args[0]
+            else:
+                error_code = error_code
+                error_msg = error_msg
         except:
             return error
         try:
