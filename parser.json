@@ -16,10 +16,7 @@
     "main_module": "parser_connector.py",
     "min_phantom_version": "4.8.24304",
     "python_version": "3",
-    "latest_tested_versions": [
-        "Phantom 4.8.24304 on 25/11/2020",
-        "Phantom 4.9.39220 on 25/11/2020"
-    ],
+    "latest_tested_versions": [],
     "app_wizard_version": "1.0.0",
     "pip_dependencies": {
         "wheel": [
