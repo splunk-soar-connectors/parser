@@ -14,7 +14,7 @@
     "utctime_updated": "2020-12-10T19:50:56.000000Z",
     "package_name": "phantom_parser",
     "main_module": "parser_connector.py",
-    "min_phantom_version": "4.8.24304",
+    "min_phantom_version": "4.9.39220",
     "python_version": "3",
     "latest_tested_versions": [
         ""

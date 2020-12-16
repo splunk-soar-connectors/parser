@@ -25,6 +25,7 @@ from requests.structures import CaseInsensitiveDict
 import phantom.app as phantom
 from phantom.vault import Vault
 import phantom.utils as ph_utils
+import phantom.rules as ph_rules
 
 
 # Any globals added here, should be initialized in the init() function
@@ -1072,9 +1073,10 @@ def _parse_results(results, label, update_container_id, run_automation=True):
     return container_id
 
 
-def _add_vault_hashes_to_dictionary(cef_artifact, vault_id):
+def _add_vault_hashes_to_dictionary(cef_artifact, vault_id, container_id):
 
-    vault_info = Vault.get_file_info(vault_id=vault_id)
+    _, _, vault_info = ph_rules.vault_info(container_id=container_id, vault_id=vault_id)
+    vault_info = list(vault_info)
 
     if (not vault_info):
         return (phantom.APP_ERROR, "Vault ID not found")
@@ -1152,7 +1154,7 @@ def _handle_file(curr_file, vault_ids, container_id, artifact_id):
             'cs6Label': 'Vault ID'})
 
         # now get the rest of the hashes and add them to the cef artifact
-        _add_vault_hashes_to_dictionary(cef_artifact, vault_ret[phantom.APP_JSON_HASH])
+        _add_vault_hashes_to_dictionary(cef_artifact, vault_ret[phantom.APP_JSON_HASH], container_id)
 
     if (not cef_artifact):
         return (phantom.APP_SUCCESS, phantom.APP_ERROR)

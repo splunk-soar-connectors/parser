@@ -8,7 +8,7 @@
 import phantom.app as phantom
 from phantom.base_connector import BaseConnector
 from phantom.action_result import ActionResult
-from phantom.vault import Vault
+import phantom.rules as ph_rules
 
 import sys
 import json
@@ -123,15 +123,17 @@ class ParserConnector(BaseConnector):
 
         email_data = None
         email_id = vault_id
-        file_path = None
 
         try:
-            file_path = Vault.get_file_path(vault_id)
+            _, _, vault_meta_info = ph_rules.vault_info(container_id=self.get_container_id(), vault_id=vault_id)
+            if (not vault_meta_info):
+                self.debug_print("Error while fetching meta information for vault ID: {}".format(vault_id))
+                return RetVal(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None)
+            vault_meta_info = list(vault_meta_info)
+            file_path = vault_meta_info[0]['path']
         except Exception:
-            return RetVal3(action_result.set_status(phantom.APP_ERROR,
-                                                "Could not get file path for vault item"),
-                                                None,
-                                                None)
+            return RetVal3(action_result.set_status(phantom.APP_ERROR, "Could not get file path for vault item"), None,
+                           None)
 
         if file_path is None:
             return RetVal3(action_result.set_status(phantom.APP_ERROR, "No file with vault ID found"), None, None)
@@ -156,12 +158,11 @@ class ParserConnector(BaseConnector):
 
         # Check for file in vault
         try:
-            vault_meta = Vault.get_file_info(vault_id=vault_id)  # Vault IDs are unique
-
+            _, _, vault_meta = ph_rules.vault_info(container_id=self.get_container_id(), vault_id=vault_id)
             if (not vault_meta):
                 self.debug_print("Error while fetching meta information for vault ID: {}".format(vault_id))
                 return RetVal(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None)
-
+            vault_meta = list(vault_meta)
         except:
             return RetVal(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None)
 
