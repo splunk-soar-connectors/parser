@@ -377,7 +377,8 @@ def _html_to_text(action_result, base_connector, html_file, text_val=None):
             html_text = text_val
         soup = BeautifulSoup(html_text, 'html.parser')
         read_text = soup.findAll(text=True)
-        text = ' '.join(read_text)
+        links = [tag.get('href') for tag in soup.findAll('a', href=True)]
+        text = ' '.join(read_text + links)
         return phantom.APP_SUCCESS, text
     except Exception as e:
         error_code, error_msg = _get_error_message_from_exception(base_connector, e)

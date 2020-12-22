@@ -8,7 +8,7 @@
 import phantom.app as phantom
 from phantom.base_connector import BaseConnector
 from phantom.action_result import ActionResult
-from phantom.vault import Vault
+import phantom.rules as ph_rules
 
 import sys
 import json
@@ -53,41 +53,27 @@ class ParserConnector(BaseConnector):
 
         return phantom.APP_SUCCESS
 
-    def _get_string(self, input_str, charset):
-        try:
-            if input_str:
-                if self._python_version == 2:
-                    input_str = UnicodeDammit(input_str).unicode_markup.encode(charset)
-                else:
-                    input_str = UnicodeDammit(input_str).unicode_markup.encode(charset).decode(charset)
-        except:
-            self.debug_print("Error occurred while converting to string with specific encoding")
-
-        return input_str
-
     def _handle_py_ver_compat_for_input_str(self, input_str):
         """
         This method returns the encoded|original string based on the Python version.
-
-        :param python_version: Information of the Python version
         :param input_str: Input string to be processed
         :return: input_str (Processed input string based on following logic 'input_str - Python 3; encoded input_str - Python 2')
         """
-
         try:
-            if input_str and self._python_version == 2:
+            if input_str and self._python_version < 3:
                 input_str = UnicodeDammit(input_str).unicode_markup.encode('utf-8')
         except:
             self.debug_print("Error occurred while handling python 2to3 compatibility for the input string")
-
         return input_str
 
     def _get_error_message_from_exception(self, e):
-        """ This method is used to get appropriate error message from the exception.
+        """ This function is used to get appropriate error message from the exception.
         :param e: Exception object
         :return: error message
         """
-
+        error_msg = "Unknown error occurred. Please check the asset configuration and|or action parameters."
+        error_code = "Error code unavailable"
+        error = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
         try:
             if hasattr(e, 'args'):
                 if len(e.args) > 1:
@@ -97,23 +83,17 @@ class ParserConnector(BaseConnector):
                     error_code = "Error code unavailable"
                     error_msg = e.args[0]
             else:
-                error_code = "Error code unavailable"
-                error_msg = "Error message unavailable. Please check the action parameters."
+                error_code = error_code
+                error_msg = error_msg
         except:
-            error_code = "Error code unavailable"
-            error_msg = "Error message unavailable. Please check the action parameters."
-
+            return error
         try:
             error_msg = self._handle_py_ver_compat_for_input_str(error_msg)
         except TypeError:
-            error_msg = "Error Occurred. Please check the action parameters."
+            error_msg = "Error occurred while connecting to the Parser server. Please check the asset configuration and|or the action parameters."
         except:
-            error_msg = "Error message unavailable. Please check the action parameters."
-
-        if type(error_msg) == bytes:
-            error_msg = self._get_string(error_msg, 'utf-8')
-
-        return error_code, error_msg
+            return error
+        return "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
 
     def finalize(self):
         return phantom.APP_SUCCESS
@@ -143,15 +123,17 @@ class ParserConnector(BaseConnector):
 
         email_data = None
         email_id = vault_id
-        file_path = None
 
         try:
-            file_path = Vault.get_file_path(vault_id)
+            _, _, vault_meta_info = ph_rules.vault_info(container_id=self.get_container_id(), vault_id=vault_id)
+            if (not vault_meta_info):
+                self.debug_print("Error while fetching meta information for vault ID: {}".format(vault_id))
+                return RetVal(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None)
+            vault_meta_info = list(vault_meta_info)
+            file_path = vault_meta_info[0]['path']
         except Exception:
-            return RetVal3(action_result.set_status(phantom.APP_ERROR,
-                                                "Could not get file path for vault item"),
-                                                None,
-                                                None)
+            return RetVal3(action_result.set_status(phantom.APP_ERROR, "Could not get file path for vault item"), None,
+                           None)
 
         if file_path is None:
             return RetVal3(action_result.set_status(phantom.APP_ERROR, "No file with vault ID found"), None, None)
@@ -164,8 +146,7 @@ class ParserConnector(BaseConnector):
                 with open(file_path, 'r') as f:
                     email_data = f.read()
         except Exception as e:
-            error_code, error_msg = self._get_error_message_from_exception(e)
-            error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+            error_text = self._get_error_message_from_exception(e)
             return RetVal3(action_result.set_status(phantom.APP_ERROR,
                                                 "Could not read file contents for vault item. {}".format(error_text)), None, None)
 
@@ -177,12 +158,11 @@ class ParserConnector(BaseConnector):
 
         # Check for file in vault
         try:
-            vault_meta = Vault.get_file_info(vault_id=vault_id)  # Vault IDs are unique
-
+            _, _, vault_meta = ph_rules.vault_info(container_id=self.get_container_id(), vault_id=vault_id)
             if (not vault_meta):
                 self.debug_print("Error while fetching meta information for vault ID: {}".format(vault_id))
                 return RetVal(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None)
-
+            vault_meta = list(vault_meta)
         except:
             return RetVal(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None)
 
@@ -320,8 +300,7 @@ class ParserConnector(BaseConnector):
             try:
                 custom_mapping = json.loads(custom_remap_json)
             except Exception as e:
-                error_code, error_msg = self._get_error_message_from_exception(e)
-                error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+                error_text = self._get_error_message_from_exception(e)
                 return action_result.set_status(phantom.APP_ERROR, "Error: custom_remap_json parameter is not valid json. {}".format(error_text))
         if not isinstance(custom_mapping, dict):
             return action_result.set_status(phantom.APP_ERROR, "Error: custom_remap_json parameter is not a dictionary")
@@ -368,13 +347,13 @@ class ParserConnector(BaseConnector):
             if len(artifacts) == 0 or len(mapping) == 0:
                 return artifacts
             for a in artifacts:
-                newcef = dict()
+                new_cef = dict()
                 for k, v in list(a['cef'].items()):
                     if k in mapping:
-                        newcef[mapping[k]] = v
+                        new_cef[mapping[k]] = v
                     else:
-                        newcef[k] = v
-                a['cef'] = newcef
+                        new_cef[k] = v
+                a['cef'] = new_cef
             return artifacts
 
         remap_cef_fields = self._handle_py_ver_compat_for_input_str(param.get("remap_cef_fields", "").lower())

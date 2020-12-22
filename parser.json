@@ -10,14 +10,14 @@
     "product_version_regex": ".*",
     "publisher": "Splunk",
     "license": "Copyright (c) 2017-2020 Splunk Inc.",
-    "app_version": "2.0.23",
-    "utctime_updated": "2020-07-14T20:42:54.000000Z",
+    "app_version": "2.0.35",
+    "utctime_updated": "2020-12-21T11:47:51.000000Z",
     "package_name": "phantom_parser",
     "main_module": "parser_connector.py",
-    "min_phantom_version": "4.6.19142",
+    "min_phantom_version": "4.9.39220",
     "python_version": "3",
     "latest_tested_versions": [
-        "Phantom 4.8 on 6/11/2020"
+        ""
     ],
     "app_wizard_version": "1.0.0",
     "pip_dependencies": {
@@ -49,7 +49,6 @@
                 "vault_id": {
                     "description": "Vault ID",
                     "data_type": "string",
-                    "required": false,
                     "primary": true,
                     "contains": [
                         "vault id"
@@ -59,7 +58,6 @@
                 "file_type": {
                     "description": "Type of the file",
                     "data_type": "string",
-                    "required": false,
                     "value_list": [
                         "txt",
                         "email",
@@ -84,25 +82,21 @@
                 "label": {
                     "description": "Add container to this label",
                     "data_type": "string",
-                    "required": false,
                     "order": 4
                 },
                 "max_artifacts": {
                     "description": "Maximum number of artifacts (not applicable to .eml filetype)",
                     "data_type": "numeric",
-                    "required": false,
                     "order": 5
                 },
                 "container_id": {
                     "description": "Add created artifacts to this container",
                     "data_type": "numeric",
-                    "required": false,
                     "order": 6
                 },
                 "remap_cef_fields": {
                     "description": "Remap the CEF fields with new field names; Optionally, also apply an internal CEF -> CIM field name mapping. Note: (source|destination)Address will be mapped to (src|dest)_ip respectively instead of src|dest (not applicable to .eml filetype)",
                     "data_type": "string",
-                    "required": false,
                     "default": "Do not apply CEF -> CIM remapping, only apply custom remap",
                     "value_list": [
                         "Do not apply CEF -> CIM remapping, only apply custom remap",
@@ -115,25 +109,21 @@
                     "description": "Custom set of CEF field name mappings. This is a serialized json dictionary (json.dumps) of Key/Value pairs where Key is an existing field name and Value is the resultant name (not applicable to .eml filetype)",
                     "data_type": "string",
                     "default": "{}",
-                    "required": false,
                     "order": 8
                 },
                 "run_automation": {
                     "description": "Enable run_automation for newly created artifacts",
                     "data_type": "boolean",
                     "default": true,
-                    "required": false,
                     "order": 9
                 },
                 "severity": {
-                    "required": false,
                     "description": "Severity for the newly created artifacts",
                     "data_type": "string",
                     "default": "medium",
                     "order": 10
                 },
                 "parse_domains": {
-                    "required": false,
                     "description": "Parse domains from artifacts",
                     "data_type": "boolean",
                     "default": true,
@@ -154,6 +144,13 @@
                     "data_type": "numeric",
                     "example_values": [
                         1776
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.custom_remap_json",
+                    "data_type": "string",
+                    "example_values": [
+                        "{\"a\": \"fileHash\", \"b\": \"sourceAddress\"}"
                     ]
                 },
                 {
@@ -199,6 +196,13 @@
                     ]
                 },
                 {
+                    "data_path": "action_result.parameter.remap_cef_fields",
+                    "data_type": "string",
+                    "example_values": [
+                        "Apply custom remap and apply CEF -> CIM remapping after"
+                    ]
+                },
+                {
                     "data_path": "action_result.parameter.run_automation",
                     "data_type": "boolean",
                     "example_values": [
@@ -231,16 +235,15 @@
                     ]
                 },
                 {
-                    "data_path": "action_result.parameter.remap_cef_fields",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.parameter.custom_remap_json",
-                    "data_type": "string"
-                },
-                {
                     "data_path": "action_result.data",
                     "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.artifacts_ingested",
+                    "data_type": "numeric",
+                    "example_values": [
+                        1
+                    ]
                 },
                 {
                     "data_path": "action_result.summary.artifacts_found",
