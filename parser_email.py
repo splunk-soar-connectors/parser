@@ -1,5 +1,5 @@
 # File: parser_email.py
-# Copyright (c) 2017-2020 Splunk Inc.
+# Copyright (c) 2017-2021 Splunk Inc.
 #
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
@@ -385,8 +385,9 @@ def _add_artifacts(cef_key, input_set, artifact_name, start_index, artifacts):
 def _parse_email_headers_as_inline(file_data, parsed_mail, charset, email_id):
 
     # remove the 'Forwarded Message' from the email text and parse it
-    p = re.compile(r'.*Forwarded Message.*\r\n(.*)', re.IGNORECASE)
-    email_text = p.sub(r'\1', file_data.strip())
+    p = re.compile(r'(?<=\r\n).*Forwarded Message.*\r\n', re.IGNORECASE)
+    email_text = p.sub('', file_data.strip())
+
     mail = email.message_from_string(email_text)
 
     # Get the array
