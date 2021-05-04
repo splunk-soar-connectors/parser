@@ -128,7 +128,7 @@ class ParserConnector(BaseConnector):
             _, _, vault_meta_info = ph_rules.vault_info(container_id=self.get_container_id(), vault_id=vault_id)
             if (not vault_meta_info):
                 self.debug_print("Error while fetching meta information for vault ID: {}".format(vault_id))
-                return RetVal(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None)
+                return RetVal3(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None, None)
             vault_meta_info = list(vault_meta_info)
             file_path = vault_meta_info[0]['path']
         except Exception:

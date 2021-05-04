@@ -330,8 +330,8 @@ def _handle_body(body, parsed_mail, body_index, email_id):
     domains = parsed_mail[PROC_EMAIL_JSON_DOMAINS]
 
     file_data = None
-    with open(local_file_path, 'r') as f:
-        file_data = f.read()
+    with open(local_file_path, 'rb') as f:
+        file_data = f.read().decode(charset)
 
     if ((file_data is None) or (len(file_data) == 0)):
         return phantom.APP_ERROR
@@ -713,8 +713,8 @@ def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type):
     # Add email_bodies to email_headers
     email_headers = parsed_mail[PROC_EMAIL_JSON_EMAIL_HEADERS]
 
-    with open(file_path, 'r') as f:
-        body_content = f.read()
+    with open(file_path, 'rb') as f:
+        body_content = f.read().decode(charset)
 
     # Add body to the last added Email artifact
     if 'text/plain' in content_type:
