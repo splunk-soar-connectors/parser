@@ -24,6 +24,10 @@
     "pip_dependencies": {
         "wheel": [
             {
+                "module": "defusedxml",
+                "input_file": "wheels/defusedxml-0.7.1-py2.py3-none-any.whl"
+            },
+            {
                 "module": "pdfminer",
                 "input_file": "wheels/pdfminer-20140328-py2-none-any.whl"
             }
@@ -31,6 +35,10 @@
     },
     "pip3_dependencies": {
         "wheel": [
+            {
+                "module": "defusedxml",
+                "input_file": "wheels/defusedxml-0.7.1-py2.py3-none-any.whl"
+            },
             {
                 "module": "pdfminer",
                 "input_file": "wheels/pdfminer.six-20201018.tar.gz"
