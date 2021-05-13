@@ -48,7 +48,7 @@ class ParserConnector(BaseConnector):
 
         try:
             self._python_version = int(sys.version_info[0])
-        except:
+        except Exception:
             return self.set_status(phantom.APP_ERROR, "Error occurred while getting the Phantom server's Python major version.")
 
         return phantom.APP_SUCCESS
@@ -62,7 +62,7 @@ class ParserConnector(BaseConnector):
         try:
             if input_str and self._python_version < 3:
                 input_str = UnicodeDammit(input_str).unicode_markup.encode('utf-8')
-        except:
+        except Exception:
             self.debug_print("Error occurred while handling python 2to3 compatibility for the input string")
         return input_str
 
@@ -85,13 +85,13 @@ class ParserConnector(BaseConnector):
             else:
                 error_code = error_code
                 error_msg = error_msg
-        except:
+        except Exception:
             return error
         try:
             error_msg = self._handle_py_ver_compat_for_input_str(error_msg)
         except TypeError:
             error_msg = "Error occurred while connecting to the Parser server. Please check the asset configuration and|or the action parameters."
-        except:
+        except Exception:
             return error
         return "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
 
@@ -101,7 +101,7 @@ class ParserConnector(BaseConnector):
     def _get_mail_header_dict(self, email_data, action_result):
         try:
             mail = email.message_from_string(email_data)
-        except:
+        except Exception:
             return RetVal2(action_result.set_status(phantom.APP_ERROR,
                                         "Unable to create email object from data. Does not seem to be valid email"),
                                         None)
@@ -163,7 +163,7 @@ class ParserConnector(BaseConnector):
                 self.debug_print("Error while fetching meta information for vault ID: {}".format(vault_id))
                 return RetVal(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None)
             vault_meta = list(vault_meta)
-        except:
+        except Exception:
             return RetVal(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None)
 
         file_meta = None
@@ -174,7 +174,7 @@ class ParserConnector(BaseConnector):
                     break
             else:
                 self.debug_print("Unable to find a file for the vault ID: '{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
-        except:
+        except Exception:
             self.debug_print("Error occurred while finding a file for the vault ID: '{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
             self.debug_print("Considering the first file as the required file")
             file_meta = vault_meta[0]
@@ -272,7 +272,7 @@ class ParserConnector(BaseConnector):
         try:
             if container_id is not None:
                 container_id = int(container_id)
-        except:
+        except Exception:
             return action_result.set_status(phantom.APP_ERROR, "Please provide a valid integer value in container_id")
 
         label = self._handle_py_ver_compat_for_input_str(param.get('label'))
@@ -376,7 +376,7 @@ class ParserConnector(BaseConnector):
                 max_artifacts = int(max_artifacts)
                 if max_artifacts <= 0:
                     return action_result.set_status(phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
-            except:
+            except Exception:
                 return action_result.set_status(phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
 
         if not container_id:

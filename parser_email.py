@@ -118,7 +118,7 @@ def _get_string(input_str, charset):
                 input_str = UnicodeDammit(input_str).unicode_markup.encode(charset)
             else:
                 input_str = UnicodeDammit(input_str).unicode_markup.encode(charset).decode(charset)
-    except:
+    except Exception:
         _base_connector.debug_print("Error occurred while converting to string with specific encoding")
 
     return input_str
@@ -138,7 +138,7 @@ def _handle_py_ver_compat_for_input_str(input_str):
     try:
         if input_str and _python_version == 2:
             input_str = UnicodeDammit(input_str).unicode_markup.encode('utf-8')
-    except:
+    except Exception:
         _base_connector.debug_print("Error occurred while handling python 2to3 compatibility for the input string")
 
     return input_str
@@ -161,7 +161,7 @@ def _get_error_message_from_exception(e):
         else:
             error_code = "Error code unavailable"
             error_msg = "Error message unavailable. Please check the asset configuration and|or action parameters."
-    except:
+    except Exception:
         error_code = "Error code unavailable"
         error_msg = "Error message unavailable. Please check the asset configuration and|or action parameters."
 
@@ -169,7 +169,7 @@ def _get_error_message_from_exception(e):
         error_msg = _handle_py_ver_compat_for_input_str(error_msg)
     except TypeError:
         error_msg = "Error occurred while connecting to the Jira server. Please check the asset configuration and|or the action parameters."
-    except:
+    except Exception:
         error_msg = "Error message unavailable. Please check the asset configuration and|or action parameters."
 
     return error_code, error_msg
@@ -209,7 +209,7 @@ def _clean_url(url):
 def is_ipv6(input_ip):
     try:
         socket.inet_pton(socket.AF_INET6, input_ip)
-    except:  # not a valid v6 address
+    except Exception:  # not a valid v6 address
         return False
 
     return True
@@ -498,7 +498,7 @@ def _decode_uni_string(input_str, def_name):
             if value:
                 new_str += _get_string(value, 'utf-8')
                 new_str_create_count += 1
-        except:
+        except Exception:
             pass
 
     # replace input string with new string because issue find in PAPP-9531
@@ -872,7 +872,7 @@ def _init():
 
     try:
         _python_version = int(sys.version_info[0])
-    except:
+    except Exception:
         raise Exception("Error occurred while getting the Phantom server's Python major version.")
 
 
@@ -886,7 +886,7 @@ def _set_email_id_contains(email_id):
 
     try:
         email_id = _get_string(email_id, 'utf-8')
-    except:
+    except Exception:
         email_id = str(email_id)
 
     _base_connector.debug_print(email_id)
@@ -1087,22 +1087,22 @@ def _add_vault_hashes_to_dictionary(cef_artifact, vault_id, container_id):
     # will be the same for every entry, so just access the first one
     try:
         metadata = vault_info[0].get('metadata')
-    except:
+    except Exception:
         return (phantom.APP_ERROR, "Failed to get vault item metadata")
 
     try:
         cef_artifact['fileHashSha256'] = metadata['sha256']
-    except:
+    except Exception:
         pass
 
     try:
         cef_artifact['fileHashMd5'] = metadata['md5']
-    except:
+    except Exception:
         pass
 
     try:
         cef_artifact['fileHashSha1'] = metadata['sha1']
-    except:
+    except Exception:
         pass
 
     return (phantom.APP_SUCCESS, "Mapped hash values")

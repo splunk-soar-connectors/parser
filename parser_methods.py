@@ -8,12 +8,14 @@ import sys
 import re
 import csv
 import zipfile
-from lxml import etree
+from defusedxml import ElementTree
+from defusedxml.common import EntitiesForbidden
+
 from bs4 import BeautifulSoup, UnicodeDammit
 
 try:
     from cStringIO import StringIO
-except:
+except Exception:
     from io import StringIO
 
 import phantom.app as phantom
@@ -99,7 +101,7 @@ def _handle_py_ver_compat_for_input_str(base_connector, input_str):
     try:
         if input_str and _python_version == 2:
             input_str = UnicodeDammit(input_str).unicode_markup.encode('utf-8')
-    except:
+    except Exception:
         base_connector.debug_print("Error occurred while handling python 2to3 compatibility for the input string")
 
     return input_str
@@ -119,10 +121,13 @@ def _get_error_message_from_exception(base_connector, e):
             elif len(e.args) == 1:
                 error_code = "Error code unavailable"
                 error_msg = e.args[0]
+            else:  # args can exist and be empty
+                error_code = "Error code unavailable"
+                error_msg = "Error message unavailable.  Please check the action parameters."
         else:
             error_code = "Error code unavailable"
             error_msg = "Error message unavailable. Please check the action parameters."
-    except:
+    except Exception:
         error_code = "Error code unavailable"
         error_msg = "Error message unavailable. Please check the action parameters."
 
@@ -130,7 +135,7 @@ def _get_error_message_from_exception(base_connector, e):
         error_msg = _handle_py_ver_compat_for_input_str(base_connector, error_msg)
     except TypeError:
         error_msg = "Error Occurred. Please check the action parameters."
-    except:
+    except Exception:
         error_msg = "Error message unavailable. Please check the action parameters."
 
     return error_code, error_msg
@@ -220,7 +225,7 @@ class TextIOCParser():
         global _python_version
         try:
             _python_version = int(sys.version_info[0])
-        except:
+        except Exception:
             raise Exception("Error occurred while getting the Phantom server's Python major version.")
 
     def _create_artifact(self, artifacts, value, cef, name):
@@ -324,7 +329,7 @@ def _docx_to_text(action_result, base_connector, docx_file):
         fp = zf.open('word/document.xml')
         txt = fp.read()
         fp.close()
-        root = etree.fromstring(txt)
+        root = ElementTree.fromstring(txt)
         paragraphs = []
         for paragraph in root.getiterator(PARA):
             texts = [_handle_py_ver_compat_for_input_str(base_connector, node.text) for node in paragraph.getiterator(TEXT) if node.text]
@@ -332,10 +337,12 @@ def _docx_to_text(action_result, base_connector, docx_file):
                 paragraphs.append(''.join(texts))
 
         return phantom.APP_SUCCESS, '\n\n'.join(paragraphs)
+    except EntitiesForbidden as e:
+        err = e
     except Exception as e:
         error_code, error_msg = _get_error_message_from_exception(base_connector, e)
         err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
-        return action_result.set_status(phantom.APP_ERROR, "Failed to parse docx: {0}".format(err)), None
+    return action_result.set_status(phantom.APP_ERROR, "Failed to parse docx: {0}".format(err)), None
 
 
 def _csv_to_text(action_result, base_connector, csv_file):
@@ -458,7 +465,7 @@ def parse_structured_file(base_connector, action_result, file_info):
         # We need the value of the global variable '_python_version' for the below used exception handler method
         # '_get_error_message_from_exception' --> '_handle_py_ver_compat_for_input_str'
         _python_version = int(sys.version_info[0])
-    except:
+    except Exception:
         return action_result.set_status(phantom.APP_ERROR, "Error occurred while getting the Phantom server's Python major version"), None
 
     if (file_info['type'] == 'csv'):
