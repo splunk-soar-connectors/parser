@@ -53,19 +53,6 @@ class ParserConnector(BaseConnector):
 
         return phantom.APP_SUCCESS
 
-    def _handle_py_ver_compat_for_input_str(self, input_str):
-        """
-        This method returns the encoded|original string based on the Python version.
-        :param input_str: Input string to be processed
-        :return: input_str (Processed input string based on following logic 'input_str - Python 3; encoded input_str - Python 2')
-        """
-        try:
-            if input_str and self._python_version < 3:
-                input_str = UnicodeDammit(input_str).unicode_markup.encode('utf-8')
-        except Exception:
-            self.debug_print("Error occurred while handling python 2to3 compatibility for the input string")
-        return input_str
-
     def _get_error_message_from_exception(self, e):
         """ This function is used to get appropriate error message from the exception.
         :param e: Exception object
@@ -87,12 +74,7 @@ class ParserConnector(BaseConnector):
                 error_msg = error_msg
         except Exception:
             return error
-        try:
-            error_msg = self._handle_py_ver_compat_for_input_str(error_msg)
-        except TypeError:
-            error_msg = "Error occurred while connecting to the Parser server. Please check the asset configuration and|or the action parameters."
-        except Exception:
-            return error
+
         return "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
 
     def finalize(self):
@@ -126,7 +108,7 @@ class ParserConnector(BaseConnector):
 
         try:
             _, _, vault_meta_info = ph_rules.vault_info(container_id=self.get_container_id(), vault_id=vault_id)
-            if (not vault_meta_info):
+            if not vault_meta_info:
                 self.debug_print("Error while fetching meta information for vault ID: {}".format(vault_id))
                 return RetVal3(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None, None)
             vault_meta_info = list(vault_meta_info)
@@ -159,7 +141,7 @@ class ParserConnector(BaseConnector):
         # Check for file in vault
         try:
             _, _, vault_meta = ph_rules.vault_info(container_id=self.get_container_id(), vault_id=vault_id)
-            if (not vault_meta):
+            if not vault_meta:
                 self.debug_print("Error while fetching meta information for vault ID: {}".format(vault_id))
                 return RetVal(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None)
             vault_meta = list(vault_meta)
@@ -275,7 +257,7 @@ class ParserConnector(BaseConnector):
         except Exception:
             return action_result.set_status(phantom.APP_ERROR, "Please provide a valid integer value in container_id")
 
-        label = self._handle_py_ver_compat_for_input_str(param.get('label'))
+        label = param.get('label')
         file_info = {}
         if container_id is None and label is None:
             return action_result.set_status(phantom.APP_ERROR,
@@ -285,16 +267,16 @@ class ParserConnector(BaseConnector):
             if phantom.is_fail(ret_val):
                 return action_result.set_status(phantom.APP_ERROR, "Unable to find container: {}".format(message))
 
-        vault_id = self._handle_py_ver_compat_for_input_str(param.get('vault_id'))
-        text_val = self._handle_py_ver_compat_for_input_str(param.get('text'))
-        file_type = self._handle_py_ver_compat_for_input_str(param.get('file_type'))
+        vault_id = param.get('vault_id')
+        text_val = param.get('text')
+        file_type = param.get('file_type')
         is_structured = param.get('is_structured', False)
         run_automation = param.get('run_automation', True)
         parse_domains = param.get('parse_domains', True)
-        severity = self._handle_py_ver_compat_for_input_str(param.get('severity', 'medium').lower())
+        severity = param.get('severity', 'medium').lower()
 
         # --- remap cef fields ---
-        custom_remap_json = self._handle_py_ver_compat_for_input_str(param.get("custom_remap_json", "{}"))
+        custom_remap_json = param.get("custom_remap_json", "{}")
         custom_mapping = None
         if custom_remap_json:
             try:
@@ -328,13 +310,14 @@ class ParserConnector(BaseConnector):
 
             self.debug_print("File Info", file_info)
             if is_structured:
-                ret_val, response = parser_methods.parse_structured_file(self, action_result, file_info)
+                ret_val, response = parser_methods.parse_structured_file(action_result, file_info)
             else:
                 ret_val, response = parser_methods.parse_file(self, action_result, file_info, parse_domains)
 
             if phantom.is_fail(ret_val):
                 return ret_val
         else:
+            text_val = text_val.replace(",", ", ")
             ret_val, response = parser_methods.parse_text(self, action_result, file_type, text_val, parse_domains)
             file_info['name'] = 'Parser_Container_{0}'.format(calendar.timegm(time.gmtime()))
 
@@ -356,7 +339,7 @@ class ParserConnector(BaseConnector):
                 a['cef'] = new_cef
             return artifacts
 
-        remap_cef_fields = self._handle_py_ver_compat_for_input_str(param.get("remap_cef_fields", "").lower())
+        remap_cef_fields = param.get("remap_cef_fields", "").lower()
         if "do not" in remap_cef_fields:
             # --- do not perform CEF -> CIM remapping
             artifacts = _apply_remap(artifacts, custom_mapping)
@@ -435,7 +418,7 @@ if __name__ == '__main__':
     args = argparser.parse_args()
     session_id = None
 
-    if (args.username and args.password):
+    if args.username and args.password:
         login_url = BaseConnector._get_phantom_base_url() + "login"
         try:
             print("Accessing the Login page")
@@ -452,7 +435,7 @@ if __name__ == '__main__':
             print(("Unable to get session id from the platform. Error: {0}".format(str(e))))
             exit(1)
 
-    if (len(sys.argv) < 2):
+    if len(sys.argv) < 2:
         print("No test json specified as input")
         exit(0)
 
@@ -464,7 +447,7 @@ if __name__ == '__main__':
         connector = ParserConnector()
         connector.print_progress_message = True
 
-        if (session_id is not None):
+        if session_id is not None:
             in_json['user_session_token'] = session_id
 
         ret_val = connector._handle_action(json.dumps(in_json), None)
