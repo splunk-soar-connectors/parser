@@ -10,15 +10,15 @@
     "product_version_regex": ".*",
     "publisher": "Splunk",
     "license": "Copyright (c) 2017-2021 Splunk Inc.",
-    "app_version": "2.1.5",
-    "utctime_updated": "2021-05-13T22:08:37.000000Z",
+    "app_version": "2.2.0",
+    "utctime_updated": "2021-05-04T20:02:42.000000Z",
     "package_name": "phantom_parser",
     "main_module": "parser_connector.py",
     "min_phantom_version": "4.9.39220",
     "python_version": "3",
     "latest_tested_versions": [
-        "Module pdfminer.six-20201018.tar.gz, March 17 2021",
-        "Module pdfminer-20140328-py2-none-any.whl, March 17 2021"
+        "Module pdfminer.six-20201018.tar.gz, May 17 2021",
+        "Module pdfminer-20140328-py2-none-any.whl, May 17 2021"
     ],
     "app_wizard_version": "1.0.0",
     "pip_dependencies": {
