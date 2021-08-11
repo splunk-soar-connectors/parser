@@ -8,6 +8,7 @@ import sys
 import re
 import csv
 import zipfile
+import pdfminer
 from defusedxml import ElementTree
 from defusedxml.common import EntitiesForbidden
 
@@ -25,7 +26,6 @@ from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 from pdfminer.converter import TextConverter
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
-
 import time
 import threading
 
@@ -91,7 +91,8 @@ def _get_error_message_from_exception(e):
     :param e: Exception object
     :return: error message
     """
-
+    error_msg = "Unknown error occured. Please check asset configuration and/or action parameters"
+    error_code = "Error code unavailable"
     try:
         if hasattr(e, 'args'):
             if len(e.args) > 1:
@@ -100,6 +101,9 @@ def _get_error_message_from_exception(e):
             elif len(e.args) == 1:
                 error_code = "Error code unavailable"
                 error_msg = e.args[0]
+            else:
+                error_msg = "Unknown error occured. Please check asset configuration and/or action parameters"
+                error_code = "Error code unavailable"
         else:
             error_code = "Error code unavailable"
             error_msg = "Error message unavailable. Please check the action parameters."
@@ -270,6 +274,8 @@ def _pdf_to_text(action_result, pdf_file):
         text = output.getvalue()
         output.close()
         return phantom.APP_SUCCESS, text
+    except pdfminer.pdfdocument.PDFPasswordIncorrect:
+        return action_result.set_status(phantom.APP_ERROR, "Failed to parse pdf: The provided pdf is encrypted"), None
     except Exception as e:
         error_code, error_msg = _get_error_message_from_exception(e)
         err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
@@ -297,6 +303,8 @@ def _docx_to_text(action_result, docx_file):
                 paragraphs.append(''.join(texts))
 
         return phantom.APP_SUCCESS, '\n\n'.join(paragraphs)
+    except zipfile.BadZipfile:
+        return action_result.set_status(phantom.APP_ERROR, "Failed to parse docx: The file might be corrupted or password protected or not a docx file"), None
     except EntitiesForbidden as e:
         err = e
     except Exception as e:
