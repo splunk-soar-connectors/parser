@@ -10,8 +10,8 @@
     "product_version_regex": ".*",
     "publisher": "Splunk",
     "license": "Copyright (c) 2017-2021 Splunk Inc.",
-    "app_version": "2.2.3",
-    "utctime_updated": "2021-06-09T06:11:46.000000Z",
+    "app_version": "2.3.2",
+    "utctime_updated": "2021-08-12T12:24:00.000000Z",
     "package_name": "phantom_parser",
     "main_module": "parser_connector.py",
     "min_phantom_version": "4.9.39220",
@@ -51,7 +51,7 @@
             "action": "extract ioc",
             "identifier": "parse_file",
             "description": "Create IOC artifacts from a file in the vault or raw text",
-            "verbose": "Specify either text or vault_id. If text is used only file_types of csv, html, and txt can be selected. <br/><br/>If vault_id is used and the [file_type] is left blank, the app will try to determine what type of file it is on its own. <br/><br/> When parsing an email file (.eml), the <b>file_type</b> parameter must be set to <b>email</b>. <br/> <br/> <b>Label</b> or <b>Container ID</b> is mandatory to run an action. It will display an error message if both of them are not mentioned. <br/> <br/> <b> Caveats:</b> <ul><li>If the [file_type] you chose related to [vault_id] is incorrect, you will have an unexpected output scenario.</li><li>For email filetype, if the file has attachments with a filename over 200 characters, it will ignore those files and will not create any Vault artifact for that.</li></ul>",
+            "verbose": "Specify either text or vault_id. If text is used only file_types of csv, html, and txt can be selected. <br/><br/>If vault_id is used and the [file_type] is left blank, the app will try to determine what type of file it is on its own. <br/><br/> When parsing an email file (.eml), the <b>file_type</b> parameter must be set to <b>email</b>. <br/> <br/> <b>Label</b> or <b>Container ID</b> is mandatory to run an action. It will display an error message if both of them are not mentioned. <br/> <br/> <b> Caveats:</b> <ul><li>If the [file_type] you chose related to [vault_id] is incorrect, you will have an unexpected output scenario.</li></ul>",
             "type": "generic",
             "read_only": true,
             "parameters": {
@@ -289,6 +289,118 @@
                     "data_type": "numeric",
                     "example_values": [
                         1
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.To",
+                    "data_type": "string",
+                    "example_values": [
+                        "xyz@xyz.com"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.Date",
+                    "data_type": "string",
+                    "example_values": [
+                        "Mon, 19 Jul 2021 11:18:40 +0530"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.From",
+                    "data_type": "string",
+                    "example_values": [
+                        "xyz@xyz.com"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.Subject",
+                    "data_type": "string",
+                    "example_values": [
+                        "=?UTF-8?B?5paw44GX44GESUTF-8?B?MeOBpOOCkuS9v+eUqOOBl+OBpuOAgeS4gOaEj+OBruODquODs+OCr+ODreODvOOCq+ODq+OCouODiQ==?=\r\n\t="
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.Content-Type",
+                    "data_type": "string",
+                    "example_values": [
+                        "multipart/alternative; boundary=\"0000000000005233b405c7737dbe\""
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-MS-Has-Attach",
+                    "data_type": "string",
+                    "example_values": [
+                        "yes"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.Content-Language",
+                    "data_type": "string",
+                    "example_values": [
+                        "en-US"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.Message-ID",
+                    "data_type": "string",
+                    "example_values": [
+                        "<xyz@mail.gmail.com>"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.MIME-Version",
+                    "data_type": "string",
+                    "example_values": [
+                        "1.0"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.References",
+                    "data_type": "string",
+                    "example_values": [
+                        "<xyz@mail.gmail.com>"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.In-Reply-To",
+                    "data_type": "string",
+                    "example_values": [
+                        "<CAGUkOuok3+qiuH4rCNKf=6_a4qwRViq=1WTro1pB8zSVqEujog@mail.gmail.com>"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.Thread-Index",
+                    "data_type": "string",
+                    "example_values": [
+                        "AQHWF83DD6R+qs4BTUSciZoeNB7NYw=="
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.Thread-Topic",
+                    "data_type": "string",
+                    "example_values": [
+                        "\r\n\t=?utf-8?B?5ryi5a2XwqnCrMm40aDWjdue4KiK4K+14LWs4LyD4YCk4YSo4YeX4YqW4Y+M?=\r\n"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-MS-TNEF-Correlator",
+                    "data_type": "string",
+                    "example_values": [
+                        "xyz"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-MS-Exchange-Organization-SCL",
+                    "data_type": "string",
+                    "example_values": [
+                        "-1"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-MS-Exchange-Organization-RecordReviewCfmType",
+                    "data_type": "string",
+                    "example_values": [
+                        "0"
                     ]
                 }
             ],
