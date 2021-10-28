@@ -10,15 +10,15 @@
     "product_version_regex": ".*",
     "publisher": "Splunk",
     "license": "Copyright (c) 2017-2021 Splunk Inc.",
-    "app_version": "2.3.2",
+    "app_version": "2.4.0",
     "utctime_updated": "2021-08-12T12:24:00.000000Z",
     "package_name": "phantom_parser",
     "main_module": "parser_connector.py",
-    "min_phantom_version": "4.9.39220",
+    "min_phantom_version": "4.10.0.40961",
     "python_version": "3",
     "latest_tested_versions": [
-        "Module pdfminer.six-20201018.tar.gz, May 17 2021",
-        "Module pdfminer-20140328-py2-none-any.whl, May 17 2021"
+        "Module pdfminer.six-20201018.tar.gz, October 21 2021",
+        "Module pdfminer-20140328-py2-none-any.whl, October 21 2021"
     ],
     "app_wizard_version": "1.0.0",
     "pip_dependencies": {
@@ -137,6 +137,17 @@
                     "data_type": "boolean",
                     "default": true,
                     "order": 11
+                },
+                "artifact_tags": {
+                    "description": "Tags to add to artifacts (comma separated)",
+                    "data_type": "string",
+                    "order": 12
+                },
+                "keep_raw": {
+                    "description": "Save raw text to artifact",
+                    "data_type": "boolean",
+                    "default": false,
+                    "order": 13
                 }
             },
             "output": [
@@ -202,6 +213,21 @@
                     "example_values": [
                         true,
                         false
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.keep_raw",
+                    "data_type": "boolean",
+                    "example_values": [
+                        true,
+                        false
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.artifact_tags",
+                    "data_type": "string",
+                    "example_values": [
+                        "tag 1, tag 2"
                     ]
                 },
                 {

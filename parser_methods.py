@@ -240,6 +240,15 @@ class TextIOCParser():
                     self._pass_over_value(artifacts, match, ioc)
         return artifacts
 
+    def add_artifact(self, text):
+        artifact = {}
+        artifact['source_data_identifier'] = self.added_artifacts
+        artifact['cef'] = {"message": text}
+        artifact['name'] = "Raw Text Artifact"
+        self.added_artifacts += 1
+        self.found_values.add(text)
+        return artifact
+
 
 def _grab_raw_text(action_result, txt_file):
     """ This function will actually really work for any file which is basically raw text.
@@ -376,7 +385,7 @@ def _wait_for_parse(base_connector):
     return
 
 
-def parse_file(base_connector, action_result, file_info, parse_domains=True):
+def parse_file(base_connector, action_result, file_info, parse_domains=True, keep_raw=False):
     """ Parse a non-email file """
 
     try:
@@ -412,6 +421,9 @@ def parse_file(base_connector, action_result, file_info, parse_domains=True):
     base_connector.save_progress('Parsing for IOCs')
     try:
         artifacts = tiocp.parse_to_artifacts(raw_text)
+        if keep_raw:
+            base_connector.save_progress('Saving Raw Text')
+            artifacts.append(tiocp.add_artifact(raw_text))
     except Exception as e:
         error_code, error_msg = _get_error_message_from_exception(e)
         err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
