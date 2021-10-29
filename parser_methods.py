@@ -26,6 +26,11 @@ from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 from pdfminer.converter import TextConverter
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+from pdfminer.pdfparser import PDFParser
+from pdfminer.pdfdocument import PDFDocument
+from pdfminer.pdftypes import PDFObjectNotFound, PDFStream, PDFObjRef
+from pdfminer.psparser import PSKeyword, PSLiteral
+from pdfminer.utils import isnumber
 import time
 import threading
 
@@ -49,6 +54,8 @@ IPV6_REGEX += r'(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f
 IPV6_REGEX += r'(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|'
 IPV6_REGEX += r'(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*'
 DOMAIN_REGEX = r'(?!:\/\/)((?:[a-zA-Z0-9-_]+\.)*[a-zA-Z0-9][a-zA-Z0-9-_]+\.[a-zA-Z]{2,11})'
+
+ESCAPE = set(map(ord, '&<>"'))
 
 
 def _extract_domain_from_url(url):
@@ -265,6 +272,125 @@ def _grab_raw_text(action_result, txt_file):
         return action_result.set_status(phantom.APP_ERROR, err), None
 
 
+class PDFXrefObjectsToXML:
+    """
+    Class contains the methods to Convert the PDF cross reference table(xref) objects to XML
+    The xref is the index by which all of the indirect objects, in the PDF file are located.
+    https://labs.appligent.com/pdfblog/pdf_cross_reference_table/
+    """
+
+    @classmethod
+    def encode(cls, data):
+        """Encode characters of text"""
+        buf = StringIO()
+        for byte in data:
+            if byte < 32 or 127 <= byte or byte in ESCAPE:
+                buf.write(f'&#{byte};')
+            else:
+                buf.write(chr(byte))
+        return buf.getvalue()
+
+    @classmethod
+    def dump_xml(cls, text, obj):
+        """Convert PDF xref object to XML"""
+        if obj is None:
+            text += '<null />'
+            return text
+
+        if isinstance(obj, dict):
+            text += '<dict size="{}">\n'.format(len(obj))
+            for (key, value) in obj.items():
+                text += '<key>\n{}\n</key>\n'.format(key)
+                text += '<value>'
+                text = cls.dump_xml(text, value)
+                text += '</value>\n'
+            text += '</dict>'
+            return text
+
+        if isinstance(obj, list):
+            text += '<list size="{}">\n'.format(len(obj))
+            for value in obj:
+                text = cls.dump_xml(text, value)
+                text += '\n'
+            text += '</list>'
+            return text
+
+        if isinstance(obj, bytes):
+            text += '<string size="{}">\n{}\n</string>'.format(len(obj), cls.encode(obj))
+            return text
+
+        if isinstance(obj, PDFStream):
+            text += '<stream>\n<props>\n'
+            text = cls.dump_xml(text, obj.attrs)
+            text += '\n</props>\n'
+            text += '</stream>'
+            return text
+
+        if isinstance(obj, PDFObjRef):
+            text += '<ref id="{}" />'.format(obj.objid)
+            return text
+
+        if isinstance(obj, PSKeyword):
+            text += '<keyword>\n{}\n</keyword>'.format(obj.name)
+            return text
+
+        if isinstance(obj, PSLiteral):
+            text += '<literal>\n{}\n</literal>'.format(obj.name)
+            return text
+
+        if isnumber(obj):
+            text += '<number>\n{}\n</number>'.format(obj)
+            return text
+
+        raise TypeError("Unable to extract the object from PDF. Reason: {}".format(obj))
+
+    @classmethod
+    def dump_trailers(cls, text, doc):
+        """Iterate trough xrefs and convert trailer of xref to XML"""
+        for xref in doc.xrefs:
+            text += '<trailer>\n'
+            cls.dump_xml(text, xref.trailer)
+            text += '\n</trailer>\n\n'
+        return text
+
+    @classmethod
+    def convert_objects_to_xml_text(cls, text, doc):
+        """Iterate trough xrefs and convert objects of xref to XML"""
+        visited = set()
+        text += '<pdf>'
+        for xref in doc.xrefs:
+            for obj_id in xref.get_objids():
+                if obj_id in visited:
+                    continue
+                visited.add(obj_id)
+                try:
+                    obj = doc.getobj(obj_id)
+                    if obj is None:
+                        continue
+                    text += '<object id="{}">\n'.format(obj_id)
+                    text = cls.dump_xml(text, obj)
+                    text += '\n</object>\n\n'
+                except PDFObjectNotFound as e:
+                    raise PDFObjectNotFound('While converting PDF to xml objects PDF object not found.'
+                                            ' Reason: {}'.format(e))
+        cls.dump_trailers(text, doc)
+        text += '</pdf>'
+        return text
+
+    @classmethod
+    def pdf_xref_objects_to_xml(cls, pdf_file):
+        """Converts PDF cross reference table(xref) objects to XML
+            The xref is the index by which all of the indirect objects, in the PDF file are located.
+            https://labs.appligent.com/pdfblog/pdf_cross_reference_table/
+        """
+        text = ''
+        with open(pdf_file, 'rb') as fp:
+            parser = PDFParser(fp)
+            doc = PDFDocument(parser, None)
+            text = cls.convert_objects_to_xml_text(text, doc)
+        return text
+
+
 def _pdf_to_text(action_result, pdf_file):
     try:
         pagenums = set()
@@ -282,6 +408,7 @@ def _pdf_to_text(action_result, pdf_file):
         converter.close()
         text = output.getvalue()
         output.close()
+        text += PDFXrefObjectsToXML.pdf_xref_objects_to_xml(pdf_file)
         return phantom.APP_SUCCESS, text
     except pdfminer.pdfdocument.PDFPasswordIncorrect:
         return action_result.set_status(phantom.APP_ERROR, "Failed to parse pdf: The provided pdf is encrypted"), None

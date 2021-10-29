@@ -17,8 +17,8 @@
     "min_phantom_version": "4.10.0.40961",
     "python_version": "3",
     "latest_tested_versions": [
-        "Module pdfminer.six-20201018.tar.gz, October 21 2021",
-        "Module pdfminer-20140328-py2-none-any.whl, October 21 2021"
+        "Module pdfminer.six-20201018.tar.gz, October 25 2021",
+        "Module pdfminer-20140328-py2-none-any.whl, October 25 2021"
     ],
     "app_wizard_version": "1.0.0",
     "pip_dependencies": {
@@ -139,7 +139,7 @@
                     "order": 11
                 },
                 "artifact_tags": {
-                    "description": "Tags to add to artifacts (comma separated)",
+                    "description": "Tags to add to artifacts (comma separated). Tag should only contain characters A-Z, a-z, 0-9, _, and -. Blank spaces will be ignored",
                     "data_type": "string",
                     "order": 12
                 },
@@ -227,7 +227,7 @@
                     "data_path": "action_result.parameter.artifact_tags",
                     "data_type": "string",
                     "example_values": [
-                        "tag 1, tag 2"
+                        "tag1, tag2"
                     ]
                 },
                 {
