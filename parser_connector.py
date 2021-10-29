@@ -255,7 +255,7 @@ class ParserConnector(BaseConnector):
             list: tags
         """
         tags = artifact_tags.split(",")
-        tags = [tag.strip() for tag in tags]
+        tags = [tag.strip().replace(" ", "") for tag in tags]
         return list(filter(None, tags))
 
     def _handle_parse_file(self, param):  # noqa
