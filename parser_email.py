@@ -1290,4 +1290,4 @@ def _create_dict_hash(input_dict):
         _base_connector.debug_print('Handled exception in _create_dict_hash', err)
         return None
 
-    return hashlib.md5(UnicodeDammit(input_dict_str).unicode_markup.encode('utf-8')).hexdigest()
+    return hashlib.sha256(UnicodeDammit(input_dict_str).unicode_markup.encode('utf-8')).hexdigest()
