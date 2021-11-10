@@ -121,7 +121,7 @@ def _get_error_message_from_exception(e):
     return error_code, error_msg
 
 
-class TextIOCParser():
+class TextIOCParser:
     BASE_PATTERNS = [
         {
             'cef': 'sourceAddress',  # Name of CEF field

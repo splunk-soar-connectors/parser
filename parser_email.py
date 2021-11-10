@@ -121,7 +121,7 @@ def _get_string(input_str, charset):
     except Exception:
         try:
             input_str = str(make_header(decode_header(input_str)))
-        except:
+        except Exception:
             input_str = _decode_uni_string(input_str, input_str)
         _base_connector.debug_print(
             "Error occurred while converting to string with specific encoding {}".format(input_str))
@@ -305,7 +305,7 @@ def _handle_body(body, parsed_mail, body_index, email_id):
     try:
         with open(local_file_path, 'r') as f:
             file_data = f.read()
-    except:
+    except Exception:
         with open(local_file_path, 'rb') as f:
             file_data = f.read()
         _debug_print("Reading file data using binary mode")
@@ -468,9 +468,9 @@ def _decode_uni_string(input_str, def_name):
             continue
 
         try:
-            if (encoding != 'utf-8'):
+            if encoding != 'utf-8':
                 value = str(value, encoding)
-        except:
+        except Exception:
             pass
 
         try:
@@ -501,10 +501,10 @@ def _get_container_name(parsed_mail, email_id):
 
     # if no subject then return the default
     if not subject:
-       return def_cont_name
+        return def_cont_name
     try:
         return str(make_header(decode_header(subject)))
-    except:
+    except Exception:
         return _decode_uni_string(subject, def_cont_name)
 
 
@@ -521,12 +521,12 @@ def _handle_if_body(content_disp, content_id, content_type, part, bodies, file_p
             process_as_body = True
 
     if not process_as_body:
-        return (phantom.APP_SUCCESS, True)
+        return phantom.APP_SUCCESS, True
 
     part_payload = part.get_payload(decode=True)
 
     if not part_payload:
-        return (phantom.APP_SUCCESS, False)
+        return phantom.APP_SUCCESS, False
 
     charset = part.get_content_charset()
 
@@ -536,7 +536,7 @@ def _handle_if_body(content_disp, content_id, content_type, part, bodies, file_p
     bodies.append({'file_path': file_path, 'charset': charset, 'content-type': content_type})
 
     _add_body_in_email_headers(parsed_mail, file_path, charset, content_type)
-    return (phantom.APP_SUCCESS, False)
+    return phantom.APP_SUCCESS, False
 
 
 def _handle_part(part, part_index, tmp_dir, extract_attach, parsed_mail):
@@ -566,7 +566,7 @@ def _handle_part(part, part_index, tmp_dir, extract_attach, parsed_mail):
     else:
         try:
             file_name = str(make_header(decode_header(file_name)))
-        except:
+        except Exception:
             file_name = _decode_uni_string(file_name, file_name)
     # Remove any chars that we don't want in the name
     try:
@@ -595,7 +595,7 @@ def _handle_part(part, part_index, tmp_dir, extract_attach, parsed_mail):
 def _handle_attachment(part, file_name, file_path, parsed_mail):
 
     files = parsed_mail[PROC_EMAIL_JSON_FILES]
-    if (not _config[PROC_EMAIL_JSON_EXTRACT_ATTACHMENTS]):
+    if not _config[PROC_EMAIL_JSON_EXTRACT_ATTACHMENTS]:
         return phantom.APP_SUCCESS
 
     part_base64_encoded = part.get_payload()
@@ -603,20 +603,20 @@ def _handle_attachment(part, file_name, file_path, parsed_mail):
     headers = _get_email_headers_from_part(part)
     attach_meta_info = dict()
 
-    if (headers):
+    if headers:
         attach_meta_info = {'headers': dict(headers)}
 
     for curr_attach in _attachments:
 
-        if (curr_attach.get('should_ignore', False)):
+        if curr_attach.get('should_ignore', False):
             continue
 
         try:
             attach_content = curr_attach['content']
-        except:
+        except Exception:
             continue
 
-        if (attach_content.strip().replace('\r\n', '') == part_base64_encoded.strip().replace('\r\n', '')):
+        if attach_content.strip().replace('\r\n', '') == part_base64_encoded.strip().replace('\r\n', ''):
             attach_meta_info.update(dict(curr_attach))
             del attach_meta_info['content']
             curr_attach['should_ignore'] = True
@@ -706,7 +706,7 @@ def _get_email_headers_from_part(part, charset=None):
     if subject:
         try:
             headers['decodedSubject'] = str(make_header(decode_header(subject)))
-        except:
+        except Exception:
             headers['decodedSubject'] = _decode_uni_string(subject, subject)
     return dict(headers)
 
@@ -773,7 +773,7 @@ def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type):
     try:
         with open(file_path, 'r') as f:
             body_content = f.read()
-    except:
+    except Exception:
         with open(file_path, 'rb') as f:
             body_content = f.read()
         _debug_print("Reading file data using binary mode")
@@ -786,7 +786,7 @@ def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type):
         except Exception as e:
             try:
                 email_headers[-1]['cef']['bodyText'] = str(make_header(decode_header(body_content)))
-            except:
+            except Exception:
                 email_headers[-1]['cef']['bodyText'] = _decode_uni_string(body_content, body_content)
             error_code, error_msg = _get_error_message_from_exception(e)
             err = "Error occurred while parsing text/plain body content for creating artifacts"
@@ -799,7 +799,7 @@ def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type):
         except Exception as e:
             try:
                 email_headers[-1]['cef']['bodyHtml'] = str(make_header(decode_header(body_content)))
-            except:
+            except Exception:
                 email_headers[-1]['cef']['bodyHtml'] = _decode_uni_string(body_content, body_content)
             error_code, error_msg = _get_error_message_from_exception(e)
             err = "Error occurred while parsing text/html body content for creating artifacts"
@@ -814,7 +814,7 @@ def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type):
         except Exception as e:
             try:
                 email_headers[-1]['cef']['bodyOther'][content_type] = str(make_header(decode_header(body_content)))
-            except:
+            except Exception:
                 email_headers[-1]['cef']['bodyOther'][content_type] = _decode_uni_string(body_content, body_content)
             error_code, error_msg = _get_error_message_from_exception(e)
             err = "Error occurred while parsing bodyOther content for creating artifacts"
@@ -967,13 +967,13 @@ def _set_email_id_contains(email_id):
     _base_connector.debug_print(email_id)
 
     if _base_connector.get_app_id() == EXCHANGE_ONPREM_APP_ID and email_id.endswith('='):
-        _email_id_contains = [ "exchange email id" ]
+        _email_id_contains = ["exchange email id"]
     elif _base_connector.get_app_id() == OFFICE365_APP_ID and email_id.endswith('='):
-        _email_id_contains = [ "office 365 email id" ]
+        _email_id_contains = ["office 365 email id"]
     elif _base_connector.get_app_id() == IMAP_APP_ID and email_id.isdigit():
-        _email_id_contains = [ "imap email id" ]
+        _email_id_contains = ["imap email id"]
     elif ph_utils.is_sha1(email_id):
-        _email_id_contains = [ "vault id" ]
+        _email_id_contains = ["vault id"]
     _base_connector.debug_print(_email_id_contains)
 
     return
@@ -1012,11 +1012,11 @@ def _int_process_email(rfc822_email, email_id, start_time_epoch):
         err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
         message = "ErrorExp in _handle_mail_object: {0}".format(err)
         _debug_print(message)
-        return (phantom.APP_ERROR, message, [])
+        return phantom.APP_ERROR, message, []
 
     results = [{'container': _container, 'artifacts': _artifacts, 'files': _attachments, 'temp_directory': tmp_dir}]
 
-    return (ret_val, "Email Parsed", results)
+    return ret_val, "Email Parsed", results
 
 
 def process_email(base_connector, rfc822_email, email_id, config, label, container_id, epoch):
@@ -1024,7 +1024,7 @@ def process_email(base_connector, rfc822_email, email_id, config, label, contain
     try:
         _init()
     except Exception as e:
-        return (phantom.APP_ERROR, {'message': str(e), 'content_id': None})
+        return phantom.APP_ERROR, {'message': str(e), 'content_id': None}
 
     global _base_connector
     global _config
@@ -1044,7 +1044,7 @@ def process_email(base_connector, rfc822_email, email_id, config, label, contain
 
     if not ret_val:
         _del_tmp_dirs()
-        return (phantom.APP_ERROR, {'message': message, 'content_id': None})
+        return phantom.APP_ERROR, {'message': message, 'content_id': None}
 
     try:
         cid = _parse_results(results, label, container_id, _config[PROC_EMAIL_JSON_RUN_AUTOMATION])
@@ -1052,7 +1052,7 @@ def process_email(base_connector, rfc822_email, email_id, config, label, contain
         _del_tmp_dirs()
         raise
 
-    return (phantom.APP_SUCCESS, {'message': 'Email Processed', 'container_id': cid})
+    return phantom.APP_SUCCESS, {'message': 'Email Processed', 'container_id': cid}
 
 
 def _parse_results(results, label, update_container_id, run_automation=True):
@@ -1155,7 +1155,7 @@ def _add_vault_hashes_to_dictionary(cef_artifact, vault_id):
     vault_info = list(vault_info)
 
     if not vault_info:
-        return (phantom.APP_ERROR, "Vault ID not found")
+        return phantom.APP_ERROR, "Vault ID not found"
 
     # The return value is a list, each item represents an item in the vault
     # matching the vault id, the info that we are looking for (the hashes)
@@ -1163,7 +1163,7 @@ def _add_vault_hashes_to_dictionary(cef_artifact, vault_id):
     try:
         metadata = vault_info[0].get('metadata')
     except Exception:
-        return (phantom.APP_ERROR, "Failed to get vault item metadata")
+        return phantom.APP_ERROR, "Failed to get vault item metadata"
 
     try:
         cef_artifact['fileHashSha256'] = metadata['sha256']
@@ -1180,7 +1180,7 @@ def _add_vault_hashes_to_dictionary(cef_artifact, vault_id):
     except Exception:
         pass
 
-    return (phantom.APP_SUCCESS, "Mapped hash values")
+    return phantom.APP_SUCCESS, "Mapped hash values"
 
 
 def _handle_file(curr_file, vault_ids, container_id, artifact_id):
@@ -1206,16 +1206,17 @@ def _handle_file(curr_file, vault_ids, container_id, artifact_id):
     file_name = _decode_uni_string(file_name, file_name)
 
     try:
-       success, message, vault_id = ph_rules.vault_add(file_location=local_file_path, container=container_id, file_name=file_name, metadata=vault_attach_dict)
+        success, message, vault_id = ph_rules.vault_add(file_location=local_file_path, container=container_id,
+                                                        file_name=file_name, metadata=vault_attach_dict)
     except Exception as e:
         error_code, error_msg = _get_error_message_from_exception(e)
         err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
         _base_connector.debug_print(phantom.APP_ERR_FILE_ADD_TO_VAULT.format(err))
-        return (phantom.APP_ERROR, phantom.APP_ERROR)
+        return phantom.APP_ERROR, phantom.APP_ERROR
 
     if not success:
         _base_connector.debug_print("Failed to add file to Vault: {0}".format(json.dumps(message)))
-        return (phantom.APP_ERROR, phantom.APP_ERROR)
+        return phantom.APP_ERROR, phantom.APP_ERROR
 
     # add the vault id artifact to the container
     cef_artifact = {}
@@ -1224,14 +1225,14 @@ def _handle_file(curr_file, vault_ids, container_id, artifact_id):
 
     if vault_id:
         cef_artifact.update({'vaultId': vault_id,
-            'cs6': vault_id,
-            'cs6Label': 'Vault ID'})
+                             'cs6': vault_id,
+                             'cs6Label': 'Vault ID'})
 
         # now get the rest of the hashes and add them to the cef artifact
         _add_vault_hashes_to_dictionary(cef_artifact, vault_id)
 
     if not cef_artifact:
-        return (phantom.APP_SUCCESS, phantom.APP_ERROR)
+        return phantom.APP_SUCCESS, phantom.APP_ERROR
 
     artifact = {}
     artifact.update(_artifact_common)
@@ -1245,7 +1246,7 @@ def _handle_file(curr_file, vault_ids, container_id, artifact_id):
     ret_val, status_string, artifact_id = _base_connector.save_artifact(artifact)
     _base_connector.debug_print("save_artifact returns, value: {0}, reason: {1}, id: {2}".format(ret_val, status_string, artifact_id))
 
-    return (phantom.APP_SUCCESS, ret_val)
+    return phantom.APP_SUCCESS, ret_val
 
 
 def _set_sdi(default_id, input_dict):
