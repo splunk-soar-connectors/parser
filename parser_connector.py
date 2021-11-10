@@ -41,6 +41,9 @@ class ParserConnector(BaseConnector):
 
     def __init__(self):
         super(ParserConnector, self).__init__()
+        self._lock = None
+        self._done = False
+        self._python_version = int(sys.version_info[0])
 
     def initialize(self):
         self._lock = threading.Lock()
@@ -85,15 +88,15 @@ class ParserConnector(BaseConnector):
             mail = email.message_from_string(email_data)
         except Exception:
             return RetVal2(action_result.set_status(phantom.APP_ERROR,
-                                        "Unable to create email object from data. Does not seem to be valid email"),
-                                        None)
+                                                    "Unable to create email object from data. Does not seem to be valid email"),
+                           None)
 
         headers = mail.__dict__.get('_headers')
 
         if not headers:
             return RetVal2(action_result.set_status(phantom.APP_ERROR,
-                        "Could not extract header info from email object data. Does not seem to be valid email"),
-                         None)
+                                                    "Could not extract header info from email object data. Does not seem to be valid email"),
+                           None)
 
         ret_val = {}
         for header in headers:
@@ -130,13 +133,13 @@ class ParserConnector(BaseConnector):
         except Exception as e:
             error_text = self._get_error_message_from_exception(e)
             return RetVal3(action_result.set_status(phantom.APP_ERROR,
-                                                "Could not read file contents for vault item. {}".format(error_text)), None, None)
+                                                    "Could not read file contents for vault item. {}".format(error_text)),
+                           None, None)
 
         return RetVal3(phantom.APP_SUCCESS, email_data, email_id)
 
     def _get_file_info_from_vault(self, action_result, vault_id, file_type=None):
-        file_info = {}
-        file_info['id'] = vault_id
+        file_info = {'id': vault_id}
 
         # Check for file in vault
         try:
@@ -232,10 +235,7 @@ class ParserConnector(BaseConnector):
         return phantom.APP_SUCCESS
 
     def _save_to_container(self, action_result, artifacts, file_name, label, severity, max_artifacts=None, run_automation=True, artifact_tags_list=[]):
-        container = {}
-        container['name'] = "{0} Parse Results".format(file_name)
-        container['label'] = label
-        container['severity'] = severity
+        container = {'name': "{0} Parse Results".format(file_name), 'label': label, 'severity': severity}
 
         status, message, container_id = self.save_container(container)
         if phantom.is_fail(status):
