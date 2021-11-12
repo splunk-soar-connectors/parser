@@ -41,6 +41,9 @@ class ParserConnector(BaseConnector):
 
     def __init__(self):
         super(ParserConnector, self).__init__()
+        self._lock = None
+        self._done = False
+        self._python_version = int(sys.version_info[0])
 
     def initialize(self):
         self._lock = threading.Lock()
@@ -85,15 +88,15 @@ class ParserConnector(BaseConnector):
             mail = email.message_from_string(email_data)
         except Exception:
             return RetVal2(action_result.set_status(phantom.APP_ERROR,
-                                        "Unable to create email object from data. Does not seem to be valid email"),
-                                        None)
+                                                    "Unable to create email object from data. Does not seem to be valid email"),
+                           None)
 
         headers = mail.__dict__.get('_headers')
 
         if not headers:
             return RetVal2(action_result.set_status(phantom.APP_ERROR,
-                        "Could not extract header info from email object data. Does not seem to be valid email"),
-                         None)
+                                                    "Could not extract header info from email object data. Does not seem to be valid email"),
+                           None)
 
         ret_val = {}
         for header in headers:
@@ -130,13 +133,13 @@ class ParserConnector(BaseConnector):
         except Exception as e:
             error_text = self._get_error_message_from_exception(e)
             return RetVal3(action_result.set_status(phantom.APP_ERROR,
-                                                "Could not read file contents for vault item. {}".format(error_text)), None, None)
+                                                    "Could not read file contents for vault item. {}".format(error_text)),
+                           None, None)
 
         return RetVal3(phantom.APP_SUCCESS, email_data, email_id)
 
     def _get_file_info_from_vault(self, action_result, vault_id, file_type=None):
-        file_info = {}
-        file_info['id'] = vault_id
+        file_info = {'id': vault_id}
 
         # Check for file in vault
         try:
@@ -211,13 +214,14 @@ class ParserConnector(BaseConnector):
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
-    def _save_artifacts(self, action_result, artifacts, container_id, severity, max_artifacts=None, run_automation=True):
+    def _save_artifacts(self, action_result, artifacts, container_id, severity, max_artifacts=None, run_automation=True, tags=[]):
         if max_artifacts:
             artifacts = artifacts[:max_artifacts]
 
         for artifact in artifacts:
             artifact['container_id'] = container_id
             artifact['severity'] = severity
+            artifact['tags'] = tags
             if not run_automation:
                 artifact['run_automation'] = False
 
@@ -230,21 +234,29 @@ class ParserConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR, message)
         return phantom.APP_SUCCESS
 
-    def _save_to_container(self, action_result, artifacts, file_name, label, severity, max_artifacts=None, run_automation=True):
-        container = {}
-        container['name'] = "{0} Parse Results".format(file_name)
-        container['label'] = label
-        container['severity'] = severity
+    def _save_to_container(self, action_result, artifacts, file_name, label, severity, max_artifacts=None, run_automation=True, artifact_tags_list=[]):
+        container = {'name': "{0} Parse Results".format(file_name), 'label': label, 'severity': severity}
 
         status, message, container_id = self.save_container(container)
         if phantom.is_fail(status):
             return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
-        return RetVal(self._save_artifacts(action_result,
-                                        artifacts, container_id, severity, max_artifacts, run_automation), container_id)
+        return RetVal(self._save_artifacts(action_result, artifacts, container_id, severity, max_artifacts, run_automation, artifact_tags_list), container_id)
 
-    def _save_to_existing_container(self, action_result, artifacts,
-                                    container_id, severity, max_artifacts=None, run_automation=True):
-        return self._save_artifacts(action_result, artifacts, container_id, severity, max_artifacts, run_automation)
+    def _save_to_existing_container(self, action_result, artifacts, container_id, severity, max_artifacts=None, run_automation=True, artifact_tags_list=[]):
+        return self._save_artifacts(action_result, artifacts, container_id, severity, max_artifacts, run_automation, artifact_tags_list)
+
+    def get_artifact_tags_list(self, artifact_tags):
+        """
+        Get list of tags from comma separated tags string
+        Args:
+            artifact_tags: Comma separated string of tags
+
+        Returns:
+            list: tags
+        """
+        tags = artifact_tags.split(",")
+        tags = [tag.strip().replace(" ", "") for tag in tags]
+        return list(filter(None, tags))
 
     def _handle_parse_file(self, param):  # noqa
 
@@ -273,7 +285,11 @@ class ParserConnector(BaseConnector):
         is_structured = param.get('is_structured', False)
         run_automation = param.get('run_automation', True)
         parse_domains = param.get('parse_domains', True)
+        keep_raw = param.get('keep_raw', False)
         severity = param.get('severity', 'medium').lower()
+        artifact_tags = param.get('artifact_tags', "")
+
+        artifact_tags_list = self.get_artifact_tags_list(artifact_tags)
 
         # --- remap cef fields ---
         custom_remap_json = param.get("custom_remap_json", "{}")
@@ -294,11 +310,9 @@ class ParserConnector(BaseConnector):
                 "Either text can be parsed or a file from the vault can be parsed but both the 'text' and 'vault_id' parameters cannot be used simultaneously"
             )
         if text_val and file_type not in ['txt', 'csv', 'html']:
-            return action_result.set_status(phantom.APP_ERROR,
-                                        "When using text input, only csv, html, or txt file_type can be used")
+            return action_result.set_status(phantom.APP_ERROR, "When using text input, only csv, html, or txt file_type can be used")
         elif not(vault_id or text_val):
-            return action_result.set_status(phantom.APP_ERROR,
-                                        "Either 'text' or 'vault_id' must be submitted, both cannot be blank")
+            return action_result.set_status(phantom.APP_ERROR, "Either 'text' or 'vault_id' must be submitted, both cannot be blank")
 
         if vault_id:
             if file_type == 'email':
@@ -312,7 +326,7 @@ class ParserConnector(BaseConnector):
             if is_structured:
                 ret_val, response = parser_methods.parse_structured_file(action_result, file_info)
             else:
-                ret_val, response = parser_methods.parse_file(self, action_result, file_info, parse_domains)
+                ret_val, response = parser_methods.parse_file(self, action_result, file_info, parse_domains, keep_raw)
 
             if phantom.is_fail(ret_val):
                 return ret_val
@@ -363,16 +377,11 @@ class ParserConnector(BaseConnector):
                 return action_result.set_status(phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
 
         if not container_id:
-            ret_val, container_id = self._save_to_container(action_result,
-                                                        artifacts,
-                                                        file_info['name'],
-                                                        label, severity,
-                                                        max_artifacts, run_automation)
+            ret_val, container_id = self._save_to_container(action_result, artifacts, file_info['name'], label, severity, max_artifacts, run_automation, artifact_tags_list)
             if phantom.is_fail(ret_val):
                 return ret_val
         else:
-            ret_val = self._save_to_existing_container(action_result,
-                                                    artifacts, container_id, severity, max_artifacts, run_automation)
+            ret_val = self._save_to_existing_container(action_result, artifacts, container_id, severity, max_artifacts, run_automation, artifact_tags_list)
             if phantom.is_fail(ret_val):
                 return ret_val
 

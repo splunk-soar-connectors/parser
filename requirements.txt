@@ -1,1 +1,1 @@
-pdfminer
+pdfminer==20191125
