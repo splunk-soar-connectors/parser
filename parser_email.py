@@ -900,11 +900,12 @@ def _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)
         _parse_email_headers(parsed_mail, mail, add_email_id=email_id)
         # parsed_mail[PROC_EMAIL_JSON_EMAIL_HEADERS].append(mail.items())
         file_path = "{0}/part_1.text".format(tmp_dir)
+        file_name = mail.get_filename() or mail.get('Subject', 'part_1.txt')
 
         with open(file_path, 'wb') as f:
             f.write(mail.get_payload(decode=True))
         bodies.append({'file_path': file_path, 'charset': mail.get_content_charset(), 'content-type': 'text/plain'})
-        _add_body_in_email_headers(parsed_mail, file_path, mail.get_content_charset(), 'text/plain')
+        _add_body_in_email_headers(parsed_mail, file_path, mail.get_content_charset(), 'text/plain', file_name)
 
     # get the container name
     container_name = _get_container_name(parsed_mail, email_id)
