@@ -857,6 +857,9 @@ def _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)
     extract_attach = _config[PROC_EMAIL_JSON_EXTRACT_ATTACHMENTS]
 
     charset = mail.get_content_charset()
+    _debug_print('mail file_name: {}'.format(mail.get_filename()))
+    _debug_print('mail charset: {}'.format(charset))
+    _debug_print('mail subject: {}'.format(mail.get('Subject', '')))
 
     if charset is None:
         charset = 'utf8'
