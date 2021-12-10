@@ -516,8 +516,7 @@ def _get_container_name(parsed_mail, email_id):
         return _decode_uni_string(subject, def_cont_name)
 
 
-def _handle_if_body(content_disp, content_id, content_type, part, bodies, file_path, parsed_mail):
-
+def _handle_if_body(content_disp, content_id, content_type, part, bodies, file_path, parsed_mail, file_name):
     process_as_body = False
 
     # if content disposition is None then assume that it is
@@ -543,7 +542,7 @@ def _handle_if_body(content_disp, content_id, content_type, part, bodies, file_p
 
     bodies.append({'file_path': file_path, 'charset': charset, 'content-type': content_type})
 
-    _add_body_in_email_headers(parsed_mail, file_path, charset, content_type)
+    _add_body_in_email_headers(parsed_mail, file_path, charset, content_type, file_name)
     return phantom.APP_SUCCESS, False
 
 
@@ -586,7 +585,8 @@ def _handle_part(part, part_index, tmp_dir, extract_attach, parsed_mail):
     _debug_print("file_path: {0}".format(file_path))
 
     # is the part representing the body of the email
-    status, process_further = _handle_if_body(content_disp, content_id, content_type, part, bodies, file_path, parsed_mail)
+    status, process_further = _handle_if_body(
+        content_disp, content_id, content_type, part, bodies, file_path, parsed_mail, file_name)
 
     if not process_further:
         return phantom.APP_SUCCESS
@@ -773,7 +773,7 @@ def _parse_email_headers(parsed_mail, part, charset=None, add_email_id=None):
     return len(email_header_artifacts)
 
 
-def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type):
+def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type, file_name):
 
     # Add email_bodies to email_headers
     email_headers = parsed_mail[PROC_EMAIL_JSON_EMAIL_HEADERS]
@@ -786,7 +786,23 @@ def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type):
             body_content = f.read()
         _debug_print("Reading file data using binary mode")
     # Add body to the last added Email artifact
-    body_content = UnicodeDammit(body_content).unicode_markup.encode('utf-8').decode('utf-8')
+    body_content = UnicodeDammit(body_content).unicode_markup.encode('utf-8').decode('utf-8').replace('\u0000', '')
+
+    _debug_print('Processing email part with content_type: %s' % content_type)
+
+    IMAGE_CONTENT_TYPES = ['image/jpeg', 'image/png']
+
+    if any(t for t in IMAGE_CONTENT_TYPES if t in content_type):
+        _debug_print('Saving image {} to files'.format(file_name))
+
+        try:
+            file_hash = hashlib.sha1(body_content.encode()).hexdigest()
+            files = parsed_mail[PROC_EMAIL_JSON_FILES]
+            files.append({'file_name': file_name, 'file_path': file_path, 'file_hash': file_hash})
+        except Exception as e:
+            _debug_print("Error occurred while adding file {} to files. Error Details: {}".format(file_name, e))
+        return
+
     if 'text/plain' in content_type:
         try:
             email_headers[-1]['cef']['bodyText'] = _get_string(
