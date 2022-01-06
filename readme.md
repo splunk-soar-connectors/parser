@@ -12,7 +12,7 @@
 [comment]: # "either express or implied. See the License for the specific language governing permissions"
 [comment]: # "and limitations under the License."
 [comment]: # ""
-This app will ignore the HTTP_PROXY and HTTPS_PROXY environment variables.  
+This app will ignore the HTTP_PROXY and HTTPS_PROXY environment variables.
 
 ## Defusedxml
 

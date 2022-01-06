@@ -15,21 +15,21 @@
 #
 #
 # Phantom App imports
-import phantom.app as phantom
-from phantom.base_connector import BaseConnector
-from phantom.action_result import ActionResult
-import phantom.rules as ph_rules
-
-import sys
-import json
+import calendar
 import email
+import json
+import sys
 import threading
+import time
+
+import phantom.app as phantom
+import phantom.rules as ph_rules
+from bs4 import UnicodeDammit
+from phantom.action_result import ActionResult
+from phantom.base_connector import BaseConnector
+
 import parser_email
 import parser_methods
-import time
-import calendar
-from bs4 import UnicodeDammit
-
 from parser_const import *
 
 
@@ -168,14 +168,20 @@ class ParserConnector(BaseConnector):
                     file_meta = meta
                     break
             else:
-                self.debug_print("Unable to find a file for the vault ID: '{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
+                self.debug_print(
+                    "Unable to find a file for the vault ID: "
+                    "'{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
         except Exception:
-            self.debug_print("Error occurred while finding a file for the vault ID: '{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
+            self.debug_print(
+                "Error occurred while finding a file for the vault ID: "
+                "'{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
             self.debug_print("Considering the first file as the required file")
             file_meta = vault_meta[0]
 
         if not file_meta:
-            self.debug_print("Unable to find a file for the vault ID: '{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
+            self.debug_print(
+                "Unable to find a file for the vault ID: "
+                "'{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
             self.debug_print("Considering the first file as the required file")
             file_meta = vault_meta[0]
 
@@ -244,16 +250,22 @@ class ParserConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR, message)
         return phantom.APP_SUCCESS
 
-    def _save_to_container(self, action_result, artifacts, file_name, label, severity, max_artifacts=None, run_automation=True, artifact_tags_list=[]):
+    def _save_to_container(self, action_result, artifacts, file_name, label,
+                           severity, max_artifacts=None, run_automation=True, artifact_tags_list=[]):
         container = {'name': "{0} Parse Results".format(file_name), 'label': label, 'severity': severity}
 
         status, message, container_id = self.save_container(container)
         if phantom.is_fail(status):
             return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
-        return RetVal(self._save_artifacts(action_result, artifacts, container_id, severity, max_artifacts, run_automation, artifact_tags_list), container_id)
+        return RetVal(
+            self._save_artifacts(
+                action_result, artifacts, container_id, severity, max_artifacts, run_automation, artifact_tags_list),
+            container_id)
 
-    def _save_to_existing_container(self, action_result, artifacts, container_id, severity, max_artifacts=None, run_automation=True, artifact_tags_list=[]):
-        return self._save_artifacts(action_result, artifacts, container_id, severity, max_artifacts, run_automation, artifact_tags_list)
+    def _save_to_existing_container(self, action_result, artifacts, container_id,
+                                    severity, max_artifacts=None, run_automation=True, artifact_tags_list=[]):
+        return self._save_artifacts(action_result, artifacts, container_id, severity, max_artifacts, run_automation,
+                                    artifact_tags_list)
 
     def get_artifact_tags_list(self, artifact_tags):
         """
@@ -309,7 +321,9 @@ class ParserConnector(BaseConnector):
                 custom_mapping = json.loads(custom_remap_json)
             except Exception as e:
                 error_text = self._get_error_message_from_exception(e)
-                return action_result.set_status(phantom.APP_ERROR, "Error: custom_remap_json parameter is not valid json. {}".format(error_text))
+                return action_result.set_status(
+                    phantom.APP_ERROR,
+                    "Error: custom_remap_json parameter is not valid json. {}".format(error_text))
         if not isinstance(custom_mapping, dict):
             return action_result.set_status(phantom.APP_ERROR, "Error: custom_remap_json parameter is not a dictionary")
         # ---
@@ -317,12 +331,16 @@ class ParserConnector(BaseConnector):
         if vault_id and text_val:
             return action_result.set_status(
                 phantom.APP_ERROR,
-                "Either text can be parsed or a file from the vault can be parsed but both the 'text' and 'vault_id' parameters cannot be used simultaneously"
+                "Either text can be parsed or "
+                "a file from the vault can be parsed but both the 'text' and "
+                "'vault_id' parameters cannot be used simultaneously"
             )
         if text_val and file_type not in ['txt', 'csv', 'html']:
-            return action_result.set_status(phantom.APP_ERROR, "When using text input, only csv, html, or txt file_type can be used")
+            return action_result.set_status(
+                phantom.APP_ERROR, "When using text input, only csv, html, or txt file_type can be used")
         elif not(vault_id or text_val):
-            return action_result.set_status(phantom.APP_ERROR, "Either 'text' or 'vault_id' must be submitted, both cannot be blank")
+            return action_result.set_status(
+                phantom.APP_ERROR, "Either 'text' or 'vault_id' must be submitted, both cannot be blank")
 
         if vault_id:
             if file_type == 'email':
@@ -382,16 +400,21 @@ class ParserConnector(BaseConnector):
             try:
                 max_artifacts = int(max_artifacts)
                 if max_artifacts <= 0:
-                    return action_result.set_status(phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
+                    return action_result.set_status(
+                        phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
             except Exception:
-                return action_result.set_status(phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
+                return action_result.set_status(
+                    phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
 
         if not container_id:
-            ret_val, container_id = self._save_to_container(action_result, artifacts, file_info['name'], label, severity, max_artifacts, run_automation, artifact_tags_list)
+            ret_val, container_id = self._save_to_container(
+                action_result, artifacts, file_info['name'],
+                label, severity, max_artifacts, run_automation, artifact_tags_list)
             if phantom.is_fail(ret_val):
                 return ret_val
         else:
-            ret_val = self._save_to_existing_container(action_result, artifacts, container_id, severity, max_artifacts, run_automation, artifact_tags_list)
+            ret_val = self._save_to_existing_container(
+                action_result, artifacts, container_id, severity, max_artifacts, run_automation, artifact_tags_list)
             if phantom.is_fail(ret_val):
                 return ret_val
 
@@ -423,8 +446,9 @@ class ParserConnector(BaseConnector):
 
 if __name__ == '__main__':
 
-    import pudb
     import argparse
+
+    import pudb
     import requests
     pudb.set_trace()
 
