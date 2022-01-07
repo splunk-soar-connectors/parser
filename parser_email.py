@@ -1175,9 +1175,9 @@ def _parse_results(results, label, update_container_id, run_automation=True):
             else:
                 successful_artifacts.append(artifact)
 
-        _debug_print('paul: # of artifacts to process: {}'.format(len(artifacts)))
-        _debug_print('paul: # of successful processed artifacts: {}'.format(len(successful_artifacts)))
-        _debug_print('paul: failed artifacts: {}'.format(failed_artifacts))
+        _debug_print('# of artifacts to process: {}'.format(len(artifacts)))
+        _debug_print('# of successful processed artifacts: {}'.format(len(successful_artifacts)))
+        _debug_print('failed artifacts: {}'.format(failed_artifacts))
 
     # delete any temp directories that were created by the email parsing function
     [shutil.rmtree(x['temp_directory'], ignore_errors=True) for x in results if x.get('temp_directory')]
