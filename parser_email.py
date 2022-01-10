@@ -123,9 +123,10 @@ IPV6_REGEX += r'(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|'
 IPV6_REGEX += r'(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)'
 IPV6_REGEX += r'(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*'
 
+DEFAULT_SINGLE_PART_EML_FILE_NAME = 'part_1.text'
+
 
 def _get_string(input_str, charset):
-
     global _python_version
 
     try:
@@ -910,8 +911,8 @@ def _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)
     else:
         _parse_email_headers(parsed_mail, mail, add_email_id=email_id)
         # parsed_mail[PROC_EMAIL_JSON_EMAIL_HEADERS].append(mail.items())
-        file_path = "{0}/part_1.text".format(tmp_dir)
-        file_name = mail.get_filename() or mail.get('Subject', 'part_1.txt')
+        file_path = "{0}/{1}".format(tmp_dir, DEFAULT_SINGLE_PART_EML_FILE_NAME)
+        file_name = mail.get_filename() or mail.get('Subject', DEFAULT_SINGLE_PART_EML_FILE_NAME)
 
         with open(file_path, 'wb') as f:
             f.write(mail.get_payload(decode=True))
