@@ -226,7 +226,10 @@ class ParserConnector(BaseConnector):
 
         container_id = response['container_id']
 
-        action_result.update_summary({"container_id": container_id})
+        summary = action_result.update_summary({})
+        summary['artifacts_found'] = len(response['artifacts'])
+        summary['artifacts_ingested'] = len(response['successful_artifacts'])
+        summary['container_id'] = container_id
 
         return action_result.set_status(phantom.APP_SUCCESS)
 

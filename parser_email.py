@@ -1063,12 +1063,20 @@ def process_email(base_connector, rfc822_email, email_id, config, label, contain
         return phantom.APP_ERROR, {'message': message, 'content_id': None}
 
     try:
-        cid = _parse_results(results, label, container_id, _config[PROC_EMAIL_JSON_RUN_AUTOMATION])
+        cid, artifacts, successful_artifacts = _parse_results(
+            results, label, container_id, _config[PROC_EMAIL_JSON_RUN_AUTOMATION])
     except Exception:
         _del_tmp_dirs()
         raise
 
-    return phantom.APP_SUCCESS, {'message': 'Email Processed', 'container_id': cid}
+    return (
+        phantom.APP_SUCCESS,
+        {
+            'message': 'Email Processed',
+            'container_id': cid,
+            'artifacts': artifacts,
+            'successful_artifacts': successful_artifacts,
+        })
 
 
 def _parse_results(results, label, update_container_id, run_automation=True):
@@ -1131,6 +1139,9 @@ def _parse_results(results, label, update_container_id, run_automation=True):
                 vault_artifacts_added += 1
 
         artifacts = result.get('artifacts')
+        successful_artifacts = []
+        failed_artifacts = []
+
         if not artifacts:
             continue
 
@@ -1157,12 +1168,21 @@ def _parse_results(results, label, update_container_id, run_automation=True):
                     artifact['run_automation'] = True
 
             ret_val, status_string, artifact_id = _base_connector.save_artifact(artifact)
-            _base_connector.debug_print("save_artifact returns, value: {0}, reason: {1}, id: {2}".format(ret_val, status_string, artifact_id))
+            _base_connector.debug_print(
+                "save_artifact returns, value: {0}, reason: {1}, id: {2}".format(ret_val, status_string, artifact_id))
+            if phantom.is_fail(ret_val):
+                failed_artifacts.append(artifact)
+            else:
+                successful_artifacts.append(artifact)
+
+        _debug_print('# of artifacts to process: {}'.format(len(artifacts)))
+        _debug_print('# of successful processed artifacts: {}'.format(len(successful_artifacts)))
+        _debug_print('failed artifacts: {}'.format(failed_artifacts))
 
     # delete any temp directories that were created by the email parsing function
     [shutil.rmtree(x['temp_directory'], ignore_errors=True) for x in results if x.get('temp_directory')]
 
-    return container_id
+    return container_id, artifacts, successful_artifacts
 
 
 def _add_vault_hashes_to_dictionary(cef_artifact, vault_id):
