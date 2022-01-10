@@ -783,6 +783,9 @@ def _parse_email_headers(parsed_mail, part, charset=None, add_email_id=None):
 
 
 def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type, file_name):
+    if not content_type:
+        _debug_print('Unable to update email headers with the invalid content_type {}'.format(content_type))
+        return
 
     # Add email_bodies to email_headers
     email_headers = parsed_mail[PROC_EMAIL_JSON_EMAIL_HEADERS]
@@ -797,7 +800,7 @@ def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type, fi
     # Add body to the last added Email artifact
     body_content = UnicodeDammit(body_content).unicode_markup.encode('utf-8').decode('utf-8').replace('\u0000', '')
 
-    _debug_print('Processing email part with content_type: %s' % content_type)
+    _debug_print('Processing email part with content_type: {}'.format(content_type))
 
     IMAGE_CONTENT_TYPES = ['image/jpeg', 'image/png']
 
