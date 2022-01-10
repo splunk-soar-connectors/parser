@@ -165,3 +165,5 @@ CEF2CIM_MAPPING.update(_splunk_app_cef)
 CEF2CIM_MAPPING.update(_CEF2CIM_override)
 
 PARSER_ERR_FILE_NOT_IN_VAULT = "Could not find specified vault ID in vault"
+
+DEFAULT_REQUEST_TIMEOUT = 30  # in seconds
