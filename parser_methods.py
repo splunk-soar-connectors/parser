@@ -14,6 +14,7 @@
 # and limitations under the License.
 import csv
 import re
+import struct
 import sys
 import zipfile
 
@@ -404,7 +405,7 @@ class PDFXrefObjectsToXML:
         text = ''
         with open(pdf_file, 'rb') as fp:
             parser = PDFParser(fp)
-            doc = PDFDocument(parser, None)
+            doc = PDFDocument(parser)
             text = cls.convert_objects_to_xml_text(text, doc)
         return text
 
@@ -429,7 +430,12 @@ def _pdf_to_text(action_result, pdf_file):
         text += PDFXrefObjectsToXML.pdf_xref_objects_to_xml(pdf_file)
         return phantom.APP_SUCCESS, text
     except pdfminer.pdfdocument.PDFPasswordIncorrect:
+        return action_result.set_status(phantom.APP_ERROR, "Failed to parse pdf: The provided pdf is password protected"), None
+    except pdfminer.pdfdocument.PDFEncryptionError:
         return action_result.set_status(phantom.APP_ERROR, "Failed to parse pdf: The provided pdf is encrypted"), None
+    except struct.error:
+        return action_result.set_status(phantom.APP_ERROR,
+                                    "Failed to parse pdf: The provided pdf is password protected or is in different format"), None
     except Exception as e:
         error_code, error_msg = _get_error_message_from_exception(e)
         err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)

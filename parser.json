@@ -9,7 +9,7 @@
     "product_name": "Parser",
     "product_version_regex": ".*",
     "publisher": "Splunk",
-    "app_version": "2.5.2",
+    "app_version": "2.5.3",
     "fips_compliant": true,
     "license": "Copyright (c) 2017-2022 Splunk Inc.",
     "utctime_updated": "2022-01-11T00:29:46.000000Z",
@@ -18,23 +18,10 @@
     "min_phantom_version": "5.0.0",
     "python_version": "3",
     "latest_tested_versions": [
-        "Module pdfminer.six-20201018.tar.gz, October 25 2021",
-        "Module pdfminer-20140328-py2-none-any.whl, October 25 2021"
+        "Module pdfminer.six-20211012, January 12 2022"
     ],
     "app_wizard_version": "1.0.0",
     "pip_dependencies": {
-        "wheel": [
-            {
-                "module": "defusedxml",
-                "input_file": "wheels/defusedxml-0.7.1-py2.py3-none-any.whl"
-            },
-            {
-                "module": "pdfminer",
-                "input_file": "wheels/pdfminer-20140328-py2-none-any.whl"
-            }
-        ]
-    },
-    "pip3_dependencies": {
         "wheel": [
             {
                 "module": "beautifulsoup4",
@@ -50,7 +37,7 @@
             },
             {
                 "module": "defusedxml",
-                "input_file": "wheels/shared/defusedxml-0.7.1-py2.py3-none-any.whl"
+                "input_file": "wheels/defusedxml-0.7.1-py2.py3-none-any.whl"
             },
             {
                 "module": "idna",
@@ -58,7 +45,7 @@
             },
             {
                 "module": "pdfminer",
-                "input_file": "wheels/py3/pdfminer-20191125-py3-none-any.whl"
+                "input_file": "wheels/pdfminer.six-20211012-py3-none-any.whl"
             },
             {
                 "module": "pycryptodome",
