@@ -1151,20 +1151,28 @@ def _parse_results(results, label, update_container_id, run_automation=True):
             container_id = update_container_id
 
         files = result.get('files')
+        _debug_print('# of files to process: {}'.format(len(files)))
 
-        vault_ids = list()
-
-        vault_artifacts_added = 0
-
-        for curr_file in files:
-            ret_val, added_to_vault = _handle_file(curr_file, vault_ids, container_id, vault_artifacts_added)
-
-            if added_to_vault:
-                vault_artifacts_added += 1
-
-        artifacts = result.get('artifacts')
         successful_artifacts = []
         failed_artifacts = []
+        vault_artifacts = []
+        vault_ids = list()
+
+        # Generate and save Vault artifacts from files
+        vault_artifacts_added = 0
+        for curr_file in files:
+            # Generate a new Vault artifact for the file and save it to a container
+            ret_val, added_to_vault, vault_artifact = _handle_file(
+                curr_file, vault_ids, container_id, vault_artifacts_added)
+
+            vault_artifacts.append(vault_artifact)
+            if added_to_vault:
+                vault_artifacts_added += 1
+                successful_artifacts.append(vault_artifact)
+            else:
+                failed_artifacts.append(vault_artifact)
+
+        artifacts = result.get('artifacts')
 
         if not artifacts:
             continue
@@ -1199,7 +1207,9 @@ def _parse_results(results, label, update_container_id, run_automation=True):
             else:
                 successful_artifacts.append(artifact)
 
-        _debug_print('# of artifacts to process: {}'.format(len(artifacts)))
+        # artifacts should represent all found artifacts from the email
+        artifacts.extend(vault_artifacts)
+        _debug_print('total # of artifacts to process: {}'.format(len(artifacts)))
         _debug_print('# of successful processed artifacts: {}'.format(len(successful_artifacts)))
         _debug_print('failed artifacts: {}'.format(failed_artifacts))
 
@@ -1304,9 +1314,10 @@ def _handle_file(curr_file, vault_ids, container_id, artifact_id):
     _set_sdi(artifact_id, artifact)
 
     ret_val, status_string, artifact_id = _base_connector.save_artifact(artifact)
-    _base_connector.debug_print("save_artifact returns, value: {0}, reason: {1}, id: {2}".format(ret_val, status_string, artifact_id))
+    _base_connector.debug_print(
+        "save_artifact returns, value: {0}, reason: {1}, id: {2}".format(ret_val, status_string, artifact_id))
 
-    return phantom.APP_SUCCESS, ret_val
+    return phantom.APP_SUCCESS, ret_val, artifact
 
 
 def _set_sdi(default_id, input_dict):
