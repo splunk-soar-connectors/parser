@@ -1347,8 +1347,21 @@ def _set_sdi(default_id, input_dict):
     return phantom.APP_SUCCESS
 
 
-def _create_dict_hash(input_dict):
+def _get_fips_enabled(self):
+    try:
+        from phantom_common.install_info import is_fips_enabled
+    except ImportError:
+        return False
 
+    fips_enabled = is_fips_enabled()
+    if fips_enabled:
+        _debug_print('FIPS is enabled')
+    else:
+        _debug_print('FIPS is not enabled')
+    return fips_enabled
+
+
+def _create_dict_hash(input_dict):
     input_dict_str = None
 
     if not input_dict:
@@ -1362,4 +1375,13 @@ def _create_dict_hash(input_dict):
         _base_connector.debug_print('Handled exception in _create_dict_hash', err)
         return None
 
-    return hashlib.sha256(UnicodeDammit(input_dict_str).unicode_markup.encode('utf-8')).hexdigest()
+    fips_enabled = _get_fips_enabled()
+
+    # if fips is not enabled, we should continue with our existing md5 usage for generating hashes
+    # to not impact existing customers
+    dict_hash = UnicodeDammit(input_dict_str).unicode_markup.encode()
+    if not fips_enabled:
+        dict_hash = hashlib.md5(dict_hash)
+    else:
+        dict_hash = hashlib.sha256(dict_hash)
+    return dict_hash.hexdigest()
