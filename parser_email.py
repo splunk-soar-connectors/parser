@@ -1347,7 +1347,7 @@ def _set_sdi(default_id, input_dict):
     return phantom.APP_SUCCESS
 
 
-def _get_fips_enabled(self):
+def _get_fips_enabled():
     try:
         from phantom_common.install_info import is_fips_enabled
     except ImportError:
