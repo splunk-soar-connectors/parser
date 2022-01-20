@@ -1,6 +1,6 @@
 beautifulsoup4==4.9.1
 defusedxml==0.7.1
-pdfminer==20191125
+pdfminer.six==20211012
 python-magic==0.4.18
 requests==2.25.0
 simplejson==3.17.2
