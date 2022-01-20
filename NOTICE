@@ -16,10 +16,12 @@ License: Python 2.0
 Copyright 2002-2008 ,
 Copyright 2013-2017 by Christian Heimes <christian@python.org>
 
-Library: pdfminer
-Version: 20211012
-License: MIT
-Copyright 2004-2019 Yusuke Shinyama
+Library: pycparser
+Version: 2.21
+License: BSD 3
+Copyright 2008-2020 Eli Bendersky
+Copyright parser in Python
+Copyright parser in Python
 
 Library: python-magic
 Version: 0.4.18
