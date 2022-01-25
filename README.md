@@ -2,7 +2,7 @@
 # Parser
 
 Publisher: Splunk  
-Connector Version: 2\.5\.5  
+Connector Version: 2\.5\.6  
 Product Vendor: Splunk  
 Product Name: Parser  
 Product Version Supported (regex): "\.\*"  
