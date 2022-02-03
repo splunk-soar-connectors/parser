@@ -15,7 +15,7 @@
     "utctime_updated": "2022-01-28T19:01:47.000000Z",
     "package_name": "phantom_parser",
     "main_module": "parser_connector.py",
-    "min_phantom_version": "5.0.0",
+    "min_phantom_version": "5.1.0",
     "python_version": "3",
     "latest_tested_versions": [
         "Module pdfminer.six-20211012, January 12 2022"
