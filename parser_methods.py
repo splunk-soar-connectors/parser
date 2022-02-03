@@ -94,6 +94,10 @@ def _is_ip(input_ip):
     return False
 
 
+def _is_url(input_url):
+    return bool(re.match(URI_REGEX, input_url))
+
+
 def is_ipv6(input_ip):
     return bool(re.match(IPV6_REGEX, input_ip))
 
@@ -158,7 +162,8 @@ class TextIOCParser:
             'cef': 'requestURL',
             'pattern': URI_REGEX,
             'name': 'URL Artifact',
-            'clean': _clean_url     # Additional cleaning of data from regex (Should return a string)
+            'clean': _clean_url,    # Additional cleaning of data from regex (Should return a string)
+            'validator': _is_url
         },
         {
             'cef': 'fileHash',
@@ -304,7 +309,7 @@ class PDFXrefObjectsToXML:
         buf = StringIO()
         for byte in data:
             if byte < 32 or 127 <= byte or byte in ESCAPE:
-                buf.write(f'&#{byte};')
+                buf.write('&#{};'.format(byte))
             else:
                 buf.write(chr(byte))
         return buf.getvalue()

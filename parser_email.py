@@ -429,6 +429,7 @@ def _create_artifacts(parsed_mail):
 
     artifact_id += added_artifacts
 
+    urls = [url for url in urls if bool(re.match(URI_REGEX, url))]
     added_artifacts = _add_artifacts('requestURL', urls, 'URL Artifact', artifact_id, _artifacts)
     artifact_id += added_artifacts
 
