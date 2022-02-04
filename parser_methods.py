@@ -17,6 +17,7 @@ import re
 import struct
 import sys
 import zipfile
+from html import unescape
 
 import pdfminer
 from bs4 import BeautifulSoup, UnicodeDammit
@@ -512,10 +513,15 @@ def _html_to_text(action_result, html_file, text_val=None):
             fp.close()
         else:
             html_text = text_val
+
+        # To unescape html escaped body
+        html_text = unescape(html_text)
+
         soup = BeautifulSoup(html_text, 'html.parser')
         read_text = soup.findAll(text=True)
-        links = [tag.get('href') for tag in soup.findAll('a', href=True)]
-        text = ' '.join(read_text + links)
+        links = [tag.get('href') for tag in soup.findAll(href=True)]
+        srcs = [tag.get('src') for tag in soup.findAll(src=True)]
+        text = ' '.join(read_text + links + srcs)
         return phantom.APP_SUCCESS, text
     except Exception as e:
         error_code, error_msg = _get_error_message_from_exception(e)

@@ -24,6 +24,7 @@ import sys
 import tempfile
 from collections import OrderedDict
 from email.header import decode_header, make_header
+from html import unescape
 
 import magic
 import phantom.app as phantom
@@ -247,20 +248,36 @@ def _extract_urls_domains(file_data, urls, domains):
         return
 
     uris = []
-    # get all tags that have hrefs
+    # get all tags that have hrefs and srcs
     links = soup.find_all(href=True)
-    if links:
-        # it's html, so get all the urls
-        uris = [x['href'] for x in links if (not x['href'].startswith('mailto:'))]
-        # work on the text part of the link, they might be http links different from the href
-        # and were either missed by the uri_regexc while parsing text or there was no text counterpart
-        # in the email
-        uri_text = [_clean_url(x.get_text()) for x in links]
+    srcs = soup.find_all(src=True)
+
+    if links or srcs:
+        uri_text = []
+        if links:
+            for x in links:
+                # work on the text part of the link, they might be http links different from the href
+                # and were either missed by the uri_regexc while parsing text or there was no text counterpart
+                # in the email
+                uri_text.append(_clean_url(x.get_text()))
+                # it's html, so get all the urls
+                if not x['href'].startswith('mailto:'):
+                    uris.append(x['href'])
+
+        if srcs:
+            for x in srcs:
+                uri_text.append(_clean_url(x.get_text()))
+                # it's html, so get all the urls
+                uris.append(x['src'])
+
         if uri_text:
             uri_text = [x for x in uri_text if x.startswith('http')]
             if uri_text:
                 uris.extend(uri_text)
     else:
+        # To unescape html escaped body
+        file_data = unescape(file_data)
+
         # Parse it as a text file
         uris = re.findall(uri_regexc, file_data)
         if uris:
