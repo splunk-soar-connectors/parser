@@ -1,1 +1,7 @@
 **Unreleased**
+* Fixed bugs related to password protected pdf files [PAPP-21533][PAPP-23418]
+* Fixed bug related to parsing emails [PAPP-21815]
+* Added feature to include artifact info in summary for extract_ioc on emails [PAPP-23448]
+* Marked the app as FIPS Compliant and added backward compatibility for it [PAPP-23675]
+* Enabled extracting base64 images from emails to Vault artifacts [PAPP-22927]
+* Added support for Python 3.9
