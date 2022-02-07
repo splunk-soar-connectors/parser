@@ -1,25 +1,35 @@
 # File: parser_connector.py
-# Copyright (c) 2017-2021 Splunk Inc.
 #
-# SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
-# without a valid written license from Splunk Inc. is PROHIBITED.
-
+# Copyright (c) 2017-2022 Splunk Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software distributed under
+# the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the License for the specific language governing permissions
+# and limitations under the License.
+#
+#
 # Phantom App imports
-import phantom.app as phantom
-from phantom.base_connector import BaseConnector
-from phantom.action_result import ActionResult
-import phantom.rules as ph_rules
-
-import sys
-import json
+import calendar
 import email
+import json
+import sys
 import threading
+import time
+
+import phantom.app as phantom
+import phantom.rules as ph_rules
+from bs4 import UnicodeDammit
+from phantom.action_result import ActionResult
+from phantom.base_connector import BaseConnector
+
 import parser_email
 import parser_methods
-import time
-import calendar
-from bs4 import UnicodeDammit
-
 from parser_const import *
 
 
@@ -158,14 +168,20 @@ class ParserConnector(BaseConnector):
                     file_meta = meta
                     break
             else:
-                self.debug_print("Unable to find a file for the vault ID: '{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
+                self.debug_print(
+                    "Unable to find a file for the vault ID: "
+                    "'{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
         except Exception:
-            self.debug_print("Error occurred while finding a file for the vault ID: '{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
+            self.debug_print(
+                "Error occurred while finding a file for the vault ID: "
+                "'{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
             self.debug_print("Considering the first file as the required file")
             file_meta = vault_meta[0]
 
         if not file_meta:
-            self.debug_print("Unable to find a file for the vault ID: '{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
+            self.debug_print(
+                "Unable to find a file for the vault ID: "
+                "'{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
             self.debug_print("Considering the first file as the required file")
             file_meta = vault_meta[0]
 
@@ -210,7 +226,10 @@ class ParserConnector(BaseConnector):
 
         container_id = response['container_id']
 
-        action_result.update_summary({"container_id": container_id})
+        summary = action_result.update_summary({})
+        summary['artifacts_found'] = len(response['artifacts'])
+        summary['artifacts_ingested'] = len(response['successful_artifacts'])
+        summary['container_id'] = container_id
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
@@ -234,16 +253,22 @@ class ParserConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR, message)
         return phantom.APP_SUCCESS
 
-    def _save_to_container(self, action_result, artifacts, file_name, label, severity, max_artifacts=None, run_automation=True, artifact_tags_list=[]):
+    def _save_to_container(self, action_result, artifacts, file_name, label,
+                           severity, max_artifacts=None, run_automation=True, artifact_tags_list=[]):
         container = {'name': "{0} Parse Results".format(file_name), 'label': label, 'severity': severity}
 
         status, message, container_id = self.save_container(container)
         if phantom.is_fail(status):
             return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
-        return RetVal(self._save_artifacts(action_result, artifacts, container_id, severity, max_artifacts, run_automation, artifact_tags_list), container_id)
+        return RetVal(
+            self._save_artifacts(
+                action_result, artifacts, container_id, severity, max_artifacts, run_automation, artifact_tags_list),
+            container_id)
 
-    def _save_to_existing_container(self, action_result, artifacts, container_id, severity, max_artifacts=None, run_automation=True, artifact_tags_list=[]):
-        return self._save_artifacts(action_result, artifacts, container_id, severity, max_artifacts, run_automation, artifact_tags_list)
+    def _save_to_existing_container(self, action_result, artifacts, container_id,
+                                    severity, max_artifacts=None, run_automation=True, artifact_tags_list=[]):
+        return self._save_artifacts(action_result, artifacts, container_id, severity, max_artifacts, run_automation,
+                                    artifact_tags_list)
 
     def get_artifact_tags_list(self, artifact_tags):
         """
@@ -299,7 +324,9 @@ class ParserConnector(BaseConnector):
                 custom_mapping = json.loads(custom_remap_json)
             except Exception as e:
                 error_text = self._get_error_message_from_exception(e)
-                return action_result.set_status(phantom.APP_ERROR, "Error: custom_remap_json parameter is not valid json. {}".format(error_text))
+                return action_result.set_status(
+                    phantom.APP_ERROR,
+                    "Error: custom_remap_json parameter is not valid json. {}".format(error_text))
         if not isinstance(custom_mapping, dict):
             return action_result.set_status(phantom.APP_ERROR, "Error: custom_remap_json parameter is not a dictionary")
         # ---
@@ -307,12 +334,16 @@ class ParserConnector(BaseConnector):
         if vault_id and text_val:
             return action_result.set_status(
                 phantom.APP_ERROR,
-                "Either text can be parsed or a file from the vault can be parsed but both the 'text' and 'vault_id' parameters cannot be used simultaneously"
+                "Either text can be parsed or "
+                "a file from the vault can be parsed but both the 'text' and "
+                "'vault_id' parameters cannot be used simultaneously"
             )
         if text_val and file_type not in ['txt', 'csv', 'html']:
-            return action_result.set_status(phantom.APP_ERROR, "When using text input, only csv, html, or txt file_type can be used")
+            return action_result.set_status(
+                phantom.APP_ERROR, "When using text input, only csv, html, or txt file_type can be used")
         elif not(vault_id or text_val):
-            return action_result.set_status(phantom.APP_ERROR, "Either 'text' or 'vault_id' must be submitted, both cannot be blank")
+            return action_result.set_status(
+                phantom.APP_ERROR, "Either 'text' or 'vault_id' must be submitted, both cannot be blank")
 
         if vault_id:
             if file_type == 'email':
@@ -372,16 +403,21 @@ class ParserConnector(BaseConnector):
             try:
                 max_artifacts = int(max_artifacts)
                 if max_artifacts <= 0:
-                    return action_result.set_status(phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
+                    return action_result.set_status(
+                        phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
             except Exception:
-                return action_result.set_status(phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
+                return action_result.set_status(
+                    phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
 
         if not container_id:
-            ret_val, container_id = self._save_to_container(action_result, artifacts, file_info['name'], label, severity, max_artifacts, run_automation, artifact_tags_list)
+            ret_val, container_id = self._save_to_container(
+                action_result, artifacts, file_info['name'],
+                label, severity, max_artifacts, run_automation, artifact_tags_list)
             if phantom.is_fail(ret_val):
                 return ret_val
         else:
-            ret_val = self._save_to_existing_container(action_result, artifacts, container_id, severity, max_artifacts, run_automation, artifact_tags_list)
+            ret_val = self._save_to_existing_container(
+                action_result, artifacts, container_id, severity, max_artifacts, run_automation, artifact_tags_list)
             if phantom.is_fail(ret_val):
                 return ret_val
 
@@ -413,8 +449,9 @@ class ParserConnector(BaseConnector):
 
 if __name__ == '__main__':
 
-    import pudb
     import argparse
+
+    import pudb
     import requests
     pudb.set_trace()
 
@@ -423,30 +460,33 @@ if __name__ == '__main__':
     argparser.add_argument('input_test_json', help='Input Test JSON file')
     argparser.add_argument('-u', '--username', help='username', required=False)
     argparser.add_argument('-p', '--password', help='password', required=False)
+    argparser.add_argument('-v', '--verify', action='store_true', help='verify', required=False, default=False)
 
     args = argparser.parse_args()
     session_id = None
+
+    verify = args.verify
 
     if args.username and args.password:
         login_url = BaseConnector._get_phantom_base_url() + "login"
         try:
             print("Accessing the Login page")
-            r = requests.get(login_url, verify=False)
+            r = requests.get(login_url, verify=verify, timeout=DEFAULT_REQUEST_TIMEOUT)
             csrftoken = r.cookies['csrftoken']
             data = {'username': args.username, 'password': args.password, 'csrfmiddlewaretoken': csrftoken}
             headers = {'Cookie': 'csrftoken={0}'.format(csrftoken), 'Referer': login_url}
 
             print("Logging into Platform to get the session id")
-            r2 = requests.post(login_url, verify=False, data=data, headers=headers)
+            r2 = requests.post(login_url, verify=verify, data=data, headers=headers, timeout=DEFAULT_REQUEST_TIMEOUT)
             session_id = r2.cookies['sessionid']
 
         except Exception as e:
             print(("Unable to get session id from the platform. Error: {0}".format(str(e))))
-            exit(1)
+            sys.exit(1)
 
     if len(sys.argv) < 2:
         print("No test json specified as input")
-        exit(0)
+        sys.exit(0)
 
     with open(sys.argv[1]) as f:
         in_json = f.read()
@@ -462,4 +502,4 @@ if __name__ == '__main__':
         ret_val = connector._handle_action(json.dumps(in_json), None)
         print(json.dumps(json.loads(ret_val), indent=4))
 
-    exit(0)
+    sys.exit(0)

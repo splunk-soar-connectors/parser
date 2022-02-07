@@ -1,32 +1,38 @@
 # File: parser_email.py
-# Copyright (c) 2017-2021 Splunk Inc.
 #
-# SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
-# without a valid written license from Splunk Inc. is PROHIBITED.
-
-import re
-import os
-import sys
-import magic
+# Copyright (c) 2017-2022 Splunk Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software distributed under
+# the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the License for the specific language governing permissions
+# and limitations under the License.
 import email
-import socket
-import shutil
 import hashlib
-import tempfile
 import mimetypes
 import operator
-import simplejson as json
-from bs4 import BeautifulSoup, UnicodeDammit
+import os
+import re
+import shutil
+import socket
+import sys
+import tempfile
 from collections import OrderedDict
 from email.header import decode_header, make_header
-from requests.structures import CaseInsensitiveDict
 
-
+import magic
 import phantom.app as phantom
-from phantom.vault import Vault
-import phantom.utils as ph_utils
 import phantom.rules as ph_rules
-
+import phantom.utils as ph_utils
+import simplejson as json
+from bs4 import BeautifulSoup, UnicodeDammit
+from phantom.vault import Vault
+from requests.structures import CaseInsensitiveDict
 
 # Any globals added here, should be initialized in the init() function
 _base_connector = None
@@ -99,17 +105,28 @@ EMAIL_REGEX2 = r'".*"@[A-Z0-9.-]+\.[A-Z]{2,}\b'
 HASH_REGEX = r"\b[0-9a-fA-F]{32}\b|\b[0-9a-fA-F]{40}\b|\b[0-9a-fA-F]{64}\b"
 IP_REGEX = r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}'
 IPV6_REGEX = r'\s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|'
-IPV6_REGEX += r'(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))'
-IPV6_REGEX += r'|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|'
-IPV6_REGEX += r'(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|'
-IPV6_REGEX += r'(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|'
-IPV6_REGEX += r'(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|'
-IPV6_REGEX += r'(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|'
-IPV6_REGEX += r'(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*'
+IPV6_REGEX += r'(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)'
+IPV6_REGEX += r'(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))'
+IPV6_REGEX += r'|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})'
+IPV6_REGEX += r'|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|'
+IPV6_REGEX += r'(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})'
+IPV6_REGEX += r'|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|'
+IPV6_REGEX += r'(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})'
+IPV6_REGEX += r'|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)'
+IPV6_REGEX += r'(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|'
+IPV6_REGEX += r'(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})'
+IPV6_REGEX += r'|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)'
+IPV6_REGEX += r'(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|'
+IPV6_REGEX += r'(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})'
+IPV6_REGEX += r'|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)'
+IPV6_REGEX += r'(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|'
+IPV6_REGEX += r'(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)'
+IPV6_REGEX += r'(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*'
+
+DEFAULT_SINGLE_PART_EML_FILE_NAME = 'part_1.text'
 
 
 def _get_string(input_str, charset):
-
     global _python_version
 
     try:
@@ -508,8 +525,7 @@ def _get_container_name(parsed_mail, email_id):
         return _decode_uni_string(subject, def_cont_name)
 
 
-def _handle_if_body(content_disp, content_id, content_type, part, bodies, file_path, parsed_mail):
-
+def _handle_if_body(content_disp, content_id, content_type, part, bodies, file_path, parsed_mail, file_name):
     process_as_body = False
 
     # if content disposition is None then assume that it is
@@ -535,7 +551,7 @@ def _handle_if_body(content_disp, content_id, content_type, part, bodies, file_p
 
     bodies.append({'file_path': file_path, 'charset': charset, 'content-type': content_type})
 
-    _add_body_in_email_headers(parsed_mail, file_path, charset, content_type)
+    _add_body_in_email_headers(parsed_mail, file_path, charset, content_type, file_name)
     return phantom.APP_SUCCESS, False
 
 
@@ -578,7 +594,8 @@ def _handle_part(part, part_index, tmp_dir, extract_attach, parsed_mail):
     _debug_print("file_path: {0}".format(file_path))
 
     # is the part representing the body of the email
-    status, process_further = _handle_if_body(content_disp, content_id, content_type, part, bodies, file_path, parsed_mail)
+    status, process_further = _handle_if_body(
+        content_disp, content_id, content_type, part, bodies, file_path, parsed_mail, file_name)
 
     if not process_further:
         return phantom.APP_SUCCESS
@@ -765,7 +782,10 @@ def _parse_email_headers(parsed_mail, part, charset=None, add_email_id=None):
     return len(email_header_artifacts)
 
 
-def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type):
+def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type, file_name):
+    if not content_type:
+        _debug_print('Unable to update email headers with the invalid content_type {}'.format(content_type))
+        return
 
     # Add email_bodies to email_headers
     email_headers = parsed_mail[PROC_EMAIL_JSON_EMAIL_HEADERS]
@@ -778,7 +798,23 @@ def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type):
             body_content = f.read()
         _debug_print("Reading file data using binary mode")
     # Add body to the last added Email artifact
-    body_content = UnicodeDammit(body_content).unicode_markup.encode('utf-8').decode('utf-8')
+    body_content = UnicodeDammit(body_content).unicode_markup.encode('utf-8').decode('utf-8').replace('\u0000', '')
+
+    _debug_print('Processing email part with content_type: {}'.format(content_type))
+
+    IMAGE_CONTENT_TYPES = ['image/jpeg', 'image/png']
+
+    if any(t for t in IMAGE_CONTENT_TYPES if t in content_type):
+        _debug_print('Saving image {} to files'.format(file_name))
+
+        try:
+            file_hash = hashlib.sha1(body_content.encode()).hexdigest()
+            files = parsed_mail[PROC_EMAIL_JSON_FILES]
+            files.append({'file_name': file_name, 'file_path': file_path, 'file_hash': file_hash})
+        except Exception as e:
+            _debug_print("Error occurred while adding file {} to files. Error Details: {}".format(file_name, e))
+        return
+
     if 'text/plain' in content_type:
         try:
             email_headers[-1]['cef']['bodyText'] = _get_string(
@@ -833,6 +869,9 @@ def _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)
     extract_attach = _config[PROC_EMAIL_JSON_EXTRACT_ATTACHMENTS]
 
     charset = mail.get_content_charset()
+    _debug_print('mail file_name: {}'.format(mail.get_filename()))
+    _debug_print('mail charset: {}'.format(charset))
+    _debug_print('mail subject: {}'.format(mail.get('Subject', '')))
 
     if charset is None:
         charset = 'utf8'
@@ -875,12 +914,13 @@ def _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)
     else:
         _parse_email_headers(parsed_mail, mail, add_email_id=email_id)
         # parsed_mail[PROC_EMAIL_JSON_EMAIL_HEADERS].append(mail.items())
-        file_path = "{0}/part_1.text".format(tmp_dir)
+        file_path = "{0}/{1}".format(tmp_dir, DEFAULT_SINGLE_PART_EML_FILE_NAME)
+        file_name = mail.get_filename() or mail.get('Subject', DEFAULT_SINGLE_PART_EML_FILE_NAME)
 
         with open(file_path, 'wb') as f:
             f.write(mail.get_payload(decode=True))
         bodies.append({'file_path': file_path, 'charset': mail.get_content_charset(), 'content-type': 'text/plain'})
-        _add_body_in_email_headers(parsed_mail, file_path, mail.get_content_charset(), 'text/plain')
+        _add_body_in_email_headers(parsed_mail, file_path, mail.get_content_charset(), 'text/plain', file_name)
 
     # get the container name
     container_name = _get_container_name(parsed_mail, email_id)
@@ -1047,12 +1087,20 @@ def process_email(base_connector, rfc822_email, email_id, config, label, contain
         return phantom.APP_ERROR, {'message': message, 'content_id': None}
 
     try:
-        cid = _parse_results(results, label, container_id, _config[PROC_EMAIL_JSON_RUN_AUTOMATION])
+        cid, artifacts, successful_artifacts = _parse_results(
+            results, label, container_id, _config[PROC_EMAIL_JSON_RUN_AUTOMATION])
     except Exception:
         _del_tmp_dirs()
         raise
 
-    return phantom.APP_SUCCESS, {'message': 'Email Processed', 'container_id': cid}
+    return (
+        phantom.APP_SUCCESS,
+        {
+            'message': 'Email Processed',
+            'container_id': cid,
+            'artifacts': artifacts,
+            'successful_artifacts': successful_artifacts,
+        })
 
 
 def _parse_results(results, label, update_container_id, run_automation=True):
@@ -1103,18 +1151,29 @@ def _parse_results(results, label, update_container_id, run_automation=True):
             container_id = update_container_id
 
         files = result.get('files')
+        _debug_print('# of files to process: {}'.format(len(files)))
 
+        successful_artifacts = []
+        failed_artifacts = []
+        vault_artifacts = []
         vault_ids = list()
 
+        # Generate and save Vault artifacts from files
         vault_artifacts_added = 0
-
         for curr_file in files:
-            ret_val, added_to_vault = _handle_file(curr_file, vault_ids, container_id, vault_artifacts_added)
+            # Generate a new Vault artifact for the file and save it to a container
+            ret_val, added_to_vault, vault_artifact = _handle_file(
+                curr_file, vault_ids, container_id, vault_artifacts_added)
 
+            vault_artifacts.append(vault_artifact)
             if added_to_vault:
                 vault_artifacts_added += 1
+                successful_artifacts.append(vault_artifact)
+            else:
+                failed_artifacts.append(vault_artifact)
 
         artifacts = result.get('artifacts')
+
         if not artifacts:
             continue
 
@@ -1141,12 +1200,23 @@ def _parse_results(results, label, update_container_id, run_automation=True):
                     artifact['run_automation'] = True
 
             ret_val, status_string, artifact_id = _base_connector.save_artifact(artifact)
-            _base_connector.debug_print("save_artifact returns, value: {0}, reason: {1}, id: {2}".format(ret_val, status_string, artifact_id))
+            _base_connector.debug_print(
+                "save_artifact returns, value: {0}, reason: {1}, id: {2}".format(ret_val, status_string, artifact_id))
+            if phantom.is_fail(ret_val):
+                failed_artifacts.append(artifact)
+            else:
+                successful_artifacts.append(artifact)
+
+        # artifacts should represent all found artifacts from the email
+        artifacts.extend(vault_artifacts)
+        _debug_print('total # of artifacts to process: {}'.format(len(artifacts)))
+        _debug_print('# of successful processed artifacts: {}'.format(len(successful_artifacts)))
+        _debug_print('failed artifacts: {}'.format(failed_artifacts))
 
     # delete any temp directories that were created by the email parsing function
     [shutil.rmtree(x['temp_directory'], ignore_errors=True) for x in results if x.get('temp_directory')]
 
-    return container_id
+    return container_id, artifacts, successful_artifacts
 
 
 def _add_vault_hashes_to_dictionary(cef_artifact, vault_id):
@@ -1244,9 +1314,10 @@ def _handle_file(curr_file, vault_ids, container_id, artifact_id):
     _set_sdi(artifact_id, artifact)
 
     ret_val, status_string, artifact_id = _base_connector.save_artifact(artifact)
-    _base_connector.debug_print("save_artifact returns, value: {0}, reason: {1}, id: {2}".format(ret_val, status_string, artifact_id))
+    _base_connector.debug_print(
+        "save_artifact returns, value: {0}, reason: {1}, id: {2}".format(ret_val, status_string, artifact_id))
 
-    return phantom.APP_SUCCESS, ret_val
+    return phantom.APP_SUCCESS, ret_val, artifact
 
 
 def _set_sdi(default_id, input_dict):
@@ -1276,8 +1347,21 @@ def _set_sdi(default_id, input_dict):
     return phantom.APP_SUCCESS
 
 
-def _create_dict_hash(input_dict):
+def _get_fips_enabled():
+    try:
+        from phantom_common.install_info import is_fips_enabled
+    except ImportError:
+        return False
 
+    fips_enabled = is_fips_enabled()
+    if fips_enabled:
+        _debug_print('FIPS is enabled')
+    else:
+        _debug_print('FIPS is not enabled')
+    return fips_enabled
+
+
+def _create_dict_hash(input_dict):
     input_dict_str = None
 
     if not input_dict:
@@ -1291,4 +1375,13 @@ def _create_dict_hash(input_dict):
         _base_connector.debug_print('Handled exception in _create_dict_hash', err)
         return None
 
-    return hashlib.sha256(UnicodeDammit(input_dict_str).unicode_markup.encode('utf-8')).hexdigest()
+    fips_enabled = _get_fips_enabled()
+
+    # if fips is not enabled, we should continue with our existing md5 usage for generating hashes
+    # to not impact existing customers
+    dict_hash = UnicodeDammit(input_dict_str).unicode_markup.encode()
+    if not fips_enabled:
+        dict_hash = hashlib.md5(dict_hash)
+    else:
+        dict_hash = hashlib.sha256(dict_hash)
+    return dict_hash.hexdigest()
