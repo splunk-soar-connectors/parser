@@ -457,8 +457,8 @@ def _docx_to_text(action_result, docx_file):
         fp.close()
         root = ElementTree.fromstring(txt)
         paragraphs = []
-        for paragraph in root.getiterator(PARA):
-            texts = [node.text for node in paragraph.getiterator(TEXT) if node.text]
+        for paragraph in root.iter(PARA):
+            texts = [node.text for node in paragraph.iter(TEXT) if node.text]
             if texts:
                 paragraphs.append(''.join(texts))
 
