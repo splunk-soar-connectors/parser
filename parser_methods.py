@@ -23,6 +23,7 @@ import pdfminer
 from bs4 import BeautifulSoup, UnicodeDammit
 from defusedxml import ElementTree
 from defusedxml.common import EntitiesForbidden
+from django.core.validators import URLValidator
 
 try:
     from cStringIO import StringIO
@@ -96,7 +97,12 @@ def _is_ip(input_ip):
 
 
 def _is_url(input_url):
-    return bool(re.match(URI_REGEX, input_url))
+    validate_url = URLValidator(schemes=['http', 'https'])
+    try:
+        validate_url(input_url)
+        return True
+    except Exception:
+        return False
 
 
 def is_ipv6(input_ip):

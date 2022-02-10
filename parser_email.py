@@ -32,6 +32,7 @@ import phantom.rules as ph_rules
 import phantom.utils as ph_utils
 import simplejson as json
 from bs4 import BeautifulSoup, UnicodeDammit
+from django.core.validators import URLValidator
 from phantom.vault import Vault
 from requests.structures import CaseInsensitiveDict
 
@@ -446,8 +447,15 @@ def _create_artifacts(parsed_mail):
 
     artifact_id += added_artifacts
 
-    urls = [url for url in urls if bool(re.match(URI_REGEX, url))]
-    added_artifacts = _add_artifacts('requestURL', urls, 'URL Artifact', artifact_id, _artifacts)
+    validate_url = URLValidator(schemes=['http', 'https'])
+    validated_urls = list()
+    for url in urls:
+        try:
+            validate_url(url)
+            validated_urls.append(url)
+        except Exception:
+            pass
+    added_artifacts = _add_artifacts('requestURL', validated_urls, 'URL Artifact', artifact_id, _artifacts)
     artifact_id += added_artifacts
 
     # domains = [x.decode('idna') for x in domains]
