@@ -1,2 +1,2 @@
 **Unreleased**
-Added validation for the extraction of URL artifacts [PAPP-23789]
+* Added validation for the extraction of URL artifacts [PAPP-23789]
