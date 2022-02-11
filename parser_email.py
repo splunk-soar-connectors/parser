@@ -284,12 +284,21 @@ def _extract_urls_domains(file_data, urls, domains):
         if uris:
             uris = [_clean_url(x) for x in uris]
 
+    validate_url = URLValidator(schemes=['http', 'https'])
+    validated_urls = list()
+    for url in uris:
+        try:
+            validate_url(url)
+            validated_urls.append(url)
+        except Exception:
+            pass
+
     if _config[PROC_EMAIL_JSON_EXTRACT_URLS]:
         # add the uris to the urls
-        urls |= set(uris)
+        urls |= set(validated_urls)
 
     if _config[PROC_EMAIL_JSON_EXTRACT_DOMAINS]:
-        for uri in uris:
+        for uri in validated_urls:
             domain = phantom.get_host_from_url(uri)
             if domain and not _is_ip(domain):
                 domains.add(domain)
@@ -444,24 +453,14 @@ def _create_artifacts(parsed_mail):
     artifact_id += added_artifacts
 
     added_artifacts = _add_artifacts('fileHash', hashes, 'Hash Artifact', artifact_id, _artifacts)
-
     artifact_id += added_artifacts
 
-    validate_url = URLValidator(schemes=['http', 'https'])
-    validated_urls = list()
-    for url in urls:
-        try:
-            validate_url(url)
-            validated_urls.append(url)
-        except Exception:
-            pass
-    added_artifacts = _add_artifacts('requestURL', validated_urls, 'URL Artifact', artifact_id, _artifacts)
+    added_artifacts = _add_artifacts('requestURL', urls, 'URL Artifact', artifact_id, _artifacts)
     artifact_id += added_artifacts
 
     # domains = [x.decode('idna') for x in domains]
 
     added_artifacts = _add_artifacts('destinationDnsDomain', domains, 'Domain Artifact', artifact_id, _artifacts)
-
     artifact_id += added_artifacts
 
     added_artifacts = _add_email_header_artifacts(email_headers, artifact_id, _artifacts)
