@@ -24,6 +24,7 @@ import sys
 import tempfile
 from collections import OrderedDict
 from email.header import decode_header, make_header
+from html import unescape
 
 import magic
 import phantom.app as phantom
@@ -31,6 +32,7 @@ import phantom.rules as ph_rules
 import phantom.utils as ph_utils
 import simplejson as json
 from bs4 import BeautifulSoup, UnicodeDammit
+from django.core.validators import URLValidator
 from phantom.vault import Vault
 from requests.structures import CaseInsensitiveDict
 
@@ -247,31 +249,56 @@ def _extract_urls_domains(file_data, urls, domains):
         return
 
     uris = []
-    # get all tags that have hrefs
+    # get all tags that have hrefs and srcs
     links = soup.find_all(href=True)
-    if links:
-        # it's html, so get all the urls
-        uris = [x['href'] for x in links if (not x['href'].startswith('mailto:'))]
-        # work on the text part of the link, they might be http links different from the href
-        # and were either missed by the uri_regexc while parsing text or there was no text counterpart
-        # in the email
-        uri_text = [_clean_url(x.get_text()) for x in links]
+    srcs = soup.find_all(src=True)
+
+    if links or srcs:
+        uri_text = []
+        if links:
+            for x in links:
+                # work on the text part of the link, they might be http links different from the href
+                # and were either missed by the uri_regexc while parsing text or there was no text counterpart
+                # in the email
+                uri_text.append(_clean_url(x.get_text()))
+                # it's html, so get all the urls
+                if not x['href'].startswith('mailto:'):
+                    uris.append(x['href'])
+
+        if srcs:
+            for x in srcs:
+                uri_text.append(_clean_url(x.get_text()))
+                # it's html, so get all the urls
+                uris.append(x['src'])
+
         if uri_text:
             uri_text = [x for x in uri_text if x.startswith('http')]
             if uri_text:
                 uris.extend(uri_text)
     else:
+        # To unescape html escaped body
+        file_data = unescape(file_data)
+
         # Parse it as a text file
         uris = re.findall(uri_regexc, file_data)
         if uris:
             uris = [_clean_url(x) for x in uris]
 
+    validate_url = URLValidator(schemes=['http', 'https'])
+    validated_urls = list()
+    for url in uris:
+        try:
+            validate_url(url)
+            validated_urls.append(url)
+        except Exception:
+            pass
+
     if _config[PROC_EMAIL_JSON_EXTRACT_URLS]:
         # add the uris to the urls
-        urls |= set(uris)
+        urls |= set(validated_urls)
 
     if _config[PROC_EMAIL_JSON_EXTRACT_DOMAINS]:
-        for uri in uris:
+        for uri in validated_urls:
             domain = phantom.get_host_from_url(uri)
             if domain and not _is_ip(domain):
                 domains.add(domain)
@@ -426,7 +453,6 @@ def _create_artifacts(parsed_mail):
     artifact_id += added_artifacts
 
     added_artifacts = _add_artifacts('fileHash', hashes, 'Hash Artifact', artifact_id, _artifacts)
-
     artifact_id += added_artifacts
 
     added_artifacts = _add_artifacts('requestURL', urls, 'URL Artifact', artifact_id, _artifacts)
@@ -435,7 +461,6 @@ def _create_artifacts(parsed_mail):
     # domains = [x.decode('idna') for x in domains]
 
     added_artifacts = _add_artifacts('destinationDnsDomain', domains, 'Domain Artifact', artifact_id, _artifacts)
-
     artifact_id += added_artifacts
 
     added_artifacts = _add_email_header_artifacts(email_headers, artifact_id, _artifacts)
