@@ -25,6 +25,7 @@ import tempfile
 from collections import OrderedDict
 from email.header import decode_header, make_header
 from html import unescape
+from urllib.parse import urlparse
 
 import magic
 import phantom.app as phantom
@@ -181,6 +182,18 @@ def _is_ip(input_ip):
 
     return False
 
+def _refang_url(url):
+    parsed = urlparse(url)
+    scheme = parsed.scheme
+
+    # Replace hxxp/hxxps with http/https
+    if scheme == "hxxp":
+        parsed = parsed._replace(scheme='http')
+    elif scheme == "hxxps":
+        parsed = parsed._replace(scheme='https')
+
+    refang_url = parsed.geturl()
+    return refang_url
 
 def _clean_url(url):
     url = url.strip('>),.]\r\n')
@@ -193,6 +206,7 @@ def _clean_url(url):
     if '>' in url:
         url = url[:url.find('>')]
 
+    url = _refang_url(url)
     return url
 
 
