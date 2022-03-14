@@ -109,6 +109,7 @@ def _is_url(input_url):
 def is_ipv6(input_ip):
     return bool(re.match(IPV6_REGEX, input_ip))
 
+
 def _refang_url(url):
     parsed = urlparse(url)
     scheme = parsed.scheme
@@ -121,6 +122,7 @@ def _refang_url(url):
 
     refang_url = parsed.geturl()
     return refang_url
+
 
 def _clean_url(url):
     url = url.strip('>),.]\r\n')
@@ -213,7 +215,7 @@ class TextIOCParser:
                 # If you really wanted to, you could also have subtypes in the subtypes
                 {
                     'cef': 'destinationDnsDomain',
-                    'nacme': 'Domain Artifact',
+                    'name': 'Domain Artifact',
                     'callback': _extract_domain_from_url   # Method to extract substring
                 }
             ]

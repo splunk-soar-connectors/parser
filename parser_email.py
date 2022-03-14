@@ -182,6 +182,7 @@ def _is_ip(input_ip):
 
     return False
 
+
 def _refang_url(url):
     parsed = urlparse(url)
     scheme = parsed.scheme
@@ -194,6 +195,7 @@ def _refang_url(url):
 
     refang_url = parsed.geturl()
     return refang_url
+
 
 def _clean_url(url):
     url = url.strip('>),.]\r\n')
