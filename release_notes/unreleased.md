@@ -1,1 +1,2 @@
 **Unreleased**
+* Extract defanged URL Code Implementation [PAPP-24845]
