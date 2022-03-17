@@ -25,6 +25,7 @@ import tempfile
 from collections import OrderedDict
 from email.header import decode_header, make_header
 from html import unescape
+from urllib.parse import urlparse
 
 import magic
 import phantom.app as phantom
@@ -101,7 +102,7 @@ PROC_EMAIL_JSON_MSG_ID = "message_id"
 PROC_EMAIL_JSON_EMAIL_HEADERS = "email_headers"
 PROC_EMAIL_CONTENT_TYPE_MESSAGE = "message/rfc822"
 
-URI_REGEX = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
+URI_REGEX = r"h(?:tt|xx)p[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
 EMAIL_REGEX = r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"
 EMAIL_REGEX2 = r'".*"@[A-Z0-9.-]+\.[A-Z]{2,}\b'
 HASH_REGEX = r"\b[0-9a-fA-F]{32}\b|\b[0-9a-fA-F]{40}\b|\b[0-9a-fA-F]{64}\b"
@@ -182,6 +183,20 @@ def _is_ip(input_ip):
     return False
 
 
+def _refang_url(url):
+    parsed = urlparse(url)
+    scheme = parsed.scheme
+
+    # Replace hxxp/hxxps with http/https
+    if scheme == "hxxp":
+        parsed = parsed._replace(scheme='http')
+    elif scheme == "hxxps":
+        parsed = parsed._replace(scheme='https')
+
+    refang_url = parsed.geturl()
+    return refang_url
+
+
 def _clean_url(url):
     url = url.strip('>),.]\r\n')
 
@@ -193,6 +208,7 @@ def _clean_url(url):
     if '>' in url:
         url = url[:url.find('>')]
 
+    url = _refang_url(url)
     return url
 
 
