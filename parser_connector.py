@@ -71,24 +71,25 @@ class ParserConnector(BaseConnector):
         :param e: Exception object
         :return: error message
         """
-        error_msg = "Unknown error occurred. Please check the asset configuration and|or action parameters."
-        error_code = "Error code unavailable"
-        error = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+        error_code = None
+        error_msg = ERR_MSG_UNAVAILABLE
+
         try:
-            if hasattr(e, 'args'):
+            if hasattr(e, "args"):
                 if len(e.args) > 1:
                     error_code = e.args[0]
                     error_msg = e.args[1]
                 elif len(e.args) == 1:
-                    error_code = "Error code unavailable"
                     error_msg = e.args[0]
-            else:
-                error_code = error_code
-                error_msg = error_msg
-        except Exception:
-            return error
+        except Exception as e:
+            self.debug_print("Error occurred while fetching exception information. Details: {}".format(str(e)))
 
-        return "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+        if not error_code:
+            error_text = "Error Message: {}".format(error_msg)
+        else:
+            error_text = "Error Code: {}. Error Message: {}".format(error_code, error_msg)
+
+        return error_text
 
     def finalize(self):
         return phantom.APP_SUCCESS
@@ -122,7 +123,7 @@ class ParserConnector(BaseConnector):
         try:
             _, _, vault_meta_info = ph_rules.vault_info(container_id=self.get_container_id(), vault_id=vault_id)
             if not vault_meta_info:
-                self.debug_print("Error while fetching meta information for vault ID: {}".format(vault_id))
+                self.error_print("Error while fetching meta information for vault ID: {}".format(vault_id))
                 return RetVal3(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None, None)
             vault_meta_info = list(vault_meta_info)
             file_path = vault_meta_info[0]['path']
@@ -155,7 +156,7 @@ class ParserConnector(BaseConnector):
         try:
             _, _, vault_meta = ph_rules.vault_info(container_id=self.get_container_id(), vault_id=vault_id)
             if not vault_meta:
-                self.debug_print("Error while fetching meta information for vault ID: {}".format(vault_id))
+                self.error_print("Error while fetching meta information for vault ID: {}".format(vault_id))
                 return RetVal(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None)
             vault_meta = list(vault_meta)
         except Exception:
@@ -168,18 +169,18 @@ class ParserConnector(BaseConnector):
                     file_meta = meta
                     break
             else:
-                self.debug_print(
+                self.error_printt(
                     "Unable to find a file for the vault ID: "
                     "'{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
         except Exception:
-            self.debug_print(
+            self.error_print(
                 "Error occurred while finding a file for the vault ID: "
                 "'{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
             self.debug_print("Considering the first file as the required file")
             file_meta = vault_meta[0]
 
         if not file_meta:
-            self.debug_print(
+            self.error_print(
                 "Unable to find a file for the vault ID: "
                 "'{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
             self.debug_print("Considering the first file as the required file")
