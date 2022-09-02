@@ -436,7 +436,7 @@ class ParserConnector(BaseConnector):
     def handle_action(self, param):
 
         ret_val = phantom.APP_SUCCESS
-
+        self.debug_print('tony')
         action_id = self.get_action_identifier()
 
         self.debug_print("action_id", self.get_action_identifier())
