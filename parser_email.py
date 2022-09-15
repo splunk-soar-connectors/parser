@@ -1243,6 +1243,7 @@ def _parse_results(results, label, update_container_id, run_automation=True):
 
         # artifacts should represent all found artifacts from the email
         artifacts.extend(vault_artifacts)
+        total_artifacts.extend(vault_artifacts)
         _debug_print('total # of artifacts to process: {}'.format(len(artifacts)))
         _debug_print('# of successful processed artifacts: {}'.format(len(successful_artifacts)))
         _debug_print('failed artifacts: {}'.format(failed_artifacts))
