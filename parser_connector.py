@@ -14,7 +14,6 @@
 # and limitations under the License.
 #
 #
-# Phantom App imports
 import calendar
 import email
 import json
@@ -169,8 +168,7 @@ class ParserConnector(BaseConnector):
                 self.debug_print(
                     "Unable to find a file for the vault ID: "
                     "'{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
-        except Exception as e:
-            self._dump_error_log(e)
+        except Exception:
             self.debug_print(
                 "Error occurred while finding a file for the vault ID: "
                 "'{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
@@ -346,6 +344,18 @@ class ParserConnector(BaseConnector):
             return action_result.set_status(
                 phantom.APP_ERROR, "Either 'text' or 'vault_id' must be submitted, both cannot be blank")
 
+        max_artifacts = param.get('max_artifacts')
+        if max_artifacts is not None:
+            try:
+                max_artifacts = int(max_artifacts)
+                if max_artifacts <= 0:
+                    return action_result.set_status(
+                        phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
+            except Exception as e:
+                self._dump_error_log(e)
+                return action_result.set_status(
+                    phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
+
         if vault_id:
             if file_type == 'email':
                 return self._handle_email(action_result, vault_id, label, container_id, run_automation, parse_domains)
@@ -398,18 +408,6 @@ class ParserConnector(BaseConnector):
             artifacts = _apply_remap(artifacts, custom_mapping)
             artifacts = _apply_remap(artifacts, CEF2CIM_MAPPING)
         # ---
-
-        max_artifacts = param.get('max_artifacts')
-        if max_artifacts is not None:
-            try:
-                max_artifacts = int(max_artifacts)
-                if max_artifacts <= 0:
-                    return action_result.set_status(
-                        phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
-            except Exception as e:
-                self._dump_error_log(e)
-                return action_result.set_status(
-                    phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
 
         if not container_id:
             ret_val, container_id = self._save_to_container(

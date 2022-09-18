@@ -1144,7 +1144,7 @@ def _parse_results(results, label, update_container_id, run_automation=True):
 
     param = _base_connector.get_current_param()
 
-    container_count = 1
+    container_count = PARSER_DEFAULT_CONTAINER_COUNT
     artifact_count = None
     if param:
         container_count = param.get(phantom.APP_JSON_CONTAINER_COUNT, container_count)
@@ -1211,7 +1211,7 @@ def _parse_results(results, label, update_container_id, run_automation=True):
         if not artifacts:
             continue
 
-        if not _base_connector.is_poll_now() and artifact_count:
+        if not _base_connector.is_poll_now():
             artifacts = artifacts[:artifact_count]
 
         len_artifacts = len(artifacts)
