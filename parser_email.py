@@ -1192,12 +1192,21 @@ def _parse_results(results, label, update_container_id, run_automation=True):
         vault_artifacts = []
         vault_ids = list()
 
+        artifacts = result.get('artifacts')
+        total_artifacts.extend(artifacts)
+        total_artifacts.extend(files)
+        vault_run_automation = False
         # Generate and save Vault artifacts from files
         vault_artifacts_added = 0
         for curr_file in files:
+            if run_automation:
+                # if it is the last artifact of the last container
+                if vault_artifacts_added + 1 == artifact_count:
+                    # mark it such that active playbooks get executed
+                    vault_run_automation = True
             # Generate a new Vault artifact for the file and save it to a container
             ret_val, added_to_vault, vault_artifact = _handle_file(
-                curr_file, vault_ids, container_id, vault_artifacts_added)
+                curr_file, vault_ids, container_id, vault_artifacts_added, run_automation=vault_run_automation)
 
             vault_artifacts.append(vault_artifact)
             if added_to_vault:
@@ -1205,14 +1214,16 @@ def _parse_results(results, label, update_container_id, run_automation=True):
                 successful_artifacts.append(vault_artifact)
             else:
                 failed_artifacts.append(vault_artifact)
+            if artifact_count and vault_artifacts_added >= artifact_count:
+                return container_id, total_artifacts, successful_artifacts
 
-        artifacts = result.get('artifacts')
-        total_artifacts = artifacts
         if not artifacts:
             continue
 
-        if not _base_connector.is_poll_now():
-            artifacts = artifacts[:artifact_count]
+        if artifact_count:
+            artifact_count -= vault_artifacts_added
+            if not _base_connector.is_poll_now():
+                artifacts = artifacts[:artifact_count]
 
         len_artifacts = len(artifacts)
         _base_connector.debug_print(len_artifacts)
@@ -1243,7 +1254,6 @@ def _parse_results(results, label, update_container_id, run_automation=True):
 
         # artifacts should represent all found artifacts from the email
         artifacts.extend(vault_artifacts)
-        total_artifacts.extend(vault_artifacts)
         _debug_print('total # of artifacts to process: {}'.format(len(artifacts)))
         _debug_print('# of successful processed artifacts: {}'.format(len(successful_artifacts)))
         _debug_print('failed artifacts: {}'.format(failed_artifacts))
@@ -1288,7 +1298,7 @@ def _add_vault_hashes_to_dictionary(cef_artifact, vault_id):
     return phantom.APP_SUCCESS, "Mapped hash values"
 
 
-def _handle_file(curr_file, vault_ids, container_id, artifact_id):
+def _handle_file(curr_file, vault_ids, container_id, artifact_id, run_automation=False):
 
     file_name = curr_file.get('file_name')
 
@@ -1344,6 +1354,8 @@ def _handle_file(curr_file, vault_ids, container_id, artifact_id):
     artifact['container_id'] = container_id
     artifact['name'] = 'Vault Artifact'
     artifact['cef'] = cef_artifact
+    if run_automation:
+        artifact['run_automation'] = True
     if contains:
         artifact['cef_types'] = {'vaultId': contains, 'cs6': contains}
     _set_sdi(artifact_id, artifact)
