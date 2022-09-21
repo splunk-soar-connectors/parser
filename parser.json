@@ -18,7 +18,7 @@
     "min_phantom_version": "5.3.3",
     "python_version": "3",
     "latest_tested_versions": [
-        "Module pdfminer.six-20211012, January 12 2022"
+        "Module pdfminer.six-20211012, September 20 2022"
     ],
     "app_wizard_version": "1.0.0",
     "pip_dependencies": {

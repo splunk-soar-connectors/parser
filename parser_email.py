@@ -1354,11 +1354,11 @@ def _handle_file(curr_file, vault_ids, container_id, artifact_id, run_automation
     artifact['container_id'] = container_id
     artifact['name'] = 'Vault Artifact'
     artifact['cef'] = cef_artifact
-    if run_automation:
-        artifact['run_automation'] = True
     if contains:
         artifact['cef_types'] = {'vaultId': contains, 'cs6': contains}
     _set_sdi(artifact_id, artifact)
+    if run_automation:
+        artifact['run_automation'] = True
 
     ret_val, status_string, artifact_id = _base_connector.save_artifact(artifact)
     _base_connector.debug_print(

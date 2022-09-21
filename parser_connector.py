@@ -351,6 +351,7 @@ class ParserConnector(BaseConnector):
                 if max_artifacts <= 0:
                     return action_result.set_status(
                         phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
+                param["max_artifacts"] = max_artifacts
             except Exception as e:
                 self._dump_error_log(e)
                 return action_result.set_status(
