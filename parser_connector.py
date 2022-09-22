@@ -78,7 +78,7 @@ class ParserConnector(BaseConnector):
                 elif len(e.args) == 1:
                     error_msg = e.args[0]
         except Exception as e:
-            self.debug_print("Error occurred while fetching exception information. Details: {}".format(str(e)))
+            self.error_print("Error occurred while fetching exception information. Details: {}".format(str(e)))
 
         if not error_code:
             error_text = "Error Message: {}".format(error_msg)
@@ -169,7 +169,7 @@ class ParserConnector(BaseConnector):
                     "Unable to find a file for the vault ID: "
                     "'{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
         except Exception:
-            self.debug_print(
+            self.error_print(
                 "Error occurred while finding a file for the vault ID: "
                 "'{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
             self.debug_print("Considering the first file as the required file")
@@ -238,8 +238,7 @@ class ParserConnector(BaseConnector):
             artifact['container_id'] = container_id
             artifact['severity'] = severity
             artifact['tags'] = tags
-            if not run_automation:
-                artifact['run_automation'] = False
+            artifact['run_automation'] = run_automation
 
         if artifacts:
             status, message, id_list = self.save_artifacts(artifacts)
