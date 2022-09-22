@@ -46,10 +46,9 @@ _attachments = list()
 _tmp_dirs = list()
 
 _container_common = {
-    "run_automation": False  # Don't run any playbooks, when this artifact is added
+    "run_automation": False  # Don't run any playbooks, when this container is added
 }
 
-_artifact_common = {}
 
 FILE_EXTENSIONS = {
     '.vmsn': ['os memory dump', 'vm snapshot file'],
@@ -415,7 +414,6 @@ def _add_artifacts(cef_key, input_set, artifact_name, start_index, artifacts):
             continue
 
         artifact = {}
-        artifact.update(_artifact_common)
         artifact['source_data_identifier'] = start_index + added_artifacts
         artifact['cef'] = {cef_key: entry}
         artifact['name'] = artifact_name
@@ -819,7 +817,6 @@ def _parse_email_headers(parsed_mail, part, charset=None, add_email_id=None):
             cef_types.update({'emailId': _email_id_contains})
 
     artifact = {}
-    artifact.update(_artifact_common)
     artifact['name'] = 'Email Artifact'
     artifact['cef'] = cef_artifact
     artifact['cef_types'] = cef_types
@@ -1335,7 +1332,6 @@ def _handle_file(curr_file, vault_ids, container_id, artifact_id, run_automation
         return phantom.APP_SUCCESS, phantom.APP_ERROR
 
     artifact = {}
-    artifact.update(_artifact_common)
     artifact['container_id'] = container_id
     artifact['name'] = 'Vault Artifact'
     artifact['cef'] = cef_artifact
