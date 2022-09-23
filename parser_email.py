@@ -1126,7 +1126,7 @@ def process_email(base_connector, rfc822_email, email_id, config, label, contain
 
     try:
         cid, artifacts, successful_artifacts = _parse_results(
-            results, label, container_id, _config[PROC_EMAIL_JSON_RUN_AUTOMATION])
+            results, label, container_id, _config[PROC_EMAIL_JSON_RUN_AUTOMATION], _config["tags"])
     except Exception:
         _del_tmp_dirs()
         raise
@@ -1141,7 +1141,7 @@ def process_email(base_connector, rfc822_email, email_id, config, label, contain
         })
 
 
-def _parse_results(results, label, update_container_id, run_automation=True):
+def _parse_results(results, label, update_container_id, run_automation=True, tags=[]):
 
     global _base_connector
 
@@ -1204,7 +1204,7 @@ def _parse_results(results, label, update_container_id, run_automation=True):
         for curr_file in files:
             # Generate a new Vault artifact for the file and save it to a container
             ret_val, vault_artifact = _handle_file(
-                curr_file, vault_ids, container_id, vault_artifacts_count, run_automation=run_automation)
+                curr_file, vault_ids, container_id, vault_artifacts_count, run_automation=run_automation, tags=tags)
             vault_artifacts_count += 1
             vault_artifacts.append(vault_artifact)
 
@@ -1224,6 +1224,7 @@ def _parse_results(results, label, update_container_id, run_automation=True):
             # add the container id to the artifact
             artifact['container_id'] = container_id
             _base_connector.debug_print(artifact['container_id'])
+            artifact['tags'] = tags
             _set_sdi((j + vault_artifacts_count), artifact)
             artifact['run_automation'] = run_automation
 
@@ -1280,7 +1281,7 @@ def _add_vault_hashes_to_dictionary(cef_artifact, vault_id):
     return phantom.APP_SUCCESS, "Mapped hash values"
 
 
-def _handle_file(curr_file, vault_ids, container_id, artifact_id, run_automation=False):
+def _handle_file(curr_file, vault_ids, container_id, artifact_id, run_automation=False, tags=[]):
 
     file_name = curr_file.get('file_name')
 
@@ -1335,6 +1336,7 @@ def _handle_file(curr_file, vault_ids, container_id, artifact_id, run_automation
     artifact['container_id'] = container_id
     artifact['name'] = 'Vault Artifact'
     artifact['cef'] = cef_artifact
+    artifact['tags'] = tags
     if contains:
         artifact['cef_types'] = {'vaultId': contains, 'cs6': contains}
     _set_sdi(artifact_id, artifact)

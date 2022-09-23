@@ -195,7 +195,7 @@ class ParserConnector(BaseConnector):
 
         return RetVal(phantom.APP_SUCCESS, file_info)
 
-    def _handle_email(self, action_result, vault_id, label, container_id, run_automation=True, parse_domains=True):
+    def _handle_email(self, action_result, vault_id, label, container_id, run_automation=True, parse_domains=True, artifact_tags_list=[]):
         ret_val, email_data, email_id = self._get_email_data_from_vault(vault_id, action_result)
 
         if phantom.is_fail(ret_val):
@@ -213,7 +213,8 @@ class ParserConnector(BaseConnector):
             "extract_hashes": True,
             "extract_ips": True,
             "extract_urls": True,
-            "run_automation": run_automation
+            "run_automation": run_automation,
+            "tags": artifact_tags_list
         }
 
         ret_val, response = parser_email.process_email(self, email_data, email_id, config, label, container_id, None)
@@ -358,7 +359,7 @@ class ParserConnector(BaseConnector):
 
         if vault_id:
             if file_type == 'email':
-                return self._handle_email(action_result, vault_id, label, container_id, run_automation, parse_domains)
+                return self._handle_email(action_result, vault_id, label, container_id, run_automation, parse_domains, artifact_tags_list)
 
             ret_val, file_info = self._get_file_info_from_vault(action_result, vault_id, file_type)
             if phantom.is_fail(ret_val):
