@@ -1,2 +1,1 @@
 **Unreleased**
-* Added 'max artifacts' parameter support for eml file type [PAPP-26710]
