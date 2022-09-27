@@ -14,7 +14,6 @@
 # and limitations under the License.
 #
 #
-# Phantom App imports
 import calendar
 import email
 import json
@@ -53,42 +52,40 @@ class ParserConnector(BaseConnector):
         super(ParserConnector, self).__init__()
         self._lock = None
         self._done = False
-        self._python_version = int(sys.version_info[0])
 
     def initialize(self):
         self._lock = threading.Lock()
         self._done = False
 
-        try:
-            self._python_version = int(sys.version_info[0])
-        except Exception:
-            return self.set_status(phantom.APP_ERROR, "Error occurred while getting the Phantom server's Python major version.")
-
         return phantom.APP_SUCCESS
+
+    def _dump_error_log(self, error, message="Exception occurred."):
+        self.error_print(message, dump_object=error)
 
     def _get_error_message_from_exception(self, e):
         """ This function is used to get appropriate error message from the exception.
         :param e: Exception object
         :return: error message
         """
-        error_msg = "Unknown error occurred. Please check the asset configuration and|or action parameters."
-        error_code = "Error code unavailable"
-        error = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+        error_code = None
+        error_msg = ERR_MSG_UNAVAILABLE
+
         try:
-            if hasattr(e, 'args'):
+            if hasattr(e, "args"):
                 if len(e.args) > 1:
                     error_code = e.args[0]
                     error_msg = e.args[1]
                 elif len(e.args) == 1:
-                    error_code = "Error code unavailable"
                     error_msg = e.args[0]
-            else:
-                error_code = error_code
-                error_msg = error_msg
-        except Exception:
-            return error
+        except Exception as e:
+            self.error_print("Error occurred while fetching exception information. Details: {}".format(str(e)))
 
-        return "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+        if not error_code:
+            error_text = "Error Message: {}".format(error_msg)
+        else:
+            error_text = "Error Code: {}. Error Message: {}".format(error_code, error_msg)
+
+        return error_text
 
     def finalize(self):
         return phantom.APP_SUCCESS
@@ -96,7 +93,8 @@ class ParserConnector(BaseConnector):
     def _get_mail_header_dict(self, email_data, action_result):
         try:
             mail = email.message_from_string(email_data)
-        except Exception:
+        except Exception as e:
+            self._dump_error_log(e)
             return RetVal2(action_result.set_status(phantom.APP_ERROR,
                                                     "Unable to create email object from data. Does not seem to be valid email"),
                            None)
@@ -126,7 +124,8 @@ class ParserConnector(BaseConnector):
                 return RetVal3(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None, None)
             vault_meta_info = list(vault_meta_info)
             file_path = vault_meta_info[0]['path']
-        except Exception:
+        except Exception as e:
+            self._dump_error_log(e)
             return RetVal3(action_result.set_status(phantom.APP_ERROR, "Could not get file path for vault item"), None,
                            None)
 
@@ -134,13 +133,10 @@ class ParserConnector(BaseConnector):
             return RetVal3(action_result.set_status(phantom.APP_ERROR, "No file with vault ID found"), None, None)
 
         try:
-            if self._python_version >= 3:
-                with open(file_path, 'rb') as f:
-                    email_data = UnicodeDammit(f.read()).unicode_markup
-            elif self._python_version < 3:
-                with open(file_path, 'r') as f:
-                    email_data = f.read()
+            with open(file_path, 'rb') as f:
+                email_data = UnicodeDammit(f.read()).unicode_markup
         except Exception as e:
+            self._dump_error_log(e)
             error_text = self._get_error_message_from_exception(e)
             return RetVal3(action_result.set_status(phantom.APP_ERROR,
                                                     "Could not read file contents for vault item. {}".format(error_text)),
@@ -158,7 +154,8 @@ class ParserConnector(BaseConnector):
                 self.debug_print("Error while fetching meta information for vault ID: {}".format(vault_id))
                 return RetVal(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None)
             vault_meta = list(vault_meta)
-        except Exception:
+        except Exception as e:
+            self._dump_error_log(e)
             return RetVal(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None)
 
         file_meta = None
@@ -172,7 +169,7 @@ class ParserConnector(BaseConnector):
                     "Unable to find a file for the vault ID: "
                     "'{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
         except Exception:
-            self.debug_print(
+            self.error_print(
                 "Error occurred while finding a file for the vault ID: "
                 "'{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id()))
             self.debug_print("Considering the first file as the required file")
@@ -198,7 +195,7 @@ class ParserConnector(BaseConnector):
 
         return RetVal(phantom.APP_SUCCESS, file_info)
 
-    def _handle_email(self, action_result, vault_id, label, container_id, run_automation=True, parse_domains=True):
+    def _handle_email(self, action_result, vault_id, label, container_id, run_automation=True, parse_domains=True, artifact_tags_list=[]):
         ret_val, email_data, email_id = self._get_email_data_from_vault(vault_id, action_result)
 
         if phantom.is_fail(ret_val):
@@ -216,7 +213,8 @@ class ParserConnector(BaseConnector):
             "extract_hashes": True,
             "extract_ips": True,
             "extract_urls": True,
-            "run_automation": run_automation
+            "run_automation": run_automation,
+            "tags": artifact_tags_list
         }
 
         ret_val, response = parser_email.process_email(self, email_data, email_id, config, label, container_id, None)
@@ -241,8 +239,7 @@ class ParserConnector(BaseConnector):
             artifact['container_id'] = container_id
             artifact['severity'] = severity
             artifact['tags'] = tags
-            if not run_automation:
-                artifact['run_automation'] = False
+            artifact['run_automation'] = run_automation
 
         if artifacts:
             status, message, id_list = self.save_artifacts(artifacts)
@@ -291,7 +288,8 @@ class ParserConnector(BaseConnector):
         try:
             if container_id is not None:
                 container_id = int(container_id)
-        except Exception:
+        except Exception as e:
+            self._dump_error_log(e)
             return action_result.set_status(phantom.APP_ERROR, "Please provide a valid integer value in container_id")
 
         label = param.get('label')
@@ -323,6 +321,7 @@ class ParserConnector(BaseConnector):
             try:
                 custom_mapping = json.loads(custom_remap_json)
             except Exception as e:
+                self._dump_error_log(e)
                 error_text = self._get_error_message_from_exception(e)
                 return action_result.set_status(
                     phantom.APP_ERROR,
@@ -345,9 +344,22 @@ class ParserConnector(BaseConnector):
             return action_result.set_status(
                 phantom.APP_ERROR, "Either 'text' or 'vault_id' must be submitted, both cannot be blank")
 
+        max_artifacts = param.get('max_artifacts')
+        if max_artifacts is not None:
+            try:
+                max_artifacts = int(max_artifacts)
+                if max_artifacts <= 0:
+                    return action_result.set_status(
+                        phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
+                param["max_artifacts"] = max_artifacts
+            except Exception as e:
+                self._dump_error_log(e)
+                return action_result.set_status(
+                    phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
+
         if vault_id:
             if file_type == 'email':
-                return self._handle_email(action_result, vault_id, label, container_id, run_automation, parse_domains)
+                return self._handle_email(action_result, vault_id, label, container_id, run_automation, parse_domains, artifact_tags_list)
 
             ret_val, file_info = self._get_file_info_from_vault(action_result, vault_id, file_type)
             if phantom.is_fail(ret_val):
@@ -397,17 +409,6 @@ class ParserConnector(BaseConnector):
             artifacts = _apply_remap(artifacts, custom_mapping)
             artifacts = _apply_remap(artifacts, CEF2CIM_MAPPING)
         # ---
-
-        max_artifacts = param.get('max_artifacts')
-        if max_artifacts is not None:
-            try:
-                max_artifacts = int(max_artifacts)
-                if max_artifacts <= 0:
-                    return action_result.set_status(
-                        phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
-            except Exception:
-                return action_result.set_status(
-                    phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
 
         if not container_id:
             ret_val, container_id = self._save_to_container(

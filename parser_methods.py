@@ -15,7 +15,6 @@
 import csv
 import re
 import struct
-import sys
 import zipfile
 from html import unescape
 from urllib.parse import urlparse
@@ -625,10 +624,7 @@ def parse_structured_file(action_result, file_info):
         csv_file = file_info['path']
         artifacts = []
         try:
-            if sys.version_info[0] >= 3:
-                fp = open(csv_file, 'rt')
-            elif sys.version_info[0] < 3:
-                fp = open(csv_file, 'rb')
+            fp = open(csv_file, 'rt')
             reader = csv.DictReader(fp, restkey='other')  # need to handle lines terminated in commas
             for row in reader:
                 row['source_file'] = file_info['name']
