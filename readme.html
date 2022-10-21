@@ -14,7 +14,16 @@ and limitations under the License.
 -->
 <p>
 	This app will ignore the HTTP_PROXY and HTTPS_PROXY environment variables.
-<br>
-	<h2>Defusedxml</h2>
-	This app uses the defusedxml module, which is licensed under the Python Software Foundation License (PSFL), Copyright 1991-1995 by Stichting Mathematisch Centrum, Amsterdam, The Netherlands.
+	<br>
+<h2>Defusedxml</h2>
+This app uses the defusedxml module, which is licensed under the Python Software Foundation License (PSFL), Copyright
+1991-1995 by Stichting Mathematisch Centrum, Amsterdam, The Netherlands.
 </p>
+
+<div>
+	<h2>URL Extraction</h2>
+	<p>
+		The app extracts defanged URL's that start with hxxp/hxxps. The defanged URL with [.] is not considered valid.
+		Therefore it does not get ingested. Hence, the app will not extract URLs defanged with [.]
+	</p>
+</div>
