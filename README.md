@@ -2,11 +2,11 @@
 # Parser
 
 Publisher: Splunk  
-Connector Version: 2\.8\.0  
+Connector Version: 2\.9\.0  
 Product Vendor: Splunk  
 Product Name: Parser  
 Product Version Supported (regex): "\.\*"  
-Minimum Product Version: 5\.3\.3  
+Minimum Product Version: 5\.3\.4  
 
 This app extracts IOCs from various files such as PDFs, emails, or raw text
 
@@ -30,6 +30,16 @@ This app will ignore the HTTP_PROXY and HTTPS_PROXY environment variables.
 
 This app uses the defusedxml module, which is licensed under the Python Software Foundation License
 (PSFL), Copyright 1991-1995 by Stichting Mathematisch Centrum, Amsterdam, The Netherlands.
+
+<div>
+
+## URL Extraction
+
+The app extracts defanged URL's that start with hxxp/hxxps. The defanged URL with \[.\] is not
+considered valid. Therefore it does not get ingested. Hence, the app will not extract URLs defanged
+with \[.\]
+
+</div>
 
 
 ### Supported Actions  

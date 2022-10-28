@@ -715,7 +715,7 @@ def _handle_attachment(part, file_name, file_path, parsed_mail):
             "Error occurred while adding file to Vault. Error Details: {}".format(error_msg))
         return
 
-    file_hash = hashlib.sha1(part_payload).hexdigest()
+    file_hash = hashlib.sha1(part_payload).hexdigest()  # nosemgrep
     files.append({'file_name': file_name, 'file_path': file_path,
                  'file_hash': file_hash, 'meta_info': attach_meta_info})
 
@@ -851,7 +851,7 @@ def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type, fi
         _debug_print('Saving image {} to files'.format(file_name))
 
         try:
-            file_hash = hashlib.sha1(body_content.encode()).hexdigest()
+            file_hash = hashlib.sha1(body_content.encode()).hexdigest()  # nosemgrep
             files = parsed_mail[PROC_EMAIL_JSON_FILES]
             files.append({'file_name': file_name, 'file_path': file_path, 'file_hash': file_hash})
         except Exception as e:
@@ -977,7 +977,7 @@ def _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)
     container_data = dict(parsed_mail)
 
     # delete the header info, we don't make it a part of the container json
-    del(container_data[PROC_EMAIL_JSON_EMAIL_HEADERS])
+    del (container_data[PROC_EMAIL_JSON_EMAIL_HEADERS])
     container.update(_container_common)
     _container['source_data_identifier'] = email_id
     _container['name'] = container_name
@@ -1406,7 +1406,7 @@ def _create_dict_hash(input_dict):
     # to not impact existing customers
     dict_hash = UnicodeDammit(input_dict_str).unicode_markup.encode()
     if not fips_enabled:
-        dict_hash = hashlib.md5(dict_hash)
+        dict_hash = hashlib.md5(dict_hash)  # nosemgrep
     else:
         dict_hash = hashlib.sha256(dict_hash)
     return dict_hash.hexdigest()
