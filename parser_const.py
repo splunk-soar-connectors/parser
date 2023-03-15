@@ -1,6 +1,6 @@
 # File: parser_const.py
 #
-# Copyright (c) 2017-2022 Splunk Inc.
+# Copyright (c) 2017-2023 Splunk Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -169,4 +169,4 @@ PARSER_ERR_FILE_NOT_IN_VAULT = "Could not find specified vault ID in vault"
 DEFAULT_REQUEST_TIMEOUT = 30  # in seconds
 
 # Constants relating to '_get_error_message_from_exception'
-ERR_MSG_UNAVAILABLE = "Error message unavailable. Please check the asset configuration and|or action parameters"
+ERROR_MSG_UNAVAILABLE = "Error message unavailable. Please check the asset configuration and|or action parameters"

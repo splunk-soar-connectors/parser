@@ -1,6 +1,6 @@
 # File: parser_email.py
 #
-# Copyright (c) 2017-2022 Splunk Inc.
+# Copyright (c) 2017-2023 Splunk Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -263,9 +263,9 @@ def _extract_urls_domains(file_data, urls, domains):
     try:
         soup = BeautifulSoup(file_data, "html.parser")
     except Exception as e:
-        error_code, error_msg = _get_error_message_from_exception(e)
-        err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
-        _error_print("Handled exception", err)
+        error_code, error_message = _get_error_message_from_exception(e)
+        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+        _error_print("Handled exception", error_text)
         return
 
     uris = []
@@ -504,8 +504,8 @@ def _decode_uni_string(input_str, def_name):
         decoded_strings = [decode_header(x)[0] for x in encoded_strings]
         decoded_strings = [{'value': x[0], 'encoding': x[1]} for x in decoded_strings]
     except Exception as e:
-        error_code, error_msg = _get_error_message_from_exception(e)
-        _error_print("Decoding: {0}. Error code: {1}. Error message: {2}".format(encoded_strings, error_code, error_msg))
+        error_code, error_message = _get_error_message_from_exception(e)
+        _error_print("Decoding: {0}. Error code: {1}. Error message: {2}".format(encoded_strings, error_code, error_message))
         return def_name
 
     # convert to dict for safe access, if it's an empty list, the dict will be empty
@@ -605,6 +605,7 @@ def _handle_part(part, part_index, tmp_dir, extract_attach, parsed_mail):
 
     # get the file_name
     file_name = part.get_filename()
+    file_name = file_name.replace('/', '_')
     content_disp = part.get('Content-Disposition')
     content_type = part.get('Content-Type')
     content_id = part.get('Content-ID')
@@ -689,9 +690,9 @@ def _handle_attachment(part, file_name, file_path, parsed_mail):
         with open(file_path, 'wb') as f:
             f.write(part_payload)
     except IOError as e:
-        error_code, error_msg = _get_error_message_from_exception(e)
+        error_code, error_message = _get_error_message_from_exception(e)
         try:
-            if "File name too long" in error_msg:
+            if "File name too long" in error_message:
                 new_file_name = "ph_long_file_name_temp"
                 file_path = "{}{}".format(remove_child_info(file_path).rstrip(
                     file_name.replace('<', '').replace('>', '').replace(' ', '')), new_file_name)
@@ -702,17 +703,17 @@ def _handle_attachment(part, file_name, file_path, parsed_mail):
                     long_file.write(part_payload)
             else:
                 _debug_print(
-                    "Error occurred while adding file to Vault. Error Details: {}".format(error_msg))
+                    "Error occurred while adding file to Vault. Error Details: {}".format(error_message))
                 return
         except Exception as e:
-            error_code, error_msg = _get_error_message_from_exception(e)
+            error_code, error_message = _get_error_message_from_exception(e)
             _error_print(
-                "Error occurred while adding file to Vault. Error Details: {}".format(error_msg))
+                "Error occurred while adding file to Vault. Error Details: {}".format(error_message))
             return
     except Exception as e:
-        error_code, error_msg = _get_error_message_from_exception(e)
+        error_code, error_message = _get_error_message_from_exception(e)
         _error_print(
-            "Error occurred while adding file to Vault. Error Details: {}".format(error_msg))
+            "Error occurred while adding file to Vault. Error Details: {}".format(error_message))
         return
 
     file_hash = hashlib.sha1(part_payload).hexdigest()  # nosemgrep
@@ -746,17 +747,17 @@ def _get_email_headers_from_part(part, charset=None):
     try:
         [headers.update({x[0]: _get_string(x[1], charset)}) for x in email_headers]
     except Exception as e:
-        error_code, error_msg = _get_error_message_from_exception(e)
-        err = "Error occurred while converting the header tuple into a dictionary"
-        _error_print("{}. {}. {}".format(err, error_code, error_msg))
+        error_code, error_message = _get_error_message_from_exception(e)
+        error_text = "Error occurred while converting the header tuple into a dictionary"
+        _error_print("{}. {}. {}".format(error_text, error_code, error_message))
 
     # Handle received seperately
     try:
         received_headers = [_get_string(x[1], charset) for x in email_headers if x[0].lower() == 'received']
     except Exception as e:
-        error_code, error_msg = _get_error_message_from_exception(e)
-        err = "Error occurred while handling the received header tuple separately"
-        _error_print("{}. {}. {}".format(err, error_code, error_msg))
+        error_code, error_message = _get_error_message_from_exception(e)
+        error_text = "Error occurred while handling the received header tuple separately"
+        _error_print("{}. {}. {}".format(error_text, error_code, error_message))
 
     if received_headers:
         headers['Received'] = received_headers
@@ -867,9 +868,9 @@ def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type, fi
                 email_headers[-1]['cef']['bodyText'] = str(make_header(decode_header(body_content)))
             except Exception:
                 email_headers[-1]['cef']['bodyText'] = _decode_uni_string(body_content, body_content)
-            error_code, error_msg = _get_error_message_from_exception(e)
-            err = "Error occurred while parsing text/plain body content for creating artifacts"
-            _error_print("{}. {}. {}".format(err, error_code, error_msg))
+            error_code, error_message = _get_error_message_from_exception(e)
+            error_text = "Error occurred while parsing text/plain body content for creating artifacts"
+            _error_print("{}. {}. {}".format(error_text, error_code, error_message))
 
     elif 'text/html' in content_type:
         try:
@@ -880,9 +881,9 @@ def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type, fi
                 email_headers[-1]['cef']['bodyHtml'] = str(make_header(decode_header(body_content)))
             except Exception:
                 email_headers[-1]['cef']['bodyHtml'] = _decode_uni_string(body_content, body_content)
-            error_code, error_msg = _get_error_message_from_exception(e)
-            err = "Error occurred while parsing text/html body content for creating artifacts"
-            _error_print("{}. {}. {}".format(err, error_code, error_msg))
+            error_code, error_message = _get_error_message_from_exception(e)
+            error_text = "Error occurred while parsing text/html body content for creating artifacts"
+            _error_print("{}. {}. {}".format(error_text, error_code, error_message))
 
     else:
         if not email_headers[-1]['cef'].get('bodyOther'):
@@ -895,9 +896,9 @@ def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type, fi
                 email_headers[-1]['cef']['bodyOther'][content_type] = str(make_header(decode_header(body_content)))
             except Exception:
                 email_headers[-1]['cef']['bodyOther'][content_type] = _decode_uni_string(body_content, body_content)
-            error_code, error_msg = _get_error_message_from_exception(e)
-            err = "Error occurred while parsing bodyOther content for creating artifacts"
-            _error_print("{}. {}. {}".format(err, error_code, error_msg))
+            error_code, error_message = _get_error_message_from_exception(e)
+            error_text = "Error occurred while parsing bodyOther content for creating artifacts"
+            _error_print("{}. {}. {}".format(error_text, error_code, error_message))
 
 
 def _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch):
@@ -946,9 +947,9 @@ def _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)
             try:
                 ret_val = _handle_part(part, i, tmp_dir, extract_attach, parsed_mail)
             except Exception as e:
-                error_code, error_msg = _get_error_message_from_exception(e)
-                err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
-                _error_print("ErrorExp in _handle_part # {0}".format(i), err)
+                error_code, error_message = _get_error_message_from_exception(e)
+                error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+                _error_print("ErrorExp in _handle_part # {0}".format(i), error_text)
                 continue
 
             if phantom.is_fail(ret_val):
@@ -998,9 +999,9 @@ def _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)
         try:
             _handle_body(body, parsed_mail, i, email_id)
         except Exception as e:
-            error_code, error_msg = _get_error_message_from_exception(e)
-            err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
-            _error_print("ErrorExp in _handle_body # {0}: {1}".format(i, err))
+            error_code, error_message = _get_error_message_from_exception(e)
+            error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+            _error_print("ErrorExp in _handle_body # {0}: {1}".format(i, error_text))
             continue
 
     # Files
@@ -1085,9 +1086,9 @@ def _int_process_email(rfc822_email, email_id, start_time_epoch):
     try:
         ret_val = _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)
     except Exception as e:
-        error_code, error_msg = _get_error_message_from_exception(e)
-        err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
-        message = "ErrorExp in _handle_mail_object: {0}".format(err)
+        error_code, error_message = _get_error_message_from_exception(e)
+        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+        message = "ErrorExp in _handle_mail_object: {0}".format(error_text)
         _error_print(message)
         _dump_error_log(e)
         return phantom.APP_ERROR, message, []
@@ -1113,9 +1114,9 @@ def process_email(base_connector, rfc822_email, email_id, config, label, contain
     try:
         _set_email_id_contains(email_id)
     except Exception as e:
-        error_code, error_msg = _get_error_message_from_exception(e)
-        err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
-        _base_connector.error_print("Handled Exception while setting contains for email ID", err)
+        error_code, error_message = _get_error_message_from_exception(e)
+        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+        _base_connector.error_print("Handled Exception while setting contains for email ID", error_text)
         pass
 
     ret_val, message, results = _int_process_email(rfc822_email, email_id, epoch)
@@ -1169,9 +1170,9 @@ def _parse_results(results, label, update_container_id, run_automation=True, tag
             try:
                 (ret_val, message, container_id) = _base_connector.save_container(container)
             except Exception as e:
-                error_code, error_msg = _get_error_message_from_exception(e)
-                err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
-                _base_connector.error_print("Handled Exception while saving container", err)
+                error_code, error_message = _get_error_message_from_exception(e)
+                error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+                _base_connector.error_print("Handled Exception while saving container", error_text)
                 continue
 
             _base_connector.debug_print("save_container returns, value: {0}, reason: {1}, id: {2}".format(ret_val, message, container_id))
@@ -1307,9 +1308,9 @@ def _handle_file(curr_file, vault_ids, container_id, artifact_id, run_automation
         success, message, vault_id = ph_rules.vault_add(file_location=local_file_path, container=container_id,
                                                         file_name=file_name, metadata=vault_attach_dict)
     except Exception as e:
-        error_code, error_msg = _get_error_message_from_exception(e)
-        err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
-        _base_connector.error_print(phantom.APP_ERR_FILE_ADD_TO_VAULT.format(err))
+        error_code, error_message = _get_error_message_from_exception(e)
+        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+        _base_connector.error_print(phantom.APP_ERR_FILE_ADD_TO_VAULT.format(error_text))
         return phantom.APP_ERROR, phantom.APP_ERROR
 
     if not success:
@@ -1395,9 +1396,9 @@ def _create_dict_hash(input_dict):
     try:
         input_dict_str = json.dumps(input_dict, sort_keys=True)
     except Exception as e:
-        error_code, error_msg = _get_error_message_from_exception(e)
-        err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
-        _base_connector.error_print('Handled exception in _create_dict_hash', err)
+        error_code, error_message = _get_error_message_from_exception(e)
+        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+        _base_connector.error_print('Handled exception in _create_dict_hash', error_text)
         return None
 
     fips_enabled = _get_fips_enabled()

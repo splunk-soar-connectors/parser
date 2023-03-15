@@ -9,16 +9,16 @@
     "product_name": "Parser",
     "product_version_regex": ".*",
     "publisher": "Splunk",
-    "app_version": "2.9.0",
+    "app_version": "3.0.0",
     "fips_compliant": true,
-    "license": "Copyright (c) 2017-2022 Splunk Inc.",
+    "license": "Copyright (c) 2017-2023 Splunk Inc.",
     "utctime_updated": "2022-03-15T18:28:49.000000Z",
     "package_name": "phantom_parser",
     "main_module": "parser_connector.py",
-    "min_phantom_version": "5.3.4",
+    "min_phantom_version": "5.5.0",
     "python_version": "3",
     "latest_tested_versions": [
-        "Module pdfminer.six-20211012, September 20 2022"
+        "Module pdfminer.six-20211012, March 14 2023"
     ],
     "app_wizard_version": "1.0.0",
     "pip_dependencies": {
@@ -37,11 +37,11 @@
             },
             {
                 "module": "certifi",
-                "input_file": "wheels/py3/certifi-2022.9.14-py3-none-any.whl"
+                "input_file": "wheels/py3/certifi-2022.12.7-py3-none-any.whl"
             },
             {
                 "module": "cffi",
-                "input_file": "wheels/py36/cffi-1.15.0-cp36-cp36m-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+                "input_file": "wheels/py36/cffi-1.15.1-cp36-cp36m-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
             },
             {
                 "module": "chardet",
@@ -49,7 +49,7 @@
             },
             {
                 "module": "cryptography",
-                "input_file": "wheels/py36/cryptography-36.0.1-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+                "input_file": "wheels/py36/cryptography-39.0.2-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
             },
             {
                 "module": "defusedxml",
@@ -73,7 +73,7 @@
             },
             {
                 "module": "pytz",
-                "input_file": "wheels/shared/pytz-2022.2.1-py2.py3-none-any.whl"
+                "input_file": "wheels/shared/pytz-2022.7.1-py2.py3-none-any.whl"
             },
             {
                 "module": "requests",
@@ -89,7 +89,7 @@
             },
             {
                 "module": "sqlparse",
-                "input_file": "wheels/py3/sqlparse-0.4.2-py3-none-any.whl"
+                "input_file": "wheels/py3/sqlparse-0.4.3-py3-none-any.whl"
             },
             {
                 "module": "typing_extensions",
@@ -97,7 +97,7 @@
             },
             {
                 "module": "urllib3",
-                "input_file": "wheels/shared/urllib3-1.26.12-py2.py3-none-any.whl"
+                "input_file": "wheels/shared/urllib3-1.26.15-py2.py3-none-any.whl"
             }
         ]
     },
@@ -442,6 +442,181 @@
                     ]
                 },
                 {
+                    "data_path": "action_result.data.*.Received",
+                    "data_type": "string",
+                    "example_values": [
+                        "from mansh7fre.z21h3fdhjbvjhjhjjgqechox4fh.zx.internal.cloudapp.net ([20.77.122.17])\r\n        by smtp.test.com with ESMTPSA id t12-20020adff60c000000b002366ded5864sm7050556wrp.116.2022.10.31.06.25.08\r\n        for <sgdsg@test.com>\r\n        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);\r\n        Mon, 31 Oct 2022 06:25:08 -0700 (PDT)"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-Received",
+                    "data_type": "string",
+                    "example_values": [
+                        "by 2002:a05:600c:3585:b0:3b4:a308:1581 with SMTP id p5-2drfh78uy6sadtd003b4a3081581mr18516488wmq.77.1667222709252;\r\n        Mon, 31 Oct 2022 06:25:09 -0700 (PDT)"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.Return-Path",
+                    "data_type": "string",
+                    "example_values": [
+                        "buhhjggj887@test.com"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.IronPort-SDR",
+                    "data_type": "string",
+                    "example_values": [
+                        "635fccb7_90V6GckKA2l9BvDxvI24Rhw29Af6jLnJvUY0wqFQaa+Pbol\r\n W1pRHLHUcEmR9erE+mHJJjbWp/GmDYT8uGz13ig=="
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.Received-SPF",
+                    "data_type": "string",
+                    "example_values": [
+                        "None (mail6.hdds.com: no sender authenticity\r\n  information available from domain of\r\n  gvhjh@mail-wm1-f50.test.com) identity=helo;\r\n  client-ip=209.85.128.50; receiver=mail6.gghjc.com;\r\n  envelope-from=\"ysduj@ftdgc.com\";\r\n  x-sender=\"gvhjh@mail-wm1-f50.test.com\";\r\n  x-conformance=spf_only"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-Amp-Result",
+                    "data_type": "string",
+                    "example_values": [
+                        "UNKNOWN"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.IronPort-Data",
+                    "data_type": "string",
+                    "example_values": [
+                        "AgcvhadGfhgBsjdbnmsa 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"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.IronPort-PHdr",
+                    "data_type": "string",
+                    "example_values": [
+                        "QEslkmdkmd,sxcm:jkxsansam,xsmhjdds QEbwUCh8QSkl5oK+++Imq/EsTXaTcnF\r\n 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"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-IPAS-Result",
+                    "data_type": "string",
+                    "example_values": [
+                        "gssahjdxsauijn=xs0HMUQDKy19jfzKAVdFaHAEBASsBAQcBAQEFAQEEBAEBA?=\r\n =?us-ascii?q?gEJAYFmGIErAgEBAWOBLCsuBFCET4t/hRtYgkCDLoRQBSsCUQkrBhqDIIENg?=\r\n =?us-ascii?q?VYCASoEB2kCA4JVgyktgmQTgSw9CAcBAQEBAQEBAQEEAQMBAhIBBSYEBAEBA?=\r\n =?us-ascii?q?wSEdSE5AQgGCYQTAh0HAUsBAgECAQEBAQEDAgMBAQEBAQEDAQEBBAEBAQIBA?=\r\n =?us-ascii?q?QIEAwEBAQIQAQEYCRkHDg4FJIVoDYF6HAwTInxNAzgBAQEBAQEBAQEBAQEBA?=\r\n =?us-ascii?q?QEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBBAJ+KAEhFhEdAQQXHgMSRwIEGAkRA?=\r\n =?us-ascii?q?QUBV4F8AV+CbAEDHxEDA5w1gX4BIIEEQopCcIEVBQIDE4EBggkGBQMCAYREC?=\r\n =?us-ascii?q?hkoDWuBUwcCBwkBCIEpAwEBAQGBT4ccgkiER3ongimBS4IyEoFzgwWBB4MKM?=\r\n =?us-ascii?q?oI0BItXXgmBMDggYG2FdwQPGQMDAiEDRB0CBAUDIwUKAwsJCBM/BgMBAQwHP?=\r\n =?us-ascii?q?QQEDA8HGAMBAQ8kAQECAgIDBAcCAQMGAwwCAgEBAQUGDQMCAwgTAwIBAwUCA?=\r\n =?us-ascii?q?gQBAgQKCAECAgECBAUGAQIBCAUBBQoDBQkFAgQBAQIDBwQDCwYCBQIBAgMFA?=\r\n =?us-ascii?q?QIDAgEKBQIDAQIBAQMGBAQBAQIDAgIBBgICAQEDAwQDAQIEAgICBwIDAgEEA?=\r\n =?us-ascii?q?gECAwEBAQICAgICAgMDCQIIBwUBAgQBAgEEAwICAQIHAQICAQgDAwUFAgcPA?=\r\n =?us-ascii?q?wUDAQMDAgUPAwEGBQECAQICAgIEAggCBAUCBQMCBAIDAgIIAwIDAQIBBwQDB?=\r\n =?us-ascii?q?AEEAgQDDwQDBAIDAgIFAgICAgIFAgIDAQICAgICAgUCAwIBBQECAgECAgIEA?=\r\n =?us-ascii?q?QICBwQCAwEDBA4EAwICBwECAgEGAgcDAQIBBAMBAQQCBAECBQIEAQMGAgMBA?=\r\n =?us-ascii?q?woCAgMCAQECAwMFAwMCCAgCAwUCBAEBAgQDBAICCwEGAgcCAgMCAgQEBAEBA?=\r\n =?us-ascii?q?gEEBQIDAQIDAwkCAgMCBAICCgEBAQECAQcCBAcGAgUCAgIDAQICAgEDAgIBA?=\r\n =?us-ascii?q?QICChIBAQIDAwMEBgUDAgMFAgEVAQYCAQECAgMDAgYCAQIIAgQBBAUCAQIBA?=\r\n =?us-ascii?q?QICBAEIAgIBAQECAQICAwMCAQICAgQDAgEBAgECAgIDAgICAwICAQ8CBgYBA?=\r\n =?us-ascii?q?gICAgICAgICBgECAQIDAQIHAgQDAgECAgUCAgIDAQEGAgQLAQMCAgICAQYBA?=\r\n =?us-ascii?q?wEBAgUBAgICAwEBAwMEAwMLAwIMCAEFAQMBIAMCAggCBwIBBgMCAQ8DAgIDA?=\r\n =?us-ascii?q?gIBBAoCAwUCBAIBBAkHAgQBAgkDAgYCBwUYAQICBwQMCgEBAgIFBgIEAQECA?=\r\n =?us-ascii?q?wECAQECAwQCAwIEBQEFAgECBQICAgIBAQIFAgwBAgEDBAIEAgcCAgICAwECA?=\r\n =?us-ascii?q?gIBAgEDAwIDAQEBAwYGAgMEBAIDAwYCAgIDAQICAwIEDQIBBQICBgMCBAENB?=\r\n =?us-ascii?q?QUEBQQDAggBAgEBBwIEAgcJDgIBAgQBBQICAwICAQUCAQIEAwECAgICBQgFA?=\r\n =?us-ascii?q?wQBBAMVAwEBBAMCAQIBBAMCAwcDAgQEAwECAwQGBgEJAwICBgMCAgEBDQMEA?=\r\n =?us-ascii?q?gIBAgECAwQEBAICAgIBAgICAgMEAgIBAQMDAwICAgMEAgMDCwYKAQcCAgIDA?=\r\n =?us-ascii?q?gEFCwICAgMCAQEDBgMBBQIEAgIGAQIEAgICAgICAgMBAQMKBAIBAgMCAgYDB?=\r\n =?us-ascii?q?gIBAgECAQkFAgEJAwECAQMEAQMJAQICBAkCAwcFBAYEAgICAggCAg4DAwIBA?=\r\n =?us-ascii?q?QQCAgQDAgICCwIBAgcCBQEBAwUHAgIBAgIBBAMBCQQBAgIDAgEBAwMRAwMDA?=\r\n =?us-ascii?q?QQCAgUDAw0JBgICAQMCAwENAwMBAgECAwEFBRcDAgEIBwMTAwIBAQMCAQICA?=\r\n =?us-ascii?q?wYNAgIDAwMCAQIFAgQDAwEFAgEBAwEFAwIOAwIDAwMCBgECAQECAwMBDAQCA?=\r\n =?us-ascii?q?wEBAQEXAQIDAgQCAgEBAgUBBAMBAQIBAgMCAg4GAQQFDAUCAQIfAgIDAwEEB?=\r\n =?us-ascii?q?QICAggCAgIBAwMBAwMFAQIDBAICAQUEBgQCAgICAgICAQwClAoCDCsIBxUdJ?=\r\n =?us-ascii?q?z8KKIMvUF8ZgR0LPXuBAwIBAZE6EwqDVYwuVZIEjFsPHgkBBgJbgVJ8FxsNB?=\r\n =?us-ascii?q?YYYhV6LI4dJUIEWM4NlARKMU4YhkieGXW+OaHenTAIKBwYQIxKBWwyBXHBXX?=\r\n =?us-ascii?q?QEBOFxtTwMZD443g1uKfiE0OwIHCwEBAwmJYF4BAQ?="
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-IronPort-AV",
+                    "data_type": "string",
+                    "example_values": [
+                        "E=Sophos;i=\"5.95,228,1661832000\"; \r\n   d=\"pdf'?scan'208\";a=\"17527695\""
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.DKIM-Signature",
+                    "data_type": "string",
+                    "example_values": [
+                        "v=1; a=rsa-sha256; c=relaxed/relaxed;\r\n        d=test.com; s=20210112;\r\n        h=mime-version:to:from:subject:date:message-id:from:to:cc:subject\r\n         :date:message-id:reply-to;\r\n        bh=G6MOWm8IxsWIXK+E9cSPXsZUV8kMF62PRajdB0itqYo=;\r\n        b=EuhoEvKCqFlTYYCZBZBEzUzLfQ4+a9YkucvjR+RL4ZtJowjnLImqQfPVk3Jb3eEqAo\r\n         yIRa4sJfs1y5VB21X14+d0KGiGd8ROfYkBmE3vLj5FmaOOKp5BHCQ7OOKfqwDlP/pxF3\r\n         AY/NZgYxHCjdOOUPRbLoZNNdqgeCoQ7YT1Q3Qyb7qXr/OgNCVzvVGvdjlnsXOVsXtGE0\r\n         ykWj6R8eQVp8zQ8snhFalrdP/aJstJa54e82bTb7rScJDoHIFwaLiTFtvDHEDEHV9Qd/\r\n         airADFSq28tbda8KQBPKfuwSnAMCYSuDiOS/VLmJzkAwxKXbyArdS7sLhpVJFPEk7t5H\r\n         lRSQ=="
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.IronPort-HdrOrdr",
+                    "data_type": "string",
+                    "example_values": [
+                        "A9a23:9U7lNq8V4jTDmL7ZUA1uk+AFI+orL9Y04lQ7vn2ZLiYlF/Bw9v\r\n re/sjzuiWVtN98Yh8dcLO7V5VoKEm0naKdirNhXotKMjOGhEKYaK9v6of4yyDtFmnU5odmuZ\r\n tIQuxbBMfrBVZ3yeT38GCDeeoI8Z2i/LqzjenTi01xSxpnApsM0y5iBh2FHlZNSA5KOJo8GP\r\n OnjfZ6mw=="
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-Gm-Message-State",
+                    "data_type": "string",
+                    "example_values": [
+                        "gjkwxWxdoK20dUSWBYLIn7gnobu5VoUCUYcraQo0EicpQQELl3HK5oG\r\n\t8wrn0qDdzJARTnQuR8t+qMQl5e6+8C3zQQ=="
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-Amp-File-Uploaded",
+                    "data_type": "string",
+                    "example_values": [
+                        "False"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-Google-Smtp-Source",
+                    "data_type": "string",
+                    "example_values": [
+                        "owqkSWSM6EI96NBN6wZMoTHH0X9sNIiQ/A/Xfw/kDRMmNqDF8efL+kFhpOjB8CWsBjI8i34hcmAWD2yA=="
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.Authentication-Results",
+                    "data_type": "string",
+                    "example_values": [
+                        "mail6.tgdd.com; spf=Pass smtp.mailfrom=ygdd@test.com; spf=None smtp.helo=dsds@mail-wm1-f50.test.com; dkim=pass (signature verified) header.i=@test.com; dmarc=pass (p=none dis=none) d=test.com"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-Amp-Original-Verdict",
+                    "data_type": "string",
+                    "example_values": [
+                        "FILE UNKNOWN"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-Google-DKIM-Signature",
+                    "data_type": "string",
+                    "example_values": [
+                        "v=1; a=rsa-sha256; c=relaxed/relaxed;\r\n        d=1e100.net; s=20210112;\r\n        h=mime-version:to:from:subject:date:message-id:x-gm-message-state\r\n         :from:to:cc:subject:date:message-id:reply-to;\r\n        bh=G6MOWm8IxsWIXK+E9cSPXsZUV8kMF62PRajdB0itqYo=;\r\n        b=KZK25hKZcvCD6c/gBU7zzocEzqoOTNaAsayBZER10hTS6MU82iqd1mVo+YS137GuWT\r\n         yju6NgH4nouHvnPHC/9+Ka4YtgUh+aMQiJJ9FqoYjkJ1CDFbMBdAxC71ATJxeK3yLYuT\r\n         IsiDWAxufsz9oqoLwQBTzhm6To+4MbIGsdG5DJB4UM+Fojll7FRx/ChUo3aB7KIPW0pK\r\n         1VtgeNpqDq4ou+I1ukiAnqhylWMWbubHd6s37PT8jC1yo00tO7DqR8+ArfXRy4jODfBH\r\n         M4iXuvnBT5j4wO4UD/+y3wazJchEC/OcSSos2w0SYHRTlGYXEI7nYXXKwQH+4c4zz4L3\r\n         sQRg=="
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-IronPort-Anti-Spam-Filtered",
+                    "data_type": "string",
+                    "example_values": [
+                        "true"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-MS-Exchange-Organization-AuthAs",
+                    "data_type": "string",
+                    "example_values": [
+                        "Anonymous"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-MS-Exchange-Organization-AuthSource",
+                    "data_type": "string",
+                    "example_values": [
+                        "ILG1WNEX01.vcorp.ad.vrsn.com"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-MS-Exchange-Processed-By-BccFoldering",
+                    "data_type": "string",
+                    "example_values": [
+                        "15.01.2507.013"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-MS-Exchange-Transport-EndToEndLatency",
+                    "data_type": "string",
+                    "example_values": [
+                        "00:00:00.4499410"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-MS-Exchange-Organization-AVStamp-Enterprise",
+                    "data_type": "string",
+                    "example_values": [
+                        "1.0"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.X-MS-Exchange-Organization-Network-Message-Id",
+                    "data_type": "string",
+                    "example_values": [
+                        "cfc822d7-70b2-4fdf-a024-08dabb4356d5"
+                    ]
+                },
+                {
                     "data_path": "action_result.summary.artifacts_found",
                     "data_type": "numeric",
                     "example_values": [
@@ -503,7 +678,7 @@
             },
             {
                 "module": "asgiref",
-                "input_file": "wheels/py3/asgiref-3.5.2-py3-none-any.whl"
+                "input_file": "wheels/py3/asgiref-3.6.0-py3-none-any.whl"
             },
             {
                 "module": "beautifulsoup4",
@@ -511,11 +686,11 @@
             },
             {
                 "module": "certifi",
-                "input_file": "wheels/py3/certifi-2022.9.14-py3-none-any.whl"
+                "input_file": "wheels/py3/certifi-2022.12.7-py3-none-any.whl"
             },
             {
                 "module": "cffi",
-                "input_file": "wheels/py39/cffi-1.15.0-cp39-cp39-manylinux_2_12_x86_64.manylinux2010_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+                "input_file": "wheels/py39/cffi-1.15.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
             },
             {
                 "module": "chardet",
@@ -523,7 +698,7 @@
             },
             {
                 "module": "cryptography",
-                "input_file": "wheels/py36/cryptography-36.0.1-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+                "input_file": "wheels/py36/cryptography-39.0.2-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
             },
             {
                 "module": "defusedxml",
@@ -547,7 +722,7 @@
             },
             {
                 "module": "pytz",
-                "input_file": "wheels/shared/pytz-2022.2.1-py2.py3-none-any.whl"
+                "input_file": "wheels/shared/pytz-2022.7.1-py2.py3-none-any.whl"
             },
             {
                 "module": "requests",
@@ -559,15 +734,15 @@
             },
             {
                 "module": "soupsieve",
-                "input_file": "wheels/py3/soupsieve-2.3.2.post1-py3-none-any.whl"
+                "input_file": "wheels/py3/soupsieve-2.4-py3-none-any.whl"
             },
             {
                 "module": "sqlparse",
-                "input_file": "wheels/py3/sqlparse-0.4.2-py3-none-any.whl"
+                "input_file": "wheels/py3/sqlparse-0.4.3-py3-none-any.whl"
             },
             {
                 "module": "urllib3",
-                "input_file": "wheels/shared/urllib3-1.26.12-py2.py3-none-any.whl"
+                "input_file": "wheels/shared/urllib3-1.26.15-py2.py3-none-any.whl"
             }
         ]
     }

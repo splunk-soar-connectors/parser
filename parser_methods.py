@@ -313,9 +313,9 @@ def _grab_raw_text(action_result, txt_file):
         fp.close()
         return phantom.APP_SUCCESS, text
     except Exception as e:
-        error_code, error_msg = _get_error_message_from_exception(e)
-        err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
-        return action_result.set_status(phantom.APP_ERROR, err), None
+        error_code, error_message = _get_error_message_from_exception(e)
+        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+        return action_result.set_status(phantom.APP_ERROR, error_text), None
 
 
 class PDFXrefObjectsToXML:
@@ -464,9 +464,9 @@ def _pdf_to_text(action_result, pdf_file):
         return action_result.set_status(phantom.APP_ERROR,
                                     "Failed to parse pdf: The provided pdf is password protected or is in different format"), None
     except Exception as e:
-        error_code, error_msg = _get_error_message_from_exception(e)
-        err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
-        return action_result.set_status(phantom.APP_ERROR, "Failed to parse pdf: {0}".format(err)), None
+        error_code, error_message = _get_error_message_from_exception(e)
+        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+        return action_result.set_status(phantom.APP_ERROR, "Failed to parse pdf: {0}".format(error_text)), None
 
 
 def _docx_to_text(action_result, docx_file):
@@ -497,11 +497,12 @@ def _docx_to_text(action_result, docx_file):
                 "Failed to parse docx: The file might be corrupted or password protected or not a docx file"),
             None)
     except EntitiesForbidden as e:
-        err = e
+        error_message = e
+        return action_result.set_status(phantom.APP_ERROR, error_message), None
     except Exception as e:
-        error_code, error_msg = _get_error_message_from_exception(e)
-        err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
-        return action_result.set_status(phantom.APP_ERROR, "Failed to parse docx: {0}".format(err)), None
+        error_code, error_message = _get_error_message_from_exception(e)
+        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+        return action_result.set_status(phantom.APP_ERROR, "Failed to parse docx: {0}".format(error_text)), None
 
 
 def _csv_to_text(action_result, csv_file):
@@ -519,9 +520,9 @@ def _csv_to_text(action_result, csv_file):
         fp.close()
         return phantom.APP_SUCCESS, text
     except Exception as e:
-        error_code, error_msg = _get_error_message_from_exception(e)
-        err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
-        return action_result.set_status(phantom.APP_ERROR, "Failed to parse csv: {0}".format(err)), None
+        error_code, error_message = _get_error_message_from_exception(e)
+        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+        return action_result.set_status(phantom.APP_ERROR, "Failed to parse csv: {0}".format(error_text)), None
 
 
 def _html_to_text(action_result, html_file, text_val=None):
@@ -545,9 +546,9 @@ def _html_to_text(action_result, html_file, text_val=None):
         text = ' '.join(read_text + links + srcs)
         return phantom.APP_SUCCESS, text
     except Exception as e:
-        error_code, error_msg = _get_error_message_from_exception(e)
-        err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
-        return action_result.set_status(phantom.APP_ERROR, "Failed to parse html: {0}".format(err)), None
+        error_code, error_message = _get_error_message_from_exception(e)
+        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+        return action_result.set_status(phantom.APP_ERROR, "Failed to parse html: {0}".format(error_text)), None
 
 
 def _join_thread(base_connector, thread):
@@ -612,9 +613,9 @@ def parse_file(base_connector, action_result, file_info, parse_domains=True, kee
             base_connector.save_progress('Saving Raw Text')
             artifacts.append(tiocp.add_artifact(raw_text))
     except Exception as e:
-        error_code, error_msg = _get_error_message_from_exception(e)
-        err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
-        return action_result.set_status(phantom.APP_ERROR, err), None
+        error_code, error_message = _get_error_message_from_exception(e)
+        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+        return action_result.set_status(phantom.APP_ERROR, error_text), None
     return phantom.APP_SUCCESS, {'artifacts': artifacts}
 
 
@@ -634,9 +635,9 @@ def parse_structured_file(action_result, file_info):
                 })
             fp.close()
         except Exception as e:
-            error_code, error_msg = _get_error_message_from_exception(e)
-            err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
-            return action_result.set_status(phantom.APP_ERROR, "Failed to parse structured CSV: {0}".format(err)), None
+            error_code, error_message = _get_error_message_from_exception(e)
+            error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+            return action_result.set_status(phantom.APP_ERROR, "Failed to parse structured CSV: {0}".format(error_text)), None
     else:
         return action_result.set_status(phantom.APP_ERROR, "Structured extraction only supported for CSV files"), None
     return phantom.APP_SUCCESS, {'artifacts': artifacts}
@@ -664,8 +665,8 @@ def parse_text(base_connector, action_result, file_type, text_val, parse_domains
     try:
         artifacts = tiocp.parse_to_artifacts(raw_text)
     except Exception as e:
-        error_code, error_msg = _get_error_message_from_exception(e)
-        err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
-        return action_result.set_status(phantom.APP_ERROR, err), None
+        error_code, error_message = _get_error_message_from_exception(e)
+        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+        return action_result.set_status(phantom.APP_ERROR, error_text), None
 
     return phantom.APP_SUCCESS, {'artifacts': artifacts}
