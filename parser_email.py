@@ -605,7 +605,6 @@ def _handle_part(part, part_index, tmp_dir, extract_attach, parsed_mail):
 
     # get the file_name
     file_name = part.get_filename()
-    file_name = file_name.replace('/', '_')
     content_disp = part.get('Content-Disposition')
     content_type = part.get('Content-Type')
     content_id = part.get('Content-ID')
@@ -627,6 +626,7 @@ def _handle_part(part, part_index, tmp_dir, extract_attach, parsed_mail):
     else:
         try:
             file_name = str(make_header(decode_header(file_name)))
+            file_name = file_name.replace('/', '_')
         except Exception:
             file_name = _decode_uni_string(file_name, file_name)
     # Remove any chars that we don't want in the name
