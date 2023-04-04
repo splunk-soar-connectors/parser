@@ -9,7 +9,7 @@
     "product_name": "Parser",
     "product_version_regex": ".*",
     "publisher": "Splunk",
-    "app_version": "3.0.0",
+    "app_version": "2.10.0",
     "fips_compliant": true,
     "license": "Copyright (c) 2017-2023 Splunk Inc.",
     "utctime_updated": "2022-03-15T18:28:49.000000Z",
@@ -77,7 +77,7 @@
             },
             {
                 "module": "pytz",
-                "input_file": "wheels/shared/pytz-2022.7.1-py2.py3-none-any.whl"
+                "input_file": "wheels/shared/pytz-2023.3-py2.py3-none-any.whl"
             },
             {
                 "module": "requests",
@@ -730,7 +730,7 @@
             },
             {
                 "module": "pytz",
-                "input_file": "wheels/shared/pytz-2022.7.1-py2.py3-none-any.whl"
+                "input_file": "wheels/shared/pytz-2023.3-py2.py3-none-any.whl"
             },
             {
                 "module": "requests",

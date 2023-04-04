@@ -626,9 +626,11 @@ def _handle_part(part, part_index, tmp_dir, extract_attach, parsed_mail):
     else:
         try:
             file_name = str(make_header(decode_header(file_name)))
-            file_name = file_name.replace('/', '_')
         except Exception:
             file_name = _decode_uni_string(file_name, file_name)
+
+        file_name = file_name.replace('/', '_')
+
     # Remove any chars that we don't want in the name
     try:
         file_path = "{0}/{1}_{2}".format(tmp_dir, part_index,
