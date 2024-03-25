@@ -2,7 +2,7 @@
 # Parser
 
 Publisher: Splunk  
-Connector Version: 2.10.1  
+Connector Version: 2.10.2  
 Product Vendor: Splunk  
 Product Name: Parser  
 Product Version Supported (regex): ".\*"  
@@ -11,7 +11,7 @@ Minimum Product Version: 5.5.0
 This app extracts IOCs from various files such as PDFs, emails, or raw text
 
 [comment]: # " File: README.md"
-[comment]: # "        Copyright (c) 2017-2023 Splunk Inc."
+[comment]: # "        Copyright (c) 2017-2024 Splunk Inc."
 [comment]: # ""
 [comment]: # "Licensed under the Apache License, Version 2.0 (the 'License');"
 [comment]: # "you may not use this file except in compliance with the License."
