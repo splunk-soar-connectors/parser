@@ -1,2 +1,2 @@
 **Unreleased**
-* Updated requests dependencies in order to use platform packages [PAPP-30822]
+* Removed cryptography dependencies in order to use platform packages [PAPP-31088]
