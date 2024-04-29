@@ -1,6 +1,6 @@
 beautifulsoup4==4.9.1
 defusedxml==0.7.1
 git+https://github.com/phantomcyber/pdfminer.six.git@20211012-fips
-pyOpenSSL==23.0.0
+pyOpenSSL==24.1.0
 python-magic==0.4.18
 simplejson==3.17.2
