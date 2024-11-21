@@ -781,7 +781,8 @@ def _parse_email_headers(parsed_mail, part, charset=None, add_email_id=None):
 
     email_header_artifacts = parsed_mail[PROC_EMAIL_JSON_EMAIL_HEADERS]
 
-    headers = _get_email_headers_from_part(part, charset)
+    # some .eml files do not create email artifact because case sensitive 'To' and 'From' fields - PAPP-34685
+    headers = CaseInsensitiveDict(data=_get_email_headers_from_part(part, charset))
 
     if not headers:
         return 0
@@ -808,7 +809,7 @@ def _parse_email_headers(parsed_mail, part, charset=None, add_email_id=None):
     cef_types.update({'fromEmail': ['email'], 'toEmail': ['email']})
 
     if headers:
-        cef_artifact['emailHeaders'] = headers
+        cef_artifact['emailHeaders'] = dict(headers)
 
     # Adding the email id as a cef artifact crashes the UI when trying to show the action dialog box
     # so not adding this right now. All the other code to process the emailId is there, but the refraining
