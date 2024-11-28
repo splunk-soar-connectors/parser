@@ -1,2 +1,1 @@
 **Unreleased**
-* Fixed bug related to create email artifact [PAPP-34685]
