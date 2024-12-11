@@ -79,7 +79,7 @@ _TAcef_template = {
     "suid": "src_user_id",
     "sourceUserId": "src_user_id",
     "suser": "src_user",
-    "sourceUserName": "src_user"
+    "sourceUserName": "src_user",
 }
 
 _splunk_app_cef = {
@@ -156,7 +156,7 @@ _splunk_app_cef = {
     "slat": "src_lat",
     "sourceGeoLatitude": "src_lat",
     "slong": "src_long",
-    "sourceGeoLongitude": "src_long"
+    "sourceGeoLongitude": "src_long",
 }
 
 CEF2CIM_MAPPING = dict()
