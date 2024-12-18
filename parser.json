@@ -621,8 +621,16 @@
     "pip39_dependencies": {
         "wheel": [
             {
+                "module": "cffi",
+                "input_file": "wheels/py39/cffi-1.17.1-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl"
+            },
+            {
                 "module": "chardet",
                 "input_file": "wheels/py3/chardet-5.2.0-py3-none-any.whl"
+            },
+            {
+                "module": "cryptography",
+                "input_file": "wheels/py39/cryptography-42.0.8-cp39-abi3-manylinux_2_28_x86_64.whl"
             },
             {
                 "module": "defusedxml",
