@@ -15,60 +15,106 @@
 #
 #
 import calendar
+import dataclasses
 import email
 import json
 import sys
 import threading
 import time
+from typing import Any, NamedTuple, Optional, cast
 
 import phantom.app as phantom
 import phantom.rules as ph_rules
-from bs4 import UnicodeDammit
+from bs4.dammit import UnicodeDammit
 from phantom.action_result import ActionResult
 from phantom.base_connector import BaseConnector
 
+import parser_const as consts
 import parser_email
 import parser_methods
-from parser_const import *
 
 
-class RetVal(tuple):
-    def __new__(cls, val1, val2):
-        return tuple.__new__(RetVal, (val1, val2))
+@dataclasses.dataclass()
+class ParseFileParams:
+    remap_cef_fields: str = ""
+    is_structured: bool = False
+    run_automation: bool = True
+    parse_domains: bool = True
+    keep_raw: bool = False
+    severity: str = "medium"
+    artifact_tags: str = ""
+    artifact_tags_list: list[str] = dataclasses.field(init=False)
+    custom_remap_json: str = "{}"
+    custom_mapping: dict[str, Any] = dataclasses.field(init=False)
+    custom_mapping_error: Optional[Exception] = None
+    text: str = ""
+
+    vault_id: Optional[str] = None
+    file_type: Optional[str] = None
+    label: Optional[str] = None
+    max_artifacts: Optional[int] = None
+    container_id: Optional[int] = None
+
+    def __post_init__(self) -> None:
+        self.severity = self.severity.lower()
+        self.remap_cef_fields = self.remap_cef_fields.lower()
+        self.artifact_tags_list = [tag for tag in (_tag.strip().replace(" ", "") for _tag in self.artifact_tags.split(",")) if tag]
+
+        if self.custom_remap_json:
+            try:
+                self.custom_mapping = json.loads(self.custom_remap_json)
+            except Exception as e:
+                self.custom_mapping_error = e
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "ParseFileParams":
+        fields = {field.name for field in dataclasses.fields(cls) if field.init}
+        return cls(**{k: v for k, v in d.items() if k in fields})
 
 
-class RetVal2(RetVal):
-    pass
+class SaveContainerResult(NamedTuple):
+    success: bool
+    container_id: Optional[int]
 
 
-class RetVal3(tuple):
-    def __new__(cls, val1, val2, val3):
-        return tuple.__new__(RetVal3, (val1, val2, val3))
+class FileInfoResult(NamedTuple):
+    success: bool
+    file_info: Optional[parser_methods.FileInfo]
+
+
+class HeaderResult(NamedTuple):
+    success: bool
+    headers: Optional[dict[str, str]]
+
+
+class EmailVaultData(NamedTuple):
+    success: bool
+    email_data: Optional[str]
+    email_id: Optional[str]
 
 
 class ParserConnector(BaseConnector):
-
-    def __init__(self):
+    def __init__(self) -> None:
         super(ParserConnector, self).__init__()
         self._lock = None
         self._done = False
 
-    def initialize(self):
+    def initialize(self) -> bool:
         self._lock = threading.Lock()
         self._done = False
 
         return phantom.APP_SUCCESS
 
-    def _dump_error_log(self, error, message="Exception occurred."):
+    def _dump_error_log(self, error: Exception, message: str = "Exception occurred.") -> None:
         self.error_print(message, dump_object=error)
 
-    def _get_error_message_from_exception(self, e):
+    def _get_error_message_from_exception(self, e: Exception) -> str:
         """This function is used to get appropriate error message from the exception.
         :param e: Exception object
         :return: error message
         """
         error_code = None
-        error_msg = ERROR_MSG_UNAVAILABLE
+        error_msg = consts.ERROR_MSG_UNAVAILABLE
 
         try:
             if hasattr(e, "args"):
@@ -87,36 +133,36 @@ class ParserConnector(BaseConnector):
 
         return error_text
 
-    def finalize(self):
+    def finalize(self) -> bool:
         return phantom.APP_SUCCESS
 
-    def _get_mail_header_dict(self, email_data, action_result):
+    def _get_mail_header_dict(self, email_data: str, action_result: ActionResult) -> HeaderResult:
         try:
             mail = email.message_from_string(email_data)
         except Exception as e:
             self._dump_error_log(e)
-            return RetVal2(
-                action_result.set_status(phantom.APP_ERROR, "Unable to create email object from data. Does not seem to be valid email"), None
+            return HeaderResult(
+                action_result.set_status(
+                    phantom.APP_ERROR,
+                    "Unable to create email object from data. Does not seem to be valid email",
+                ),
+                None,
             )
 
         headers = mail.__dict__.get("_headers")
 
         if not headers:
-            return RetVal2(
+            return HeaderResult(
                 action_result.set_status(
-                    phantom.APP_ERROR, "Could not extract header info from email object data. Does not seem to be valid email"
+                    phantom.APP_ERROR,
+                    "Could not extract header info from email object data. Does not seem to be valid email",
                 ),
                 None,
             )
 
-        ret_val = {}
-        for header in headers:
-            ret_val[header[0]] = header[1]
+        return HeaderResult(phantom.APP_SUCCESS, dict(headers))
 
-        return RetVal2(phantom.APP_SUCCESS, ret_val)
-
-    def _get_email_data_from_vault(self, vault_id, action_result):
-
+    def _get_email_data_from_vault(self, vault_id: str, action_result: ActionResult) -> EmailVaultData:
         email_data = None
         email_id = vault_id
 
@@ -124,15 +170,27 @@ class ParserConnector(BaseConnector):
             _, _, vault_meta_info = ph_rules.vault_info(container_id=self.get_container_id(), vault_id=vault_id)
             if not vault_meta_info:
                 self.debug_print("Error while fetching meta information for vault ID: {}".format(vault_id))
-                return RetVal3(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None, None)
+                return EmailVaultData(
+                    action_result.set_status(phantom.APP_ERROR, consts.PARSER_ERR_FILE_NOT_IN_VAULT),
+                    None,
+                    None,
+                )
             vault_meta_info = list(vault_meta_info)
             file_path = vault_meta_info[0]["path"]
         except Exception as e:
             self._dump_error_log(e)
-            return RetVal3(action_result.set_status(phantom.APP_ERROR, "Could not get file path for vault item"), None, None)
+            return EmailVaultData(
+                action_result.set_status(phantom.APP_ERROR, "Could not get file path for vault item"),
+                None,
+                None,
+            )
 
         if file_path is None:
-            return RetVal3(action_result.set_status(phantom.APP_ERROR, "No file with vault ID found"), None, None)
+            return EmailVaultData(
+                action_result.set_status(phantom.APP_ERROR, "No file with vault ID found"),
+                None,
+                None,
+            )
 
         try:
             with open(file_path, "rb") as f:
@@ -140,25 +198,41 @@ class ParserConnector(BaseConnector):
         except Exception as e:
             self._dump_error_log(e)
             error_text = self._get_error_message_from_exception(e)
-            return RetVal3(
-                action_result.set_status(phantom.APP_ERROR, "Could not read file contents for vault item. {}".format(error_text)), None, None
+            return EmailVaultData(
+                action_result.set_status(
+                    phantom.APP_ERROR,
+                    "Could not read file contents for vault item. {}".format(error_text),
+                ),
+                None,
+                None,
             )
 
-        return RetVal3(phantom.APP_SUCCESS, email_data, email_id)
+        return EmailVaultData(phantom.APP_SUCCESS, email_data, email_id)
 
-    def _get_file_info_from_vault(self, action_result, vault_id, file_type=None):
-        file_info = {"id": vault_id}
+    def _get_file_info_from_vault(
+        self,
+        action_result: ActionResult,
+        vault_id: str,
+        file_type: Optional[str] = None,
+    ) -> FileInfoResult:
+        file_info = cast(parser_methods.FileInfo, {"id": vault_id})
 
         # Check for file in vault
         try:
             _, _, vault_meta = ph_rules.vault_info(container_id=self.get_container_id(), vault_id=vault_id)
             if not vault_meta:
                 self.debug_print("Error while fetching meta information for vault ID: {}".format(vault_id))
-                return RetVal(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None)
+                return FileInfoResult(
+                    action_result.set_status(phantom.APP_ERROR, consts.PARSER_ERR_FILE_NOT_IN_VAULT),
+                    None,
+                )
             vault_meta = list(vault_meta)
         except Exception as e:
             self._dump_error_log(e)
-            return RetVal(action_result.set_status(phantom.APP_ERROR, PARSER_ERR_FILE_NOT_IN_VAULT), None)
+            return FileInfoResult(
+                action_result.set_status(phantom.APP_ERROR, consts.PARSER_ERR_FILE_NOT_IN_VAULT),
+                None,
+            )
 
         file_meta = None
         try:
@@ -193,15 +267,27 @@ class ParserConnector(BaseConnector):
         if file_type:
             file_info["type"] = file_type
         else:
-            file_type = file_meta["name"].split(".")[-1]
+            file_type = cast(str, file_meta["name"].split(".")[-1])
             file_info["type"] = file_type
 
-        return RetVal(phantom.APP_SUCCESS, file_info)
+        return FileInfoResult(phantom.APP_SUCCESS, file_info)
 
-    def _handle_email(self, action_result, vault_id, label, container_id, run_automation=True, parse_domains=True, artifact_tags_list=[]):
+    def _handle_email(
+        self,
+        action_result: ActionResult,
+        vault_id: str,
+        label: Optional[str],
+        container_id: Optional[int],
+        run_automation: bool = True,
+        parse_domains: bool = True,
+        artifact_tags_list: Optional[list[str]] = None,
+    ) -> bool:
+        if artifact_tags_list is None:
+            artifact_tags_list = []
+
         ret_val, email_data, email_id = self._get_email_data_from_vault(vault_id, action_result)
 
-        if phantom.is_fail(ret_val):
+        if phantom.is_fail(ret_val) or email_data is None:
             return action_result.get_status()
 
         ret_val, header_dict = self._get_mail_header_dict(email_data, action_result)
@@ -234,7 +320,18 @@ class ParserConnector(BaseConnector):
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
-    def _save_artifacts(self, action_result, artifacts, container_id, severity, max_artifacts=None, run_automation=True, tags=[]):
+    def _save_artifacts(
+        self,
+        action_result: ActionResult,
+        artifacts: list[dict[str, Any]],
+        container_id: int,
+        severity: str,
+        max_artifacts: Optional[int] = None,
+        run_automation: bool = True,
+        tags: Optional[list[str]] = None,
+    ) -> bool:
+        if tags is None:
+            tags = []
         if max_artifacts:
             artifacts = artifacts[:max_artifacts]
 
@@ -254,131 +351,151 @@ class ParserConnector(BaseConnector):
         return phantom.APP_SUCCESS
 
     def _save_to_container(
-        self, action_result, artifacts, file_name, label, severity, max_artifacts=None, run_automation=True, artifact_tags_list=[]
-    ):
-        container = {"name": "{0} Parse Results".format(file_name), "label": label, "severity": severity}
+        self,
+        action_result: ActionResult,
+        artifacts: list[dict[str, Any]],
+        file_name: str,
+        label: Optional[str],
+        severity: str,
+        max_artifacts: Optional[int] = None,
+        run_automation: bool = True,
+        artifact_tags_list: Optional[list[str]] = None,
+    ) -> SaveContainerResult:
+        if artifact_tags_list is None:
+            artifact_tags_list = []
+
+        container = {
+            "name": "{0} Parse Results".format(file_name),
+            "label": label,
+            "severity": severity,
+        }
 
         status, message, container_id = self.save_container(container)
         if phantom.is_fail(status):
-            return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
-        return RetVal(
-            self._save_artifacts(action_result, artifacts, container_id, severity, max_artifacts, run_automation, artifact_tags_list),
+            return SaveContainerResult(action_result.set_status(phantom.APP_ERROR, message), None)
+        return SaveContainerResult(
+            self._save_artifacts(
+                action_result,
+                artifacts,
+                container_id,
+                severity,
+                max_artifacts,
+                run_automation,
+                artifact_tags_list,
+            ),
             container_id,
         )
 
     def _save_to_existing_container(
-        self, action_result, artifacts, container_id, severity, max_artifacts=None, run_automation=True, artifact_tags_list=[]
-    ):
-        return self._save_artifacts(action_result, artifacts, container_id, severity, max_artifacts, run_automation, artifact_tags_list)
+        self,
+        action_result: ActionResult,
+        artifacts: list[dict[str, Any]],
+        container_id: int,
+        severity: str,
+        max_artifacts: Optional[int] = None,
+        run_automation: bool = True,
+        artifact_tags_list: Optional[list[str]] = None,
+    ) -> bool:
+        return self._save_artifacts(
+            action_result,
+            artifacts,
+            container_id,
+            severity,
+            max_artifacts,
+            run_automation,
+            artifact_tags_list,
+        )
 
-    def get_artifact_tags_list(self, artifact_tags):
-        """
-        Get list of tags from comma separated tags string
-        Args:
-            artifact_tags: Comma separated string of tags
-
-        Returns:
-            list: tags
-        """
-        tags = artifact_tags.split(",")
-        tags = [tag.strip().replace(" ", "") for tag in tags]
-        return list(filter(None, tags))
-
-    def _handle_parse_file(self, param):  # noqa
-
-        action_result = self.add_action_result(ActionResult(dict(param)))
-
-        container_id = param.get("container_id")
+    def _validate_parse_file_params(self, param: ParseFileParams) -> None:
         try:
-            if container_id is not None:
-                container_id = int(container_id)
+            if param.container_id is not None:
+                param.container_id = int(param.container_id)
         except Exception as e:
             self._dump_error_log(e)
-            return action_result.set_status(phantom.APP_ERROR, "Please provide a valid integer value in container_id")
+            raise ValueError("Please provide a valid integer value in container_id") from None
 
-        label = param.get("label")
-        file_info = {}
-        if container_id is None and label is None:
-            return action_result.set_status(phantom.APP_ERROR, "A label must be specified if no container ID is provided")
-        if container_id:
-            ret_val, message, _ = self.get_container_info(container_id)
+        if param.container_id is None and param.label is None:
+            raise ValueError("A label must be specified if no container ID is provided")
+
+        if param.container_id:
+            ret_val, message, _ = self.get_container_info(param.container_id)
             if phantom.is_fail(ret_val):
-                return action_result.set_status(phantom.APP_ERROR, "Unable to find container: {}".format(message))
-
-        vault_id = param.get("vault_id")
-        text_val = param.get("text")
-        file_type = param.get("file_type")
-        is_structured = param.get("is_structured", False)
-        run_automation = param.get("run_automation", True)
-        parse_domains = param.get("parse_domains", True)
-        keep_raw = param.get("keep_raw", False)
-        severity = param.get("severity", "medium").lower()
-        artifact_tags = param.get("artifact_tags", "")
-
-        artifact_tags_list = self.get_artifact_tags_list(artifact_tags)
+                raise ValueError(f"Unable to find container: {message}")
 
         # --- remap cef fields ---
-        custom_remap_json = param.get("custom_remap_json", "{}")
-        custom_mapping = None
-        if custom_remap_json:
-            try:
-                custom_mapping = json.loads(custom_remap_json)
-            except Exception as e:
-                self._dump_error_log(e)
-                error_text = self._get_error_message_from_exception(e)
-                return action_result.set_status(phantom.APP_ERROR, "Error: custom_remap_json parameter is not valid json. {}".format(error_text))
-        if not isinstance(custom_mapping, dict):
-            return action_result.set_status(phantom.APP_ERROR, "Error: custom_remap_json parameter is not a dictionary")
+        if param.custom_mapping_error is not None:
+            self._dump_error_log(param.custom_mapping_error)
+            error_text = self._get_error_message_from_exception(param.custom_mapping_error)
+            raise ValueError(f"Error: custom_remap_json parameter is not valid json. {error_text}")
+        if not isinstance(param.custom_mapping, dict):
+            raise ValueError("Error: custom_remap_json parameter is not a dictionary")
         # ---
 
-        if vault_id and text_val:
-            return action_result.set_status(
-                phantom.APP_ERROR,
-                "Either text can be parsed or "
-                "a file from the vault can be parsed but both the 'text' and "
-                "'vault_id' parameters cannot be used simultaneously",
+        if param.vault_id and param.text:
+            raise ValueError(
+                "Either text can be parsed or a file from the vault can be parsed but both "
+                "the 'text' and 'vault_id' parameters cannot be used simultaneously"
             )
-        if text_val and file_type not in ["txt", "csv", "html"]:
-            return action_result.set_status(phantom.APP_ERROR, "When using text input, only csv, html, or txt file_type can be used")
-        elif not (vault_id or text_val):
-            return action_result.set_status(phantom.APP_ERROR, "Either 'text' or 'vault_id' must be submitted, both cannot be blank")
+        if param.text and param.file_type not in ("txt", "csv", "html"):
+            raise ValueError("When using text input, only csv, html, or txt file_type can be used")
+        if not (param.vault_id or param.text):
+            raise ValueError("Either 'text' or 'vault_id' must be submitted, both cannot be blank")
 
-        max_artifacts = param.get("max_artifacts")
-        if max_artifacts is not None:
+        if param.max_artifacts is not None:
             try:
-                max_artifacts = int(max_artifacts)
-                if max_artifacts <= 0:
-                    return action_result.set_status(phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
-                param["max_artifacts"] = max_artifacts
+                param.max_artifacts = int(param.max_artifacts)
             except Exception as e:
                 self._dump_error_log(e)
-                return action_result.set_status(phantom.APP_ERROR, "Please provide a valid non-zero positive integer value in max_artifacts")
+                raise ValueError("Please provide a valid non-zero positive integer value in max_artifacts") from None
+            if param.max_artifacts <= 0:
+                raise ValueError("Please provide a valid non-zero positive integer value in max_artifacts")
 
-        if vault_id:
-            if file_type == "email":
-                return self._handle_email(action_result, vault_id, label, container_id, run_automation, parse_domains, artifact_tags_list)
+    def _handle_parse_file(self, action_result: ActionResult, param: ParseFileParams) -> bool:
+        try:
+            self._validate_parse_file_params(param)
+        except ValueError as e:
+            return action_result.set_status(phantom.APP_ERROR, str(e))
 
-            ret_val, file_info = self._get_file_info_from_vault(action_result, vault_id, file_type)
-            if phantom.is_fail(ret_val):
+        file_info = {}
+        if param.vault_id:
+            if param.file_type == "email":
+                return self._handle_email(
+                    action_result,
+                    param.vault_id,
+                    param.label,
+                    param.container_id,
+                    param.run_automation,
+                    param.parse_domains,
+                    param.artifact_tags_list,
+                )
+
+            ret_val, file_info = self._get_file_info_from_vault(action_result, param.vault_id, param.file_type)
+            if phantom.is_fail(ret_val) or file_info is None:
                 return ret_val
 
             self.debug_print("File Info", file_info)
-            if is_structured:
+            if param.is_structured:
                 ret_val, response = parser_methods.parse_structured_file(action_result, file_info)
             else:
-                ret_val, response = parser_methods.parse_file(self, action_result, file_info, parse_domains, keep_raw)
+                ret_val, response = parser_methods.parse_file(self, action_result, file_info, param.parse_domains, param.keep_raw)
 
             if phantom.is_fail(ret_val):
                 return ret_val
         else:
-            text_val = text_val.replace(",", ", ")
-            ret_val, response = parser_methods.parse_text(self, action_result, file_type, text_val, parse_domains)
+            param.text = param.text.replace(",", ", ")
+            ret_val, response = parser_methods.parse_text(self, action_result, param.file_type, param.text, param.parse_domains)
             file_info["name"] = "Parser_Container_{0}".format(calendar.timegm(time.gmtime()))
+
+        if not response:
+            return action_result.set_status(
+                phantom.APP_ERROR,
+                "Unexpected null response; this should not be possible",
+            )
 
         artifacts = response["artifacts"]
 
         # --- remap cef fields ---
-        def _apply_remap(artifacts, mapping):
+        def _apply_remap(artifacts: list[parser_methods.Artifact], mapping: dict[str, Any]) -> list[parser_methods.Artifact]:
             if not isinstance(artifacts, list) or not isinstance(mapping, dict):
                 return artifacts
             if len(artifacts) == 0 or len(mapping) == 0:
@@ -393,35 +510,48 @@ class ParserConnector(BaseConnector):
                 a["cef"] = new_cef
             return artifacts
 
-        remap_cef_fields = param.get("remap_cef_fields", "").lower()
-        if "do not" in remap_cef_fields:
+        if "do not" in param.remap_cef_fields:
             # --- do not perform CEF -> CIM remapping
-            artifacts = _apply_remap(artifacts, custom_mapping)
-        elif "before" in remap_cef_fields:
+            artifacts = _apply_remap(artifacts, param.custom_mapping)
+        elif "before" in param.remap_cef_fields:
             # --- apply CEF -> CIM remapping and then custom remapping
-            artifacts = _apply_remap(artifacts, CEF2CIM_MAPPING)
-            artifacts = _apply_remap(artifacts, custom_mapping)
-        elif "after" in remap_cef_fields:
+            artifacts = _apply_remap(artifacts, consts.CEF2CIM_MAPPING)
+            artifacts = _apply_remap(artifacts, param.custom_mapping)
+        elif "after" in param.remap_cef_fields:
             # --- apply custom remapping and then CEF -> CIM remapping
-            artifacts = _apply_remap(artifacts, custom_mapping)
-            artifacts = _apply_remap(artifacts, CEF2CIM_MAPPING)
+            artifacts = _apply_remap(artifacts, param.custom_mapping)
+            artifacts = _apply_remap(artifacts, consts.CEF2CIM_MAPPING)
         # ---
 
-        if not container_id:
+        if not param.container_id:
             ret_val, container_id = self._save_to_container(
-                action_result, artifacts, file_info["name"], label, severity, max_artifacts, run_automation, artifact_tags_list
+                action_result,
+                cast(list[dict[str, Any]], artifacts),
+                file_info["name"],
+                param.label,
+                param.severity,
+                param.max_artifacts,
+                param.run_automation,
+                param.artifact_tags_list,
             )
             if phantom.is_fail(ret_val):
                 return ret_val
         else:
+            container_id = param.container_id
             ret_val = self._save_to_existing_container(
-                action_result, artifacts, container_id, severity, max_artifacts, run_automation, artifact_tags_list
+                action_result,
+                cast(list[dict[str, Any]], artifacts),
+                container_id,
+                param.severity,
+                param.max_artifacts,
+                param.run_automation,
+                param.artifact_tags_list,
             )
             if phantom.is_fail(ret_val):
                 return ret_val
 
-        if max_artifacts:
-            len_artifacts = len(artifacts[:max_artifacts])
+        if param.max_artifacts:
+            len_artifacts = len(artifacts[: param.max_artifacts])
         else:
             len_artifacts = len(artifacts)
 
@@ -432,35 +562,38 @@ class ParserConnector(BaseConnector):
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
-    def handle_action(self, param):
-
+    def handle_action(self, param: dict[str, Any]) -> bool:
         ret_val = phantom.APP_SUCCESS
 
         action_id = self.get_action_identifier()
 
         self.debug_print("action_id", self.get_action_identifier())
 
+        action_result = self.add_action_result(ActionResult(dict(param)))
         if action_id == "parse_file":
-            ret_val = self._handle_parse_file(param)
+            ret_val = self._handle_parse_file(action_result, ParseFileParams.from_dict(param))
 
         return ret_val
 
 
 if __name__ == "__main__":
-
     import argparse
 
-    import pudb
     import requests
-
-    pudb.set_trace()
 
     argparser = argparse.ArgumentParser()
 
     argparser.add_argument("input_test_json", help="Input Test JSON file")
-    argparser.add_argument("-u", "--username", help="username", required=False)
-    argparser.add_argument("-p", "--password", help="password", required=False)
-    argparser.add_argument("-v", "--verify", action="store_true", help="verify", required=False, default=False)
+    argparser.add_argument("-u", "--username", help="username", default="soar_local_admin")
+    argparser.add_argument("-p", "--password", help="password", default="password")
+    argparser.add_argument(
+        "-v",
+        "--verify",
+        action="store_true",
+        help="verify",
+        required=False,
+        default=False,
+    )
 
     args = argparser.parse_args()
     session_id = None
@@ -470,14 +603,28 @@ if __name__ == "__main__":
     if args.username and args.password:
         login_url = BaseConnector._get_phantom_base_url() + "login"
         try:
-            print("Accessing the Login page")
-            r = requests.get(login_url, verify=verify, timeout=DEFAULT_REQUEST_TIMEOUT)
+            print(f"Accessing the Login page: {login_url}")
+            r = requests.get(login_url, verify=verify, timeout=consts.DEFAULT_REQUEST_TIMEOUT)
             csrftoken = r.cookies["csrftoken"]
-            data = {"username": args.username, "password": args.password, "csrfmiddlewaretoken": csrftoken}
-            headers = {"Cookie": "csrftoken={0}".format(csrftoken), "Referer": login_url}
+            data = {
+                "username": args.username,
+                "password": args.password,
+                "csrfmiddlewaretoken": csrftoken,
+            }
+            headers = {
+                "Cookie": "csrftoken={0}".format(csrftoken),
+                "Referer": login_url,
+            }
 
             print("Logging into Platform to get the session id")
-            r2 = requests.post(login_url, verify=verify, data=data, headers=headers, timeout=DEFAULT_REQUEST_TIMEOUT)
+            r2 = requests.post(
+                login_url,
+                verify=verify,
+                data=data,
+                headers=headers,
+                timeout=consts.DEFAULT_REQUEST_TIMEOUT,
+            )
+            r2.raise_for_status()
             session_id = r2.cookies["sessionid"]
 
         except Exception as e:
