@@ -28,10 +28,6 @@
                 "input_file": "wheels/py3/chardet-5.0.0-py3-none-any.whl"
             },
             {
-                "module": "defusedxml",
-                "input_file": "wheels/shared/defusedxml-0.7.1-py2.py3-none-any.whl"
-            },
-            {
                 "module": "pdfminer.six",
                 "input_file": "wheels/py3/pdfminer.six-20211012-py3-none-any.whl"
             },
@@ -627,10 +623,6 @@
             {
                 "module": "cryptography",
                 "input_file": "wheels/py39/cryptography-42.0.8-cp39-abi3-manylinux_2_28_x86_64.whl"
-            },
-            {
-                "module": "defusedxml",
-                "input_file": "wheels/shared/defusedxml-0.7.1-py2.py3-none-any.whl"
             },
             {
                 "module": "lxml",
