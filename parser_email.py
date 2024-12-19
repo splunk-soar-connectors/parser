@@ -14,6 +14,7 @@
 # and limitations under the License.
 import email
 import hashlib
+import json
 import mimetypes
 import operator
 import os
@@ -30,7 +31,6 @@ import magic
 import phantom.app as phantom
 import phantom.rules as ph_rules
 import phantom.utils as ph_utils
-import simplejson as json
 from bs4 import BeautifulSoup, UnicodeDammit
 from django.core.validators import URLValidator
 from phantom.vault import Vault
@@ -123,7 +123,6 @@ DEFAULT_SINGLE_PART_EML_FILE_NAME = "part_1.text"
 
 
 def _get_string(input_str, charset):
-
     try:
         if input_str:
             input_str = UnicodeDammit(input_str).unicode_markup.encode(charset).decode(charset)
@@ -218,7 +217,6 @@ ipv6_regexc = re.compile(IPV6_REGEX)
 
 
 def _get_file_contains(file_path):
-
     contains = []
     ext = os.path.splitext(file_path)[1]
     contains.extend(FILE_EXTENSIONS.get(ext, []))
@@ -231,7 +229,6 @@ def _get_file_contains(file_path):
 
 
 def _debug_print(*args):
-
     if _base_connector and hasattr(_base_connector, "debug_print"):
         _base_connector.debug_print(*args)
 
@@ -239,7 +236,6 @@ def _debug_print(*args):
 
 
 def _error_print(*args):
-
     if _base_connector and hasattr(_base_connector, "error_print"):
         _base_connector.error_print(*args)
 
@@ -252,7 +248,6 @@ def _dump_error_log(error, message="Exception occurred."):
 
 
 def _extract_urls_domains(file_data, urls, domains):
-
     if (not _config[PROC_EMAIL_JSON_EXTRACT_DOMAINS]) and (not _config[PROC_EMAIL_JSON_EXTRACT_URLS]):
         return
 
@@ -331,7 +326,6 @@ def _extract_urls_domains(file_data, urls, domains):
 
 
 def _get_ips(file_data, ips):
-
     # First extract what looks like an IP from the file, this is a faster operation
     ips_in_mail = re.findall(ip_regexc, file_data)
     ip6_in_mail = re.findall(ipv6_regexc, file_data)
@@ -352,7 +346,6 @@ def _get_ips(file_data, ips):
 
 
 def _handle_body(body, parsed_mail, body_index, email_id):
-
     local_file_path = body["file_path"]
     charset = body.get("charset")
 
@@ -402,10 +395,8 @@ def _handle_body(body, parsed_mail, body_index, email_id):
 
 
 def _add_artifacts(cef_key, input_set, artifact_name, start_index, artifacts):
-
     added_artifacts = 0
     for entry in input_set:
-
         # ignore empty entries
         if not entry:
             continue
@@ -422,7 +413,6 @@ def _add_artifacts(cef_key, input_set, artifact_name, start_index, artifacts):
 
 
 def _parse_email_headers_as_inline(file_data, parsed_mail, charset, email_id):
-
     # remove the 'Forwarded Message' from the email text and parse it
     p = re.compile(r"(?<=\r\n).*Forwarded Message.*\r\n", re.IGNORECASE)
     email_text = p.sub("", file_data.strip())
@@ -440,10 +430,8 @@ def _parse_email_headers_as_inline(file_data, parsed_mail, charset, email_id):
 
 
 def _add_email_header_artifacts(email_header_artifacts, start_index, artifacts):
-
     added_artifacts = 0
     for artifact in email_header_artifacts:
-
         artifact["source_data_identifier"] = start_index + added_artifacts
         artifacts.append(artifact)
         added_artifacts += 1
@@ -452,7 +440,6 @@ def _add_email_header_artifacts(email_header_artifacts, start_index, artifacts):
 
 
 def _create_artifacts(parsed_mail):
-
     # get all the artifact data in their own list objects
     ips = parsed_mail[PROC_EMAIL_JSON_IPS]
     hashes = parsed_mail[PROC_EMAIL_JSON_HASHES]
@@ -486,7 +473,6 @@ def _create_artifacts(parsed_mail):
 
 
 def _decode_uni_string(input_str, def_name):
-
     # try to find all the decoded strings, we could have multiple decoded strings
     # or a single decoded string between two normal strings separated by \r\n
     # YEAH...it could get that messy
@@ -511,7 +497,6 @@ def _decode_uni_string(input_str, def_name):
     new_str = ""
     new_str_create_count = 0
     for i, encoded_string in enumerate(encoded_strings):
-
         decoded_string = decoded_strings.get(i)
 
         if not decoded_string:
@@ -550,7 +535,6 @@ def _decode_uni_string(input_str, def_name):
 
 
 def _get_container_name(parsed_mail, email_id):
-
     # Create the default name
     def_cont_name = "Email ID: {0}".format(email_id)
 
@@ -566,7 +550,16 @@ def _get_container_name(parsed_mail, email_id):
         return _decode_uni_string(subject, def_cont_name)
 
 
-def _handle_if_body(content_disp, content_id, content_type, part, bodies, file_path, parsed_mail, file_name):
+def _handle_if_body(
+    content_disp,
+    content_id,
+    content_type,
+    part,
+    bodies,
+    file_path,
+    parsed_mail,
+    file_name,
+):
     process_as_body = False
 
     # if content disposition is None then assume that it is
@@ -597,7 +590,6 @@ def _handle_if_body(content_disp, content_id, content_type, part, bodies, file_p
 
 
 def _handle_part(part, part_index, tmp_dir, extract_attach, parsed_mail):
-
     bodies = parsed_mail[PROC_EMAIL_JSON_BODIES]
 
     # get the file_name
@@ -632,11 +624,24 @@ def _handle_part(part, part_index, tmp_dir, extract_attach, parsed_mail):
     try:
         file_path = "{0}/{1}_{2}".format(tmp_dir, part_index, file_name.translate(None, "".join(["<", ">", " "])))
     except TypeError:  # py3
-        file_path = "{0}/{1}_{2}".format(tmp_dir, part_index, file_name.translate(file_name.maketrans("", "", "".join(["<", ">", " "]))))
+        file_path = "{0}/{1}_{2}".format(
+            tmp_dir,
+            part_index,
+            file_name.translate(file_name.maketrans("", "", "".join(["<", ">", " "]))),
+        )
     _debug_print("file_path: {0}".format(file_path))
 
     # is the part representing the body of the email
-    status, process_further = _handle_if_body(content_disp, content_id, content_type, part, bodies, file_path, parsed_mail, file_name)
+    status, process_further = _handle_if_body(
+        content_disp,
+        content_id,
+        content_type,
+        part,
+        bodies,
+        file_path,
+        parsed_mail,
+        file_name,
+    )
 
     if not process_further:
         return phantom.APP_SUCCESS
@@ -651,7 +656,6 @@ def _handle_part(part, part_index, tmp_dir, extract_attach, parsed_mail):
 
 
 def _handle_attachment(part, file_name, file_path, parsed_mail):
-
     files = parsed_mail[PROC_EMAIL_JSON_FILES]
     if not _config[PROC_EMAIL_JSON_EXTRACT_ATTACHMENTS]:
         return phantom.APP_SUCCESS
@@ -665,7 +669,6 @@ def _handle_attachment(part, file_name, file_path, parsed_mail):
         attach_meta_info = {"headers": dict(headers)}
 
     for curr_attach in _attachments:
-
         if curr_attach.get("should_ignore", False):
             continue
 
@@ -691,7 +694,8 @@ def _handle_attachment(part, file_name, file_path, parsed_mail):
             if "File name too long" in error_message:
                 new_file_name = "ph_long_file_name_temp"
                 file_path = "{}{}".format(
-                    remove_child_info(file_path).rstrip(file_name.replace("<", "").replace(">", "").replace(" ", "")), new_file_name
+                    remove_child_info(file_path).rstrip(file_name.replace("<", "").replace(">", "").replace(" ", "")),
+                    new_file_name,
                 )
                 _debug_print("Original filename: {}".format(file_name))
                 _base_connector.debug_print("Modified filename: {}".format(new_file_name))
@@ -710,7 +714,14 @@ def _handle_attachment(part, file_name, file_path, parsed_mail):
         return
 
     file_hash = hashlib.sha1(part_payload).hexdigest()  # nosemgrep
-    files.append({"file_name": file_name, "file_path": file_path, "file_hash": file_hash, "meta_info": attach_meta_info})
+    files.append(
+        {
+            "file_name": file_name,
+            "file_path": file_path,
+            "file_hash": file_hash,
+            "meta_info": attach_meta_info,
+        }
+    )
 
 
 def remove_child_info(file_path):
@@ -721,7 +732,6 @@ def remove_child_info(file_path):
 
 
 def _get_email_headers_from_part(part, charset=None):
-
     email_headers = list(part.items())
 
     # TODO: the next 2 ifs can be condensed to use 'or'
@@ -766,7 +776,6 @@ def _get_email_headers_from_part(part, charset=None):
 
 
 def _parse_email_headers(parsed_mail, part, charset=None, add_email_id=None):
-
     global _email_id_contains
 
     email_header_artifacts = parsed_mail[PROC_EMAIL_JSON_EMAIL_HEADERS]
@@ -892,7 +901,6 @@ def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type, fi
 
 
 def _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch):
-
     parsed_mail = OrderedDict()
 
     # Create a tmp directory for this email, will extract all files here
@@ -953,7 +961,13 @@ def _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)
 
         with open(file_path, "wb") as f:
             f.write(mail.get_payload(decode=True))
-        bodies.append({"file_path": file_path, "charset": mail.get_content_charset(), "content-type": "text/plain"})
+        bodies.append(
+            {
+                "file_path": file_path,
+                "charset": mail.get_content_charset(),
+                "content-type": "text/plain",
+            }
+        )
         _add_body_in_email_headers(parsed_mail, file_path, mail.get_content_charset(), "text/plain", file_name)
 
     # get the container name
@@ -1003,7 +1017,6 @@ def _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)
 
 
 def _init():
-
     global _base_connector
     global _config
     global _container
@@ -1020,7 +1033,6 @@ def _init():
 
 
 def _set_email_id_contains(email_id):
-
     global _base_connector
     global _email_id_contains
 
@@ -1055,7 +1067,6 @@ def _del_tmp_dirs():
 
 
 def _int_process_email(rfc822_email, email_id, start_time_epoch):
-
     global _base_connector
     global _config
     global _tmp_dirs
@@ -1083,13 +1094,19 @@ def _int_process_email(rfc822_email, email_id, start_time_epoch):
         _dump_error_log(e)
         return phantom.APP_ERROR, message, []
 
-    results = [{"container": _container, "artifacts": _artifacts, "files": _attachments, "temp_directory": tmp_dir}]
+    results = [
+        {
+            "container": _container,
+            "artifacts": _artifacts,
+            "files": _attachments,
+            "temp_directory": tmp_dir,
+        }
+    ]
 
     return ret_val, "Email Parsed", results
 
 
 def process_email(base_connector, rfc822_email, email_id, config, label, container_id, epoch):
-
     try:
         _init()
     except Exception as e:
@@ -1117,7 +1134,11 @@ def process_email(base_connector, rfc822_email, email_id, config, label, contain
 
     try:
         cid, artifacts, successful_artifacts = _parse_results(
-            results, label, container_id, _config[PROC_EMAIL_JSON_RUN_AUTOMATION], _config["tags"]
+            results,
+            label,
+            container_id,
+            _config[PROC_EMAIL_JSON_RUN_AUTOMATION],
+            _config["tags"],
         )
     except Exception:
         _del_tmp_dirs()
@@ -1135,7 +1156,6 @@ def process_email(base_connector, rfc822_email, email_id, config, label, contain
 
 
 def _parse_results(results, label, update_container_id, run_automation=True, tags=[]):
-
     global _base_connector
 
     param = _base_connector.get_current_param()
@@ -1150,7 +1170,6 @@ def _parse_results(results, label, update_container_id, run_automation=True, tag
     total_artifacts = []
     successful_artifacts = []
     for result in results:
-
         if not update_container_id:
             container = result.get("container")
 
@@ -1197,7 +1216,12 @@ def _parse_results(results, label, update_container_id, run_automation=True, tag
         for curr_file in files:
             # Generate a new Vault artifact for the file and save it to a container
             ret_val, vault_artifact = _handle_file(
-                curr_file, vault_ids, container_id, vault_artifacts_count, run_automation=run_automation, tags=tags
+                curr_file,
+                vault_ids,
+                container_id,
+                vault_artifacts_count,
+                run_automation=run_automation,
+                tags=tags,
             )
             vault_artifacts_count += 1
             vault_artifacts.append(vault_artifact)
@@ -1211,7 +1235,6 @@ def _parse_results(results, label, update_container_id, run_automation=True, tag
         _base_connector.debug_print(len_artifacts)
 
         for j, artifact in enumerate(artifacts):
-
             if not artifact:
                 continue
 
@@ -1243,7 +1266,6 @@ def _parse_results(results, label, update_container_id, run_automation=True, tag
 
 
 def _add_vault_hashes_to_dictionary(cef_artifact, vault_id):
-
     _, _, vault_info = ph_rules.vault_info(vault_id=vault_id)
     vault_info = list(vault_info)
 
@@ -1277,7 +1299,6 @@ def _add_vault_hashes_to_dictionary(cef_artifact, vault_id):
 
 
 def _handle_file(curr_file, vault_ids, container_id, artifact_id, run_automation=False, tags=[]):
-
     file_name = curr_file.get("file_name")
 
     local_file_path = curr_file["file_path"]
@@ -1300,7 +1321,10 @@ def _handle_file(curr_file, vault_ids, container_id, artifact_id, run_automation
 
     try:
         success, message, vault_id = ph_rules.vault_add(
-            file_location=local_file_path, container=container_id, file_name=file_name, metadata=vault_attach_dict
+            file_location=local_file_path,
+            container=container_id,
+            file_name=file_name,
+            metadata=vault_attach_dict,
         )
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
@@ -1340,7 +1364,6 @@ def _handle_file(curr_file, vault_ids, container_id, artifact_id, run_automation
 
 
 def _set_sdi(default_id, input_dict):
-
     if "source_data_identifier" in input_dict:
         del input_dict["source_data_identifier"]
     dict_hash = None
