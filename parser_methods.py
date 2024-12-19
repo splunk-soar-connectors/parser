@@ -15,35 +15,35 @@
 import csv
 import re
 import struct
-import zipfile
-from html import unescape
-from urllib.parse import urlparse
-
-import pdfminer
-from bs4 import BeautifulSoup, UnicodeDammit
-from defusedxml import ElementTree
-from defusedxml.common import EntitiesForbidden
-from django.core.validators import URLValidator
-
-try:
-    from cStringIO import StringIO
-except Exception:
-    from io import StringIO
-
 import threading
 import time
+import zipfile
+from html import unescape
+from io import StringIO
+from typing import TYPE_CHECKING, Any, Optional, TypedDict, Union, cast
+from urllib.parse import urlparse
 
+import docx
 import phantom.app as phantom
 import phantom.utils as ph_utils
+from bs4 import BeautifulSoup
+from bs4.dammit import UnicodeDammit
+from django.core.validators import URLValidator
+from docx.opc.constants import RELATIONSHIP_TYPE as REL_TYPE
+from docx.opc.part import Part as DocxPart
 from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
-from pdfminer.pdfdocument import PDFDocument
+from pdfminer.pdfdocument import PDFDocument, PDFEncryptionError, PDFPasswordIncorrect
 from pdfminer.pdfinterp import PDFPageInterpreter, PDFResourceManager
 from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFParser
 from pdfminer.pdftypes import PDFObjectNotFound, PDFObjRef, PDFStream
 from pdfminer.psparser import PSKeyword, PSLiteral
 from pdfminer.utils import isnumber
+
+if TYPE_CHECKING:
+    from phantom.action_result import ActionResult
+    from phantom.base_connector import BaseConnector
 
 _container_common = {"run_automation": False}  # Don't run any playbooks, when this artifact is added
 
@@ -53,38 +53,53 @@ EMAIL_REGEX = r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"
 EMAIL_REGEX2 = r'".*"@[A-Z0-9.-]+\.[A-Z]{2,}\b'
 HASH_REGEX = r"\b[0-9a-fA-F]{32}\b|\b[0-9a-fA-F]{40}\b|\b[0-9a-fA-F]{64}\b"
 IP_REGEX = r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
-IPV6_REGEX = r"\s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|"
-IPV6_REGEX += r"(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
-IPV6_REGEX += r"(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))"
-IPV6_REGEX += r"|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})"
-IPV6_REGEX += r"|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|"
-IPV6_REGEX += r"(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})"
-IPV6_REGEX += r"|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
-IPV6_REGEX += r"(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|"
-IPV6_REGEX += r"(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})"
-IPV6_REGEX += r"|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
-IPV6_REGEX += r"(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|"
-IPV6_REGEX += r"(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})"
-IPV6_REGEX += r"|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
-IPV6_REGEX += r"(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|"
-IPV6_REGEX += r"(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})"
-IPV6_REGEX += r"|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
-IPV6_REGEX += r"(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|"
-IPV6_REGEX += r"(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
-IPV6_REGEX += r"(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*"
+IPV6_REGEX = (
+    r"\s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|"
+    r"(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
+    r"(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))"
+    r"|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})"
+    r"|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|"
+    r"(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})"
+    r"|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
+    r"(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|"
+    r"(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})"
+    r"|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
+    r"(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|"
+    r"(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})"
+    r"|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
+    r"(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|"
+    r"(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})"
+    r"|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
+    r"(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|"
+    r"(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
+    r"(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*"
+)
 DOMAIN_REGEX = r"(?!:\/\/)((?:[a-zA-Z0-9-_]+\.)*[a-zA-Z0-9][a-zA-Z0-9-_]+\.[a-zA-Z]{2,11})"
 
 ESCAPE = set(map(ord, '&<>"'))
 
 
-def _extract_domain_from_url(url):
+class Artifact(TypedDict):
+    source_data_identifier: int
+    cef: dict[str, Any]
+    name: str
+
+
+class FileInfo(TypedDict):
+    type: str
+    path: str
+    name: str
+    id: Optional[str]
+
+
+def _extract_domain_from_url(url: str) -> Optional[str]:
     domain = phantom.get_host_from_url(url)
     if domain and not _is_ip(domain):
         return domain
     return None
 
 
-def _is_ip(input_ip):
+def _is_ip(input_ip: str) -> bool:
     if ph_utils.is_ip(input_ip):
         return True
 
@@ -94,7 +109,7 @@ def _is_ip(input_ip):
     return False
 
 
-def _is_url(input_url):
+def _is_url(input_url: str) -> bool:
     validate_url = URLValidator(schemes=["http", "https"])
     try:
         validate_url(input_url)
@@ -103,11 +118,11 @@ def _is_url(input_url):
         return False
 
 
-def is_ipv6(input_ip):
+def is_ipv6(input_ip: str) -> bool:
     return bool(re.match(IPV6_REGEX, input_ip))
 
 
-def _refang_url(url):
+def _refang_url(url: str) -> str:
     parsed = urlparse(url)
     scheme = parsed.scheme
 
@@ -121,7 +136,7 @@ def _refang_url(url):
     return refang_url
 
 
-def _clean_url(url):
+def _clean_url(url: str) -> str:
     url = url.strip(">),.]\r\n")
 
     # Check before splicing, find returns -1 if not found
@@ -136,7 +151,7 @@ def _clean_url(url):
     return url
 
 
-def _get_error_message_from_exception(e):
+def _get_error_message_from_exception(e: Exception) -> tuple[Union[str, int], str]:
     """This method is used to get appropriate error message from the exception.
     :param e: Exception object
     :return: error message
@@ -172,7 +187,12 @@ class TextIOCParser:
             "name": "IP Artifact",  # Name of artifact
             "validator": _is_ip,  # Additional function to verify matched string (Should return true or false)
         },
-        {"cef": "sourceAddress", "pattern": IPV6_REGEX, "name": "IP Artifact", "validator": _is_ip},
+        {
+            "cef": "sourceAddress",
+            "pattern": IPV6_REGEX,
+            "name": "IP Artifact",
+            "validator": _is_ip,
+        },
         {
             "cef": "requestURL",
             "pattern": URI_REGEX,
@@ -184,12 +204,20 @@ class TextIOCParser:
         {"cef": "email", "pattern": EMAIL_REGEX, "name": "Email Artifact"},
         {"cef": "email", "pattern": EMAIL_REGEX2, "name": "Email Artifact"},
     ]
-    DOMAIN_PATTERN = {"cef": "destinationDnsDomain", "pattern": DOMAIN_REGEX, "name": "Domain Artifact"}  # Name of CEF field  # Regex to match
+    DOMAIN_PATTERN = {
+        "cef": "destinationDnsDomain",
+        "pattern": DOMAIN_REGEX,
+        "name": "Domain Artifact",
+    }  # Name of CEF field  # Regex to match
 
     URL_DOMAIN_SUBTYPES_DICT = {
         "subtypes": [  # Additional IOCs to find in a matched one
             # If you really wanted to, you could also have subtypes in the subtypes
-            {"cef": "destinationDnsDomain", "name": "Domain Artifact", "callback": _extract_domain_from_url}  # Method to extract substring
+            {
+                "cef": "destinationDnsDomain",
+                "name": "Domain Artifact",
+                "callback": _extract_domain_from_url,
+            }  # Method to extract substring
         ]
     }
 
@@ -206,7 +234,7 @@ class TextIOCParser:
 
     found_values = set()
 
-    def __init__(self, parse_domains, patterns=None):
+    def __init__(self, parse_domains: bool, patterns: Optional[list[dict[str, Any]]] = None):
         self.patterns = self.BASE_PATTERNS if patterns is None else patterns
 
         if parse_domains:
@@ -222,22 +250,23 @@ class TextIOCParser:
                 self.patterns.append(self.DOMAIN_PATTERN)
         self.added_artifacts = 0
 
-    def _create_artifact(self, artifacts, value, cef, name):
-        artifact = {}
-        artifact["source_data_identifier"] = self.added_artifacts
-        artifact["cef"] = {cef: value}
-        artifact["name"] = name
+    def _create_artifact(self, artifacts: list[Artifact], value: Any, cef: str, name: str) -> None:
+        artifact = Artifact(
+            source_data_identifier=self.added_artifacts,
+            cef={cef: value},
+            name=name,
+        )
         artifacts.append(artifact)
         self.added_artifacts += 1
         self.found_values.add(value)
 
-    def _parse_ioc_subtype(self, artifacts, value, subtype):
+    def _parse_ioc_subtype(self, artifacts: list[Artifact], value: Any, subtype: dict[str, Any]) -> None:
         callback = subtype.get("callback")
         if callback:
             sub_val = callback(value)
             self._pass_over_value(artifacts, sub_val, subtype)
 
-    def _pass_over_value(self, artifacts, value, ioc):
+    def _pass_over_value(self, artifacts: list[Artifact], value: Any, ioc: dict[str, Any]) -> None:
         validator = ioc.get("validator")
         clean = ioc.get("clean")
         subtypes = ioc.get("subtypes", [])
@@ -253,11 +282,10 @@ class TextIOCParser:
         for st in subtypes:
             self._parse_ioc_subtype(artifacts, value, st)
 
-    def parse_to_artifacts(self, text):
+    def parse_to_artifacts(self, text: str) -> list[Artifact]:
         artifacts = []
         for ioc in self.patterns:
-            regexp = re.compile(ioc["pattern"], re.IGNORECASE)
-            found = regexp.findall(text)
+            found = re.findall(ioc["pattern"], text, flags=re.IGNORECASE)
             for match in found:
                 if isinstance(match, tuple):
                     for x in match:
@@ -266,24 +294,24 @@ class TextIOCParser:
                     self._pass_over_value(artifacts, match, ioc)
         return artifacts
 
-    def add_artifact(self, text):
-        artifact = {}
-        artifact["source_data_identifier"] = self.added_artifacts
-        artifact["cef"] = {"message": text}
-        artifact["name"] = "Raw Text Artifact"
+    def add_artifact(self, text: str) -> Artifact:
+        artifact = Artifact(
+            source_data_identifier=self.added_artifacts,
+            cef={"message": text},
+            name="Raw Text Artifact",
+        )
         self.added_artifacts += 1
         self.found_values.add(text)
         return artifact
 
 
-def _grab_raw_text(action_result, txt_file):
+def _grab_raw_text(action_result: "ActionResult", txt_file: str) -> tuple[bool, Optional[str]]:
     """This function will actually really work for any file which is basically raw text.
     html, rtf, and the list could go on
     """
     try:
-        fp = open(txt_file, "rb")
-        text = UnicodeDammit(fp.read()).unicode_markup
-        fp.close()
+        with open(txt_file, "rb") as fp:
+            text = UnicodeDammit(fp.read()).unicode_markup
         return phantom.APP_SUCCESS, text
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
@@ -299,7 +327,7 @@ class PDFXrefObjectsToXML:
     """
 
     @classmethod
-    def encode(cls, data):
+    def encode(cls, data: bytes) -> str:
         """Encode characters of text"""
         buf = StringIO()
         for byte in data:
@@ -310,7 +338,7 @@ class PDFXrefObjectsToXML:
         return buf.getvalue()
 
     @classmethod
-    def dump_xml(cls, text, obj):
+    def dump_xml(cls, text: str, obj: Any) -> str:
         """Convert PDF xref object to XML"""
         if obj is None:
             text += "<null />"
@@ -364,16 +392,17 @@ class PDFXrefObjectsToXML:
         raise TypeError("Unable to extract the object from PDF. Reason: {}".format(obj))
 
     @classmethod
-    def dump_trailers(cls, text, doc):
+    def dump_trailers(cls, text: str, doc: PDFDocument) -> str:
         """Iterate trough xrefs and convert trailer of xref to XML"""
         for xref in doc.xrefs:
-            text += "<trailer>\n"
-            cls.dump_xml(text, xref.trailer)
-            text += "\n</trailer>\n\n"
+            if trailer := getattr(xref, "trailer"):
+                text += "<trailer>\n"
+                cls.dump_xml(text, trailer)
+                text += "\n</trailer>\n\n"
         return text
 
     @classmethod
-    def convert_objects_to_xml_text(cls, text, doc):
+    def convert_objects_to_xml_text(cls, text: str, doc: PDFDocument) -> str:
         """Iterate trough xrefs and convert objects of xref to XML"""
         visited = set()
         text += "<pdf>"
@@ -396,7 +425,7 @@ class PDFXrefObjectsToXML:
         return text
 
     @classmethod
-    def pdf_xref_objects_to_xml(cls, pdf_file):
+    def pdf_xref_objects_to_xml(cls, pdf_file: str) -> str:
         """Converts PDF cross reference table(xref) objects to XML
         The xref is the index by which all of the indirect objects, in the PDF file are located.
         https://labs.appligent.com/pdfblog/pdf_cross_reference_table/
@@ -409,32 +438,37 @@ class PDFXrefObjectsToXML:
         return text
 
 
-def _pdf_to_text(action_result, pdf_file):
+def _pdf_to_text(action_result: "ActionResult", pdf_file: str) -> tuple[bool, Optional[str]]:
     try:
         pagenums = set()
         output = StringIO()
         manager = PDFResourceManager()
         converter = TextConverter(manager, output, laparams=LAParams())
         interpreter = PDFPageInterpreter(manager, converter)
-        # if sys.version_info[0] == 3:
-        infile = open(pdf_file, "rb")
-        # elif sys.version_info[0] < 3:
-        #     infile = file(pdf_file, 'rb')
-        for page in PDFPage.get_pages(infile, pagenums):
-            interpreter.process_page(page)
-        infile.close()
+        with open(pdf_file, "rb") as infile:
+            for page in PDFPage.get_pages(infile, pagenums):
+                interpreter.process_page(page)
         converter.close()
         text = output.getvalue()
         output.close()
         text += PDFXrefObjectsToXML.pdf_xref_objects_to_xml(pdf_file)
         return phantom.APP_SUCCESS, text
-    except pdfminer.pdfdocument.PDFPasswordIncorrect:
-        return action_result.set_status(phantom.APP_ERROR, "Failed to parse pdf: The provided pdf is password protected"), None
-    except pdfminer.pdfdocument.PDFEncryptionError:
+    except PDFPasswordIncorrect:
+        return (
+            action_result.set_status(
+                phantom.APP_ERROR,
+                "Failed to parse pdf: The provided pdf is password protected",
+            ),
+            None,
+        )
+    except PDFEncryptionError:
         return action_result.set_status(phantom.APP_ERROR, "Failed to parse pdf: The provided pdf is encrypted"), None
     except struct.error:
         return (
-            action_result.set_status(phantom.APP_ERROR, "Failed to parse pdf: The provided pdf is password protected or is in different format"),
+            action_result.set_status(
+                phantom.APP_ERROR,
+                "Failed to parse pdf: The provided pdf is password protected or is in different format",
+            ),
             None,
         )
     except Exception as e:
@@ -443,56 +477,57 @@ def _pdf_to_text(action_result, pdf_file):
         return action_result.set_status(phantom.APP_ERROR, "Failed to parse pdf: {0}".format(error_text)), None
 
 
-def _docx_to_text(action_result, docx_file):
-    """docx is literally a zip file, and all the words in the document are in one xml document
-    doc does not work this way at all
-    """
-    WORD_NAMESPACE = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
-    PARA = WORD_NAMESPACE + "p"
-    TEXT = WORD_NAMESPACE + "t"
-
+def _docx_to_text(action_result: "ActionResult", docx_file: str) -> tuple[bool, Optional[str]]:
     try:
-        zf = zipfile.ZipFile(docx_file)
-        fp = zf.open("word/document.xml")
-        txt = fp.read()
-        fp.close()
-        root = ElementTree.fromstring(txt)
-        paragraphs = []
-        for paragraph in root.iter(PARA):
-            texts = [node.text for node in paragraph.iter(TEXT) if node.text]
-            if texts:
-                paragraphs.append("".join(texts))
-
-        return phantom.APP_SUCCESS, "\n\n".join(paragraphs)
+        doc = docx.Document(docx_file)
     except zipfile.BadZipfile:
         return (
             action_result.set_status(
-                phantom.APP_ERROR, "Failed to parse docx: The file might be corrupted or password protected or not a docx file"
+                phantom.APP_ERROR,
+                "Failed to parse docx: The file might be corrupted or password protected or not a docx file",
             ),
             None,
         )
-    except EntitiesForbidden as e:
-        error_message = e
-        return action_result.set_status(phantom.APP_ERROR, error_message), None
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
         error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
         return action_result.set_status(phantom.APP_ERROR, "Failed to parse docx: {0}".format(error_text)), None
 
+    full_text = []
 
-def _csv_to_text(action_result, csv_file):
+    # First, render the text in the doc into a string
+    for paragraph in doc.paragraphs:
+        para_text = "".join((run.text.strip() for run in paragraph.runs)).strip()
+        # Add the processed paragraph to the full text
+        if para_text:
+            full_text.append(para_text)
+
+    # Next, expand and append relationship targets present in the document, for searching later
+    for rel in doc.part.rels.values():
+        # Simple hyperlink, make sure its target is present in the text
+        if rel.reltype == REL_TYPE.HYPERLINK:
+            full_text.append(rel._target)
+        # This is like an embedded HTML within a docx file, stored as bytes
+        elif rel.reltype == REL_TYPE.A_F_CHUNK:
+            target = cast(DocxPart, rel._target)
+            full_text.extend(target.blob.decode(errors="replace").splitlines())
+
+    return phantom.APP_SUCCESS, "\n".join(full_text)
+
+
+def _csv_to_text(action_result: "ActionResult", csv_file: str) -> tuple[bool, Optional[str]]:
     """This function really only exists due to a misunderstanding on how word boundaries (\b) work
     As it turns out, only word characters can invalidate word boundaries. So stuff like commas,
     brackets, gt and lt signs, etc. do not
     """
     text = ""
     try:
-        fp = open(csv_file, "rt")
-        reader = csv.reader(fp)
-        for row in reader:
-            text += " ".join(row)
-            text += " "  # The humanity of always having a trailing space
-        fp.close()
+        with open(csv_file, "rt") as fp:
+            reader = csv.reader(fp)
+            for row in reader:
+                text += " ".join(row)
+                text += " "  # The humanity of always having a trailing space
+
         return phantom.APP_SUCCESS, text
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
@@ -500,18 +535,21 @@ def _csv_to_text(action_result, csv_file):
         return action_result.set_status(phantom.APP_ERROR, "Failed to parse csv: {0}".format(error_text)), None
 
 
-def _html_to_text(action_result, html_file, text_val=None):
+def _html_to_text(
+    action_result: "ActionResult",
+    html_file: Optional[str],
+    text_val: Optional[str] = None,
+) -> tuple[bool, Optional[str]]:
     """Similar to CSV, this is also unnecessary. It will trim /some/ of that fat from a normal HTML, however"""
     try:
-        if text_val is None:
-            fp = open(html_file, "rb")
-            html_text = UnicodeDammit(fp.read()).unicode_markup
-            fp.close()
+        if text_val is None and html_file is not None:
+            with open(html_file, "rb") as fp:
+                html_text = UnicodeDammit(fp.read()).unicode_markup
         else:
             html_text = text_val
 
         # To unescape html escaped body
-        html_text = unescape(html_text)
+        html_text = unescape(html_text or "")
 
         soup = BeautifulSoup(html_text, "html.parser")
         read_text = soup.findAll(text=True)
@@ -525,14 +563,14 @@ def _html_to_text(action_result, html_file, text_val=None):
         return action_result.set_status(phantom.APP_ERROR, "Failed to parse html: {0}".format(error_text)), None
 
 
-def _join_thread(base_connector, thread):
+def _join_thread(base_connector: "BaseConnector", thread: threading.Thread) -> None:
     base_connector._lock.acquire()
     base_connector._done = True
     base_connector._lock.release()
     thread.join()
 
 
-def _wait_for_parse(base_connector):
+def _wait_for_parse(base_connector: "BaseConnector") -> None:
     i = 0
     base_msg = "Parsing PDF document"
     while True:
@@ -547,7 +585,13 @@ def _wait_for_parse(base_connector):
     return
 
 
-def parse_file(base_connector, action_result, file_info, parse_domains=True, keep_raw=False):
+def parse_file(
+    base_connector: "BaseConnector",
+    action_result: "ActionResult",
+    file_info: FileInfo,
+    parse_domains: bool = True,
+    keep_raw: bool = False,
+) -> tuple[bool, Optional[dict[str, list[Artifact]]]]:
     """Parse a non-email file"""
 
     try:
@@ -577,7 +621,8 @@ def parse_file(base_connector, action_result, file_info, parse_domains=True, kee
         ret_val, raw_text = _html_to_text(action_result, file_info["path"])
     else:
         return action_result.set_status(phantom.APP_ERROR, "Unexpected file type"), None
-    if phantom.is_fail(ret_val):
+
+    if phantom.is_fail(ret_val) or raw_text is None:
         return ret_val, None
 
     base_connector.save_progress("Parsing for IOCs")
@@ -593,28 +638,43 @@ def parse_file(base_connector, action_result, file_info, parse_domains=True, kee
     return phantom.APP_SUCCESS, {"artifacts": artifacts}
 
 
-def parse_structured_file(action_result, file_info):
-
+def parse_structured_file(action_result: "ActionResult", file_info: FileInfo) -> tuple[bool, Optional[dict[str, list[Artifact]]]]:
     if file_info["type"] == "csv":
         csv_file = file_info["path"]
         artifacts = []
         try:
-            fp = open(csv_file, "rt")
-            reader = csv.DictReader(fp, restkey="other")  # need to handle lines terminated in commas
-            for row in reader:
-                row["source_file"] = file_info["name"]
-                artifacts.append({"name": "CSV entry", "cef": {k: v for k, v in list(row.items())}})  # make CSV entry artifact
-            fp.close()
+            with open(csv_file, "rt") as fp:
+                reader = csv.DictReader(fp, restkey="other")  # need to handle lines terminated in commas
+                for row in reader:
+                    row["source_file"] = file_info["name"]
+                    artifacts.append(
+                        {
+                            "name": "CSV entry",
+                            "cef": {k: v for k, v in list(row.items())},
+                        }
+                    )  # make CSV entry artifact
         except Exception as e:
             error_code, error_message = _get_error_message_from_exception(e)
             error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
-            return action_result.set_status(phantom.APP_ERROR, "Failed to parse structured CSV: {0}".format(error_text)), None
+            return (
+                action_result.set_status(
+                    phantom.APP_ERROR,
+                    "Failed to parse structured CSV: {0}".format(error_text),
+                ),
+                None,
+            )
     else:
         return action_result.set_status(phantom.APP_ERROR, "Structured extraction only supported for CSV files"), None
     return phantom.APP_SUCCESS, {"artifacts": artifacts}
 
 
-def parse_text(base_connector, action_result, file_type, text_val, parse_domains=True):
+def parse_text(
+    base_connector: "BaseConnector",
+    action_result: "ActionResult",
+    file_type: Optional[str],
+    text_val: str,
+    parse_domains: bool = True,
+) -> tuple[bool, Optional[dict[str, list[Artifact]]]]:
     """Parse a non-email file"""
 
     try:
@@ -629,7 +689,8 @@ def parse_text(base_connector, action_result, file_type, text_val, parse_domains
         ret_val, raw_text = phantom.APP_SUCCESS, text_val
     else:
         return action_result.set_status(phantom.APP_ERROR, "Unexpected file type"), None
-    if phantom.is_fail(ret_val):
+
+    if phantom.is_fail(ret_val) or raw_text is None:
         return ret_val, None
 
     base_connector.save_progress("Parsing for IOCs")

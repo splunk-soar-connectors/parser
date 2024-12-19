@@ -12,13 +12,7 @@
 [comment]: # "either express or implied. See the License for the specific language governing permissions"
 [comment]: # "and limitations under the License."
 [comment]: # ""
-This app will ignore the HTTP_PROXY and HTTPS_PROXY environment variables.  
-
-## Defusedxml
-
-This app uses the defusedxml module, which is licensed under the Python Software Foundation License
-(PSFL), Copyright 1991-1995 by Stichting Mathematisch Centrum, Amsterdam, The Netherlands.
-
+This app will ignore the HTTP_PROXY and HTTPS_PROXY environment variables.
 
 
 ## URL Extraction
