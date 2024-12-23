@@ -9,7 +9,7 @@
     "product_name": "Parser",
     "product_version_regex": ".*",
     "publisher": "Splunk",
-    "app_version": "2.10.4",
+    "app_version": "2.10.5",
     "fips_compliant": true,
     "license": "Copyright (c) 2017-2024 Splunk Inc.",
     "utctime_updated": "2024-12-23T21:01:21.000000Z",
