@@ -579,13 +579,16 @@ class ParserConnector(BaseConnector):
 if __name__ == "__main__":
     import argparse
 
+    import pudb
     import requests
+
+    pudb.set_trace()
 
     argparser = argparse.ArgumentParser()
 
     argparser.add_argument("input_test_json", help="Input Test JSON file")
-    argparser.add_argument("-u", "--username", help="username", default="soar_local_admin")
-    argparser.add_argument("-p", "--password", help="password", default="password")
+    argparser.add_argument("-u", "--username", help="username", required=False)
+    argparser.add_argument("-p", "--password", help="password", required=False)
     argparser.add_argument(
         "-v",
         "--verify",
@@ -603,7 +606,7 @@ if __name__ == "__main__":
     if args.username and args.password:
         login_url = BaseConnector._get_phantom_base_url() + "login"
         try:
-            print(f"Accessing the Login page: {login_url}")
+            print("Accessing the Login page")
             r = requests.get(login_url, verify=verify, timeout=consts.DEFAULT_REQUEST_TIMEOUT)
             csrftoken = r.cookies["csrftoken"]
             data = {
@@ -624,7 +627,6 @@ if __name__ == "__main__":
                 headers=headers,
                 timeout=consts.DEFAULT_REQUEST_TIMEOUT,
             )
-            r2.raise_for_status()
             session_id = r2.cookies["sessionid"]
 
         except Exception as e:
