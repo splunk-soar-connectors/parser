@@ -1326,11 +1326,7 @@ def _parse_results(
         artifacts_total = []
         artifacts_total.extend(vault_artifacts)
         artifacts_total.extend(artifacts)
-        _debug_print(f"JACOBD: {vault_artifacts=} {artifacts=}")
         if artifacts_total:
-            if not all(isinstance(a, dict) for a in artifacts_total):
-                raise RuntimeError("JACOBD: It's still borked!")
-
             ret_val, status_string, successful_artifacts = _base_connector.save_artifacts(artifacts_total)
             _base_connector.debug_print(
                 "save_artifact returns, value: {0}, reason: {1}, ids: {2}".format(ret_val, status_string, successful_artifacts)
