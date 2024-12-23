@@ -25,19 +25,29 @@ import tempfile
 from collections import OrderedDict
 from email.header import decode_header, make_header
 from html import unescape
+from typing import TYPE_CHECKING, Any, Optional, TypedDict, cast
 from urllib.parse import urlparse
 
 import magic
 import phantom.app as phantom
 import phantom.rules as ph_rules
 import phantom.utils as ph_utils
-from bs4 import BeautifulSoup, UnicodeDammit
+from bs4 import BeautifulSoup
+from bs4.dammit import UnicodeDammit
 from django.core.validators import URLValidator
 from phantom.vault import Vault
 from requests.structures import CaseInsensitiveDict
 
+if TYPE_CHECKING:
+    from email.message import Message
+
+    from phantom.app import BaseConnector
+
+    _base_connector: "BaseConnector" = BaseConnector()
+else:
+    _base_connector = None
+
 # Any globals added here, should be initialized in the init() function
-_base_connector = None
 _config = dict()
 _email_id_contains = list()
 _container = dict()
@@ -46,6 +56,22 @@ _attachments = list()
 _tmp_dirs = list()
 
 _container_common = {"run_automation": False}  # Don't run any playbooks, when this container is added
+
+
+class ParsedMail(TypedDict):
+    ips: set[str]
+    hashes: set[str]
+    urls: set[str]
+    domains: set[str]
+    email_headers: list[dict[str, Any]]
+    files: list[dict[str, Any]]
+    bodies: list[dict[str, Any]]
+    subject: str
+    to: str
+    date: str
+    message_id: str
+    start_time: int
+    # from: str
 
 
 FILE_EXTENSIONS = {
@@ -122,9 +148,9 @@ IPV6_REGEX += r"(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*"
 DEFAULT_SINGLE_PART_EML_FILE_NAME = "part_1.text"
 
 
-def _get_string(input_str, charset):
+def _get_string(input_str: str, charset: Optional[str]) -> str:
     try:
-        if input_str:
+        if input_str and charset:
             input_str = UnicodeDammit(input_str).unicode_markup.encode(charset).decode(charset)
     except Exception:
         try:
@@ -136,7 +162,7 @@ def _get_string(input_str, charset):
     return input_str
 
 
-def _get_error_message_from_exception(e):
+def _get_error_message_from_exception(e: Exception) -> tuple[str, str]:
     """This method is used to get appropriate error message from the exception.
     :param e: Exception object
     :return: error message
@@ -160,7 +186,7 @@ def _get_error_message_from_exception(e):
     return error_code, error_msg
 
 
-def _is_ip(input_ip):
+def _is_ip(input_ip: str) -> bool:
     if ph_utils.is_ip(input_ip):
         return True
 
@@ -170,7 +196,7 @@ def _is_ip(input_ip):
     return False
 
 
-def _refang_url(url):
+def _refang_url(url: str) -> str:
     parsed = urlparse(url)
     scheme = parsed.scheme
 
@@ -184,7 +210,7 @@ def _refang_url(url):
     return refang_url
 
 
-def _clean_url(url):
+def _clean_url(url: str) -> str:
     url = url.strip(">),.]\r\n")
 
     # Check before splicing, find returns -1 if not found
@@ -199,7 +225,7 @@ def _clean_url(url):
     return url
 
 
-def is_ipv6(input_ip):
+def is_ipv6(input_ip: str) -> bool:
     try:
         socket.inet_pton(socket.AF_INET6, input_ip)
     except Exception:  # not a valid v6 address
@@ -216,7 +242,7 @@ ip_regexc = re.compile(IP_REGEX)
 ipv6_regexc = re.compile(IPV6_REGEX)
 
 
-def _get_file_contains(file_path):
+def _get_file_contains(file_path: str) -> list[str]:
     contains = []
     ext = os.path.splitext(file_path)[1]
     contains.extend(FILE_EXTENSIONS.get(ext, []))
@@ -228,26 +254,22 @@ def _get_file_contains(file_path):
     return contains
 
 
-def _debug_print(*args):
+def _debug_print(*args: Any) -> None:
     if _base_connector and hasattr(_base_connector, "debug_print"):
         _base_connector.debug_print(*args)
 
-    return
 
-
-def _error_print(*args):
+def _error_print(*args: Any) -> None:
     if _base_connector and hasattr(_base_connector, "error_print"):
         _base_connector.error_print(*args)
 
-    return
 
-
-def _dump_error_log(error, message="Exception occurred."):
+def _dump_error_log(error: Exception, message: str = "Exception occurred.") -> None:
     if _base_connector and hasattr(_base_connector, "error_print"):
         _base_connector.error_print(message, dump_object=error)
 
 
-def _extract_urls_domains(file_data, urls, domains):
+def _extract_urls_domains(file_data: str, urls: set[str], domains: set[str]) -> None:
     if (not _config[PROC_EMAIL_JSON_EXTRACT_DOMAINS]) and (not _config[PROC_EMAIL_JSON_EXTRACT_URLS]):
         return
 
@@ -325,7 +347,7 @@ def _extract_urls_domains(file_data, urls, domains):
     return
 
 
-def _get_ips(file_data, ips):
+def _get_ips(file_data: str, ips: set[str]) -> None:
     # First extract what looks like an IP from the file, this is a faster operation
     ips_in_mail = re.findall(ip_regexc, file_data)
     ip6_in_mail = re.findall(ipv6_regexc, file_data)
@@ -345,7 +367,7 @@ def _get_ips(file_data, ips):
             ips |= set(ips_in_mail)
 
 
-def _handle_body(body, parsed_mail, body_index, email_id):
+def _handle_body(body: dict[str, str], parsed_mail: ParsedMail, email_id: str) -> bool:
     local_file_path = body["file_path"]
     charset = body.get("charset")
 
@@ -394,7 +416,13 @@ def _handle_body(body, parsed_mail, body_index, email_id):
     return phantom.APP_SUCCESS
 
 
-def _add_artifacts(cef_key, input_set, artifact_name, start_index, artifacts):
+def _add_artifacts(
+    cef_key: str,
+    input_set: set[str],
+    artifact_name: str,
+    start_index: int,
+    artifacts: list[dict[str, Any]],
+) -> int:
     added_artifacts = 0
     for entry in input_set:
         # ignore empty entries
@@ -412,7 +440,12 @@ def _add_artifacts(cef_key, input_set, artifact_name, start_index, artifacts):
     return added_artifacts
 
 
-def _parse_email_headers_as_inline(file_data, parsed_mail, charset, email_id):
+def _parse_email_headers_as_inline(
+    file_data: str,
+    parsed_mail: ParsedMail,
+    charset: Optional[str],
+    email_id: str,
+) -> bool:
     # remove the 'Forwarded Message' from the email text and parse it
     p = re.compile(r"(?<=\r\n).*Forwarded Message.*\r\n", re.IGNORECASE)
     email_text = p.sub("", file_data.strip())
@@ -429,7 +462,11 @@ def _parse_email_headers_as_inline(file_data, parsed_mail, charset, email_id):
     return phantom.APP_SUCCESS
 
 
-def _add_email_header_artifacts(email_header_artifacts, start_index, artifacts):
+def _add_email_header_artifacts(
+    email_header_artifacts: list[dict[str, Any]],
+    start_index: int,
+    artifacts: list[dict[str, Any]],
+) -> int:
     added_artifacts = 0
     for artifact in email_header_artifacts:
         artifact["source_data_identifier"] = start_index + added_artifacts
@@ -439,7 +476,7 @@ def _add_email_header_artifacts(email_header_artifacts, start_index, artifacts):
     return added_artifacts
 
 
-def _create_artifacts(parsed_mail):
+def _create_artifacts(parsed_mail: ParsedMail) -> bool:
     # get all the artifact data in their own list objects
     ips = parsed_mail[PROC_EMAIL_JSON_IPS]
     hashes = parsed_mail[PROC_EMAIL_JSON_HASHES]
@@ -472,7 +509,7 @@ def _create_artifacts(parsed_mail):
     return phantom.APP_SUCCESS
 
 
-def _decode_uni_string(input_str, def_name):
+def _decode_uni_string(input_str: str, def_name: str) -> str:
     # try to find all the decoded strings, we could have multiple decoded strings
     # or a single decoded string between two normal strings separated by \r\n
     # YEAH...it could get that messy
@@ -534,7 +571,7 @@ def _decode_uni_string(input_str, def_name):
     return input_str
 
 
-def _get_container_name(parsed_mail, email_id):
+def _get_container_name(parsed_mail: ParsedMail, email_id: str) -> str:
     # Create the default name
     def_cont_name = "Email ID: {0}".format(email_id)
 
@@ -551,22 +588,21 @@ def _get_container_name(parsed_mail, email_id):
 
 
 def _handle_if_body(
-    content_disp,
-    content_id,
-    content_type,
-    part,
-    bodies,
-    file_path,
-    parsed_mail,
-    file_name,
-):
+    content_disp: Optional[str],
+    content_type: Optional[str],
+    part: "Message",
+    bodies: list[dict[str, Any]],
+    file_path: str,
+    parsed_mail: ParsedMail,
+    file_name: str,
+) -> tuple[bool, bool]:
     process_as_body = False
 
     # if content disposition is None then assume that it is
     if content_disp is None:
         process_as_body = True
     # if content disposition is inline
-    elif content_disp.lower().strip() == "inline":
+    elif content_disp.lower().strip() == "inline" and content_type is not None:
         if ("text/html" in content_type) or ("text/plain" in content_type):
             process_as_body = True
 
@@ -574,6 +610,9 @@ def _handle_if_body(
         return phantom.APP_SUCCESS, True
 
     part_payload = part.get_payload(decode=True)
+    if isinstance(part_payload, list):
+        part_payload = b"".join(part_payload)
+    part_payload = cast(bytes, part_payload)
 
     if not part_payload:
         return phantom.APP_SUCCESS, False
@@ -589,7 +628,13 @@ def _handle_if_body(
     return phantom.APP_SUCCESS, False
 
 
-def _handle_part(part, part_index, tmp_dir, extract_attach, parsed_mail):
+def _handle_part(
+    part: "Message",
+    part_index: int,
+    tmp_dir: str,
+    extract_attach: bool,
+    parsed_mail: ParsedMail,
+) -> bool:
     bodies = parsed_mail[PROC_EMAIL_JSON_BODIES]
 
     # get the file_name
@@ -621,20 +666,16 @@ def _handle_part(part, part_index, tmp_dir, extract_attach, parsed_mail):
         file_name = file_name.replace("/", "_")
 
     # Remove any chars that we don't want in the name
-    try:
-        file_path = "{0}/{1}_{2}".format(tmp_dir, part_index, file_name.translate(None, "".join(["<", ">", " "])))
-    except TypeError:  # py3
-        file_path = "{0}/{1}_{2}".format(
-            tmp_dir,
-            part_index,
-            file_name.translate(file_name.maketrans("", "", "".join(["<", ">", " "]))),
-        )
+    file_path = "{0}/{1}_{2}".format(
+        tmp_dir,
+        part_index,
+        file_name.translate(file_name.maketrans("", "", "<> ")),
+    )
     _debug_print("file_path: {0}".format(file_path))
 
     # is the part representing the body of the email
     status, process_further = _handle_if_body(
         content_disp,
-        content_id,
         content_type,
         part,
         bodies,
@@ -655,12 +696,12 @@ def _handle_part(part, part_index, tmp_dir, extract_attach, parsed_mail):
     return phantom.APP_SUCCESS
 
 
-def _handle_attachment(part, file_name, file_path, parsed_mail):
+def _handle_attachment(part: "Message", file_name: str, file_path: str, parsed_mail: ParsedMail) -> bool:
     files = parsed_mail[PROC_EMAIL_JSON_FILES]
     if not _config[PROC_EMAIL_JSON_EXTRACT_ATTACHMENTS]:
         return phantom.APP_SUCCESS
 
-    part_base64_encoded = part.get_payload()
+    part_base64_encoded = cast(str, part.get_payload())
 
     headers = _get_email_headers_from_part(part)
     attach_meta_info = dict()
@@ -682,7 +723,7 @@ def _handle_attachment(part, file_name, file_path, parsed_mail):
             del attach_meta_info["content"]
             curr_attach["should_ignore"] = True
 
-    part_payload = part.get_payload(decode=True)
+    part_payload = cast(bytes, part.get_payload(decode=True))
     if not part_payload:
         return phantom.APP_SUCCESS
     try:
@@ -703,15 +744,15 @@ def _handle_attachment(part, file_name, file_path, parsed_mail):
                     long_file.write(part_payload)
             else:
                 _debug_print("Error occurred while adding file to Vault. Error Details: {}".format(error_message))
-                return
+                return phantom.APP_ERROR
         except Exception as e:
             error_code, error_message = _get_error_message_from_exception(e)
             _error_print("Error occurred while adding file to Vault. Error Details: {}".format(error_message))
-            return
+            return phantom.APP_ERROR
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
         _error_print("Error occurred while adding file to Vault. Error Details: {}".format(error_message))
-        return
+        return phantom.APP_ERROR
 
     file_hash = hashlib.sha1(part_payload).hexdigest()  # nosemgrep
     files.append(
@@ -722,16 +763,17 @@ def _handle_attachment(part, file_name, file_path, parsed_mail):
             "meta_info": attach_meta_info,
         }
     )
+    return phantom.APP_SUCCESS
 
 
-def remove_child_info(file_path):
+def remove_child_info(file_path: str) -> str:
     if file_path.endswith("_True"):
         return file_path.rstrip("_True")
     else:
         return file_path.rstrip("_False")
 
 
-def _get_email_headers_from_part(part, charset=None):
+def _get_email_headers_from_part(part: "Message", charset: Optional[str] = None) -> dict[str, str]:
     email_headers = list(part.items())
 
     # TODO: the next 2 ifs can be condensed to use 'or'
@@ -775,7 +817,12 @@ def _get_email_headers_from_part(part, charset=None):
     return dict(headers)
 
 
-def _parse_email_headers(parsed_mail, part, charset=None, add_email_id=None):
+def _parse_email_headers(
+    parsed_mail: ParsedMail,
+    part: "Message",
+    charset: Optional[str] = None,
+    add_email_id: Optional[str] = None,
+) -> int:
     global _email_id_contains
 
     email_header_artifacts = parsed_mail[PROC_EMAIL_JSON_EMAIL_HEADERS]
@@ -828,7 +875,13 @@ def _parse_email_headers(parsed_mail, part, charset=None, add_email_id=None):
     return len(email_header_artifacts)
 
 
-def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type, file_name):
+def _add_body_in_email_headers(
+    parsed_mail: ParsedMail,
+    file_path: str,
+    charset: Optional[str],
+    content_type: Optional[str],
+    file_name: str,
+) -> None:
     if not content_type:
         _debug_print("Unable to update email headers with the invalid content_type {}".format(content_type))
         return
@@ -900,7 +953,13 @@ def _add_body_in_email_headers(parsed_mail, file_path, charset, content_type, fi
             _error_print("{}. {}. {}".format(error_text, error_code, error_message))
 
 
-def _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch):
+def _handle_mail_object(
+    mail: "Message",
+    email_id: str,
+    rfc822_email: str,
+    tmp_dir: str,
+    start_time_epoch: int,
+) -> bool:
     parsed_mail = OrderedDict()
 
     # Create a tmp directory for this email, will extract all files here
@@ -928,6 +987,7 @@ def _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)
     parsed_mail[PROC_EMAIL_JSON_BODIES] = bodies = []
     parsed_mail[PROC_EMAIL_JSON_START_TIME] = start_time_epoch
     parsed_mail[PROC_EMAIL_JSON_EMAIL_HEADERS] = []
+    parsed_mail = cast(ParsedMail, parsed_mail)
 
     # parse the parts of the email
     if mail.is_multipart():
@@ -960,7 +1020,7 @@ def _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)
         file_name = mail.get_filename() or mail.get("Subject", DEFAULT_SINGLE_PART_EML_FILE_NAME)
 
         with open(file_path, "wb") as f:
-            f.write(mail.get_payload(decode=True))
+            f.write(cast(bytes, mail.get_payload(decode=True)))
         bodies.append(
             {
                 "file_path": file_path,
@@ -1001,7 +1061,7 @@ def _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)
             continue
 
         try:
-            _handle_body(body, parsed_mail, i, email_id)
+            _handle_body(body, parsed_mail, email_id)
         except Exception as e:
             error_code, error_message = _get_error_message_from_exception(e)
             error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
@@ -1016,7 +1076,7 @@ def _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)
     return phantom.APP_SUCCESS
 
 
-def _init():
+def _init() -> None:
     global _base_connector
     global _config
     global _container
@@ -1024,15 +1084,19 @@ def _init():
     global _attachments
     global _email_id_contains
 
-    _base_connector = None
+    if TYPE_CHECKING:
+        _base_connector = BaseConnector()
+    else:
+        _base_connector = None
+
     _email_id_contains = list()
-    _config = None
+    _config = dict()
     _container = dict()
     _artifacts = list()
     _attachments = list()
 
 
-def _set_email_id_contains(email_id):
+def _set_email_id_contains(email_id: str) -> None:
     global _base_connector
     global _email_id_contains
 
@@ -1056,17 +1120,15 @@ def _set_email_id_contains(email_id):
         _email_id_contains = ["vault id"]
     _base_connector.debug_print(_email_id_contains)
 
-    return
 
-
-def _del_tmp_dirs():
+def _del_tmp_dirs() -> None:
     """Remove any tmp_dirs that were created."""
     global _tmp_dirs
     for tmp_dir in _tmp_dirs:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
-def _int_process_email(rfc822_email, email_id, start_time_epoch):
+def _int_process_email(rfc822_email: str, email_id: str, start_time_epoch: int) -> tuple[bool, str, list[dict[str, Any]]]:
     global _base_connector
     global _config
     global _tmp_dirs
@@ -1106,7 +1168,15 @@ def _int_process_email(rfc822_email, email_id, start_time_epoch):
     return ret_val, "Email Parsed", results
 
 
-def process_email(base_connector, rfc822_email, email_id, config, label, container_id, epoch):
+def process_email(
+    base_connector: "BaseConnector",
+    rfc822_email: str,
+    email_id: str,
+    config: dict[str, Any],
+    label: str,
+    container_id: int,
+    epoch: int,
+) -> tuple[bool, dict[str, Any]]:
     try:
         _init()
     except Exception as e:
@@ -1155,8 +1225,16 @@ def process_email(base_connector, rfc822_email, email_id, config, label, contain
     )
 
 
-def _parse_results(results, label, update_container_id, run_automation=True, tags=[]):
+def _parse_results(
+    results: list[dict[str, Any]],
+    label: str,
+    update_container_id: Optional[int],
+    run_automation: bool = True,
+    tags: Optional[list[str]] = None,
+) -> tuple[int, list[dict[str, Any]], list[dict[str, Any]]]:
     global _base_connector
+    if tags is None:
+        tags = []
 
     param = _base_connector.get_current_param()
 
@@ -1179,7 +1257,7 @@ def _parse_results(results, label, update_container_id, run_automation=True, tag
             container.update(_container_common)
             container["label"] = label
             try:
-                (ret_val, message, container_id) = _base_connector.save_container(container)
+                (ret_val, message, container_id) = cast(tuple[bool, str, int], _base_connector.save_container(container))
             except Exception as e:
                 error_code, error_message = _get_error_message_from_exception(e)
                 error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
@@ -1200,13 +1278,13 @@ def _parse_results(results, label, update_container_id, run_automation=True, tag
         else:
             container_id = update_container_id
 
-        files = result.get("files")
+        files = result.get("files", [])
         _debug_print("# of files to process: {}".format(len(files)))
 
         vault_artifacts = []
         vault_ids = list()
 
-        artifacts = result.get("artifacts")
+        artifacts = result.get("artifacts", [])
         total_artifacts.extend(artifacts)
         total_artifacts.extend(files)
         # Generate and save Vault artifacts from files
@@ -1248,7 +1326,11 @@ def _parse_results(results, label, update_container_id, run_automation=True, tag
         artifacts_total = []
         artifacts_total.extend(vault_artifacts)
         artifacts_total.extend(artifacts)
+        _debug_print(f"JACOBD: {vault_artifacts=} {artifacts=}")
         if artifacts_total:
+            if not all(isinstance(a, dict) for a in artifacts_total):
+                raise RuntimeError("JACOBD: It's still borked!")
+
             ret_val, status_string, successful_artifacts = _base_connector.save_artifacts(artifacts_total)
             _base_connector.debug_print(
                 "save_artifact returns, value: {0}, reason: {1}, ids: {2}".format(ret_val, status_string, successful_artifacts)
@@ -1265,7 +1347,7 @@ def _parse_results(results, label, update_container_id, run_automation=True, tag
     return container_id, total_artifacts, successful_artifacts
 
 
-def _add_vault_hashes_to_dictionary(cef_artifact, vault_id):
+def _add_vault_hashes_to_dictionary(cef_artifact: dict[str, Any], vault_id: str) -> tuple[bool, str]:
     _, _, vault_info = ph_rules.vault_info(vault_id=vault_id)
     vault_info = list(vault_info)
 
@@ -1298,7 +1380,17 @@ def _add_vault_hashes_to_dictionary(cef_artifact, vault_id):
     return phantom.APP_SUCCESS, "Mapped hash values"
 
 
-def _handle_file(curr_file, vault_ids, container_id, artifact_id, run_automation=False, tags=[]):
+def _handle_file(
+    curr_file: dict[str, str],
+    vault_ids: list[str],
+    container_id: int,
+    artifact_id: int,
+    run_automation: bool = False,
+    tags: Optional[list[str]] = None,
+) -> tuple[bool, dict[str, Any]]:
+    if tags is None:
+        tags = []
+
     file_name = curr_file.get("file_name")
 
     local_file_path = curr_file["file_path"]
@@ -1363,7 +1455,7 @@ def _handle_file(curr_file, vault_ids, container_id, artifact_id, run_automation
     return phantom.APP_SUCCESS, artifact
 
 
-def _set_sdi(default_id, input_dict):
+def _set_sdi(default_id: int, input_dict: dict[str, str]) -> bool:
     if "source_data_identifier" in input_dict:
         del input_dict["source_data_identifier"]
     dict_hash = None
@@ -1384,12 +1476,12 @@ def _set_sdi(default_id, input_dict):
     else:
         # Remove this code once the backend has fixed PS-4216 _and_ it has been
         # merged into next so that 2.0 and 2.1 has the code
-        input_dict["source_data_identifier"] = _create_dict_hash(input_dict)
+        input_dict["source_data_identifier"] = _create_dict_hash(input_dict) or ""
 
     return phantom.APP_SUCCESS
 
 
-def _get_fips_enabled():
+def _get_fips_enabled() -> bool:
     try:
         from phantom_common.install_info import is_fips_enabled
     except ImportError:
@@ -1403,7 +1495,7 @@ def _get_fips_enabled():
     return fips_enabled
 
 
-def _create_dict_hash(input_dict):
+def _create_dict_hash(input_dict: dict[str, Any]) -> Optional[str]:
     input_dict_str = None
 
     if not input_dict:
