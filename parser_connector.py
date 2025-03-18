@@ -1,6 +1,6 @@
 # File: parser_connector.py
 #
-# Copyright (c) 2017-2024 Splunk Inc.
+# Copyright (c) 2017-2025 Splunk Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -95,7 +95,7 @@ class EmailVaultData(NamedTuple):
 
 class ParserConnector(BaseConnector):
     def __init__(self) -> None:
-        super(ParserConnector, self).__init__()
+        super().__init__()
         self._lock = None
         self._done = False
 
@@ -124,12 +124,12 @@ class ParserConnector(BaseConnector):
                 elif len(e.args) == 1:
                     error_msg = e.args[0]
         except Exception as e:
-            self.error_print("Error occurred while fetching exception information. Details: {}".format(str(e)))
+            self.error_print(f"Error occurred while fetching exception information. Details: {e!s}")
 
         if not error_code:
-            error_text = "Error Message: {}".format(error_msg)
+            error_text = f"Error Message: {error_msg}"
         else:
-            error_text = "Error Code: {}. Error Message: {}".format(error_code, error_msg)
+            error_text = f"Error Code: {error_code}. Error Message: {error_msg}"
 
         return error_text
 
@@ -169,7 +169,7 @@ class ParserConnector(BaseConnector):
         try:
             _, _, vault_meta_info = ph_rules.vault_info(container_id=self.get_container_id(), vault_id=vault_id)
             if not vault_meta_info:
-                self.debug_print("Error while fetching meta information for vault ID: {}".format(vault_id))
+                self.debug_print(f"Error while fetching meta information for vault ID: {vault_id}")
                 return EmailVaultData(
                     action_result.set_status(phantom.APP_ERROR, consts.PARSER_ERR_FILE_NOT_IN_VAULT),
                     None,
@@ -201,7 +201,7 @@ class ParserConnector(BaseConnector):
             return EmailVaultData(
                 action_result.set_status(
                     phantom.APP_ERROR,
-                    "Could not read file contents for vault item. {}".format(error_text),
+                    f"Could not read file contents for vault item. {error_text}",
                 ),
                 None,
                 None,
@@ -221,7 +221,7 @@ class ParserConnector(BaseConnector):
         try:
             _, _, vault_meta = ph_rules.vault_info(container_id=self.get_container_id(), vault_id=vault_id)
             if not vault_meta:
-                self.debug_print("Error while fetching meta information for vault ID: {}".format(vault_id))
+                self.debug_print(f"Error while fetching meta information for vault ID: {vault_id}")
                 return FileInfoResult(
                     action_result.set_status(phantom.APP_ERROR, consts.PARSER_ERR_FILE_NOT_IN_VAULT),
                     None,
@@ -241,21 +241,16 @@ class ParserConnector(BaseConnector):
                     file_meta = meta
                     break
             else:
-                self.debug_print(
-                    "Unable to find a file for the vault ID: " "'{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id())
-                )
+                self.debug_print(f"Unable to find a file for the vault ID: '{vault_id}' in the container ID: '{self.get_container_id()}'")
         except Exception:
             self.error_print(
-                "Error occurred while finding a file for the vault ID: "
-                "'{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id())
+                f"Error occurred while finding a file for the vault ID: '{vault_id}' in the container ID: '{self.get_container_id()}'"
             )
             self.debug_print("Considering the first file as the required file")
             file_meta = vault_meta[0]
 
         if not file_meta:
-            self.debug_print(
-                "Unable to find a file for the vault ID: " "'{0}' in the container ID: '{1}'".format(vault_id, self.get_container_id())
-            )
+            self.debug_print(f"Unable to find a file for the vault ID: '{vault_id}' in the container ID: '{self.get_container_id()}'")
             self.debug_print("Considering the first file as the required file")
             file_meta = vault_meta[0]
 
@@ -365,7 +360,7 @@ class ParserConnector(BaseConnector):
             artifact_tags_list = []
 
         container = {
-            "name": "{0} Parse Results".format(file_name),
+            "name": f"{file_name} Parse Results",
             "label": label,
             "severity": severity,
         }
@@ -484,7 +479,7 @@ class ParserConnector(BaseConnector):
         else:
             param.text = param.text.replace(",", ", ")
             ret_val, response = parser_methods.parse_text(self, action_result, param.file_type, param.text, param.parse_domains)
-            file_info["name"] = "Parser_Container_{0}".format(calendar.timegm(time.gmtime()))
+            file_info["name"] = f"Parser_Container_{calendar.timegm(time.gmtime())}"
 
         if not response:
             return action_result.set_status(
@@ -615,7 +610,7 @@ if __name__ == "__main__":
                 "csrfmiddlewaretoken": csrftoken,
             }
             headers = {
-                "Cookie": "csrftoken={0}".format(csrftoken),
+                "Cookie": f"csrftoken={csrftoken}",
                 "Referer": login_url,
             }
 
@@ -630,7 +625,7 @@ if __name__ == "__main__":
             session_id = r2.cookies["sessionid"]
 
         except Exception as e:
-            print(("Unable to get session id from the platform. Error: {0}".format(str(e))))
+            print(f"Unable to get session id from the platform. Error: {e!s}")
             sys.exit(1)
 
     if len(sys.argv) < 2:

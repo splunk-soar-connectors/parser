@@ -1,6 +1,6 @@
 # File: parser_methods.py
 #
-# Copyright (c) 2017-2024 Splunk Inc.
+# Copyright (c) 2017-2025 Splunk Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@ from pdfminer.pdfparser import PDFParser
 from pdfminer.pdftypes import PDFObjectNotFound, PDFObjRef, PDFStream
 from pdfminer.psparser import PSKeyword, PSLiteral
 from pdfminer.utils import isnumber
+
 
 if TYPE_CHECKING:
     from phantom.action_result import ActionResult
@@ -315,7 +316,7 @@ def _grab_raw_text(action_result: "ActionResult", txt_file: str) -> tuple[bool, 
         return phantom.APP_SUCCESS, text
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
-        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+        error_text = f"Error Code: {error_code}. Error Message: {error_message}"
         return action_result.set_status(phantom.APP_ERROR, error_text), None
 
 
@@ -332,7 +333,7 @@ class PDFXrefObjectsToXML:
         buf = StringIO()
         for byte in data:
             if byte < 32 or 127 <= byte or byte in ESCAPE:
-                buf.write("&#{};".format(byte))
+                buf.write(f"&#{byte};")
             else:
                 buf.write(chr(byte))
         return buf.getvalue()
@@ -345,9 +346,9 @@ class PDFXrefObjectsToXML:
             return text
 
         if isinstance(obj, dict):
-            text += '<dict size="{}">\n'.format(len(obj))
+            text += f'<dict size="{len(obj)}">\n'
             for key, value in obj.items():
-                text += "<key>\n{}\n</key>\n".format(key)
+                text += f"<key>\n{key}\n</key>\n"
                 text += "<value>"
                 text = cls.dump_xml(text, value)
                 text += "</value>\n"
@@ -355,7 +356,7 @@ class PDFXrefObjectsToXML:
             return text
 
         if isinstance(obj, list):
-            text += '<list size="{}">\n'.format(len(obj))
+            text += f'<list size="{len(obj)}">\n'
             for value in obj:
                 text = cls.dump_xml(text, value)
                 text += "\n"
@@ -363,7 +364,7 @@ class PDFXrefObjectsToXML:
             return text
 
         if isinstance(obj, bytes):
-            text += '<string size="{}">\n{}\n</string>'.format(len(obj), cls.encode(obj))
+            text += f'<string size="{len(obj)}">\n{cls.encode(obj)}\n</string>'
             return text
 
         if isinstance(obj, PDFStream):
@@ -374,22 +375,22 @@ class PDFXrefObjectsToXML:
             return text
 
         if isinstance(obj, PDFObjRef):
-            text += '<ref id="{}" />'.format(obj.objid)
+            text += f'<ref id="{obj.objid}" />'
             return text
 
         if isinstance(obj, PSKeyword):
-            text += "<keyword>\n{}\n</keyword>".format(obj.name)
+            text += f"<keyword>\n{obj.name}\n</keyword>"
             return text
 
         if isinstance(obj, PSLiteral):
-            text += "<literal>\n{}\n</literal>".format(obj.name)
+            text += f"<literal>\n{obj.name}\n</literal>"
             return text
 
         if isnumber(obj):
-            text += "<number>\n{}\n</number>".format(obj)
+            text += f"<number>\n{obj}\n</number>"
             return text
 
-        raise TypeError("Unable to extract the object from PDF. Reason: {}".format(obj))
+        raise TypeError(f"Unable to extract the object from PDF. Reason: {obj}")
 
     @classmethod
     def dump_trailers(cls, text: str, doc: PDFDocument) -> str:
@@ -415,11 +416,11 @@ class PDFXrefObjectsToXML:
                     obj = doc.getobj(obj_id)
                     if obj is None:
                         continue
-                    text += '<object id="{}">\n'.format(obj_id)
+                    text += f'<object id="{obj_id}">\n'
                     text = cls.dump_xml(text, obj)
                     text += "\n</object>\n\n"
                 except PDFObjectNotFound as e:
-                    raise PDFObjectNotFound("While converting PDF to xml objects PDF object not found." " Reason: {}".format(e))
+                    raise PDFObjectNotFound(f"While converting PDF to xml objects PDF object not found. Reason: {e}")
         cls.dump_trailers(text, doc)
         text += "</pdf>"
         return text
@@ -473,8 +474,8 @@ def _pdf_to_text(action_result: "ActionResult", pdf_file: str) -> tuple[bool, Op
         )
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
-        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
-        return action_result.set_status(phantom.APP_ERROR, "Failed to parse pdf: {0}".format(error_text)), None
+        error_text = f"Error Code: {error_code}. Error Message: {error_message}"
+        return action_result.set_status(phantom.APP_ERROR, f"Failed to parse pdf: {error_text}"), None
 
 
 def _docx_to_text(action_result: "ActionResult", docx_file: str) -> tuple[bool, Optional[str]]:
@@ -490,14 +491,14 @@ def _docx_to_text(action_result: "ActionResult", docx_file: str) -> tuple[bool, 
         )
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
-        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
-        return action_result.set_status(phantom.APP_ERROR, "Failed to parse docx: {0}".format(error_text)), None
+        error_text = f"Error Code: {error_code}. Error Message: {error_message}"
+        return action_result.set_status(phantom.APP_ERROR, f"Failed to parse docx: {error_text}"), None
 
     full_text = []
 
     # First, render the text in the doc into a string
     for paragraph in doc.paragraphs:
-        para_text = "".join((run.text.strip() for run in paragraph.runs)).strip()
+        para_text = "".join(run.text.strip() for run in paragraph.runs).strip()
         # Add the processed paragraph to the full text
         if para_text:
             full_text.append(para_text)
@@ -522,7 +523,7 @@ def _csv_to_text(action_result: "ActionResult", csv_file: str) -> tuple[bool, Op
     """
     text = ""
     try:
-        with open(csv_file, "rt") as fp:
+        with open(csv_file) as fp:
             reader = csv.reader(fp)
             for row in reader:
                 text += " ".join(row)
@@ -531,8 +532,8 @@ def _csv_to_text(action_result: "ActionResult", csv_file: str) -> tuple[bool, Op
         return phantom.APP_SUCCESS, text
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
-        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
-        return action_result.set_status(phantom.APP_ERROR, "Failed to parse csv: {0}".format(error_text)), None
+        error_text = f"Error Code: {error_code}. Error Message: {error_message}"
+        return action_result.set_status(phantom.APP_ERROR, f"Failed to parse csv: {error_text}"), None
 
 
 def _html_to_text(
@@ -559,8 +560,8 @@ def _html_to_text(
         return phantom.APP_SUCCESS, text
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
-        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
-        return action_result.set_status(phantom.APP_ERROR, "Failed to parse html: {0}".format(error_text)), None
+        error_text = f"Error Code: {error_code}. Error Message: {error_message}"
+        return action_result.set_status(phantom.APP_ERROR, f"Failed to parse html: {error_text}"), None
 
 
 def _join_thread(base_connector: "BaseConnector", thread: threading.Thread) -> None:
@@ -633,7 +634,7 @@ def parse_file(
             artifacts.append(tiocp.add_artifact(raw_text))
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
-        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+        error_text = f"Error Code: {error_code}. Error Message: {error_message}"
         return action_result.set_status(phantom.APP_ERROR, error_text), None
     return phantom.APP_SUCCESS, {"artifacts": artifacts}
 
@@ -643,7 +644,7 @@ def parse_structured_file(action_result: "ActionResult", file_info: FileInfo) ->
         csv_file = file_info["path"]
         artifacts = []
         try:
-            with open(csv_file, "rt") as fp:
+            with open(csv_file) as fp:
                 reader = csv.DictReader(fp, restkey="other")  # need to handle lines terminated in commas
                 for row in reader:
                     row["source_file"] = file_info["name"]
@@ -655,11 +656,11 @@ def parse_structured_file(action_result: "ActionResult", file_info: FileInfo) ->
                     )  # make CSV entry artifact
         except Exception as e:
             error_code, error_message = _get_error_message_from_exception(e)
-            error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+            error_text = f"Error Code: {error_code}. Error Message: {error_message}"
             return (
                 action_result.set_status(
                     phantom.APP_ERROR,
-                    "Failed to parse structured CSV: {0}".format(error_text),
+                    f"Failed to parse structured CSV: {error_text}",
                 ),
                 None,
             )
@@ -698,7 +699,7 @@ def parse_text(
         artifacts = tiocp.parse_to_artifacts(raw_text)
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
-        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+        error_text = f"Error Code: {error_code}. Error Message: {error_message}"
         return action_result.set_status(phantom.APP_ERROR, error_text), None
 
     return phantom.APP_SUCCESS, {"artifacts": artifacts}

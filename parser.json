@@ -11,7 +11,7 @@
     "publisher": "Splunk",
     "app_version": "2.10.5",
     "fips_compliant": true,
-    "license": "Copyright (c) 2017-2024 Splunk Inc.",
+    "license": "Copyright (c) 2017-2025 Splunk Inc.",
     "utctime_updated": "2024-12-23T21:01:21.000000Z",
     "package_name": "phantom_parser",
     "main_module": "parser_connector.py",
