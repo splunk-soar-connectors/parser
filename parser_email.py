@@ -1,6 +1,6 @@
 # File: parser_email.py
 #
-# Copyright (c) 2017-2024 Splunk Inc.
+# Copyright (c) 2017-2025 Splunk Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ from bs4.dammit import UnicodeDammit
 from django.core.validators import URLValidator
 from phantom.vault import Vault
 from requests.structures import CaseInsensitiveDict
+
 
 if TYPE_CHECKING:
     from email.message import Message
@@ -157,7 +158,7 @@ def _get_string(input_str: str, charset: Optional[str]) -> str:
             input_str = str(make_header(decode_header(input_str)))
         except Exception:
             input_str = _decode_uni_string(input_str, input_str)
-        _base_connector.error_print("Error occurred while converting to string with specific encoding {}".format(input_str))
+        _base_connector.error_print(f"Error occurred while converting to string with specific encoding {input_str}")
 
     return input_str
 
@@ -278,7 +279,7 @@ def _extract_urls_domains(file_data: str, urls: set[str], domains: set[str]) -> 
         soup = BeautifulSoup(file_data, "html.parser")
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
-        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+        error_text = f"Error Code: {error_code}. Error Message: {error_message}"
         _error_print("Handled exception", error_text)
         return
 
@@ -379,7 +380,7 @@ def _handle_body(body: dict[str, str], parsed_mail: ParsedMail, email_id: str) -
     file_data = None
 
     try:
-        with open(local_file_path, "r") as f:
+        with open(local_file_path) as f:
             file_data = f.read()
     except Exception:
         with open(local_file_path, "rb") as f:
@@ -525,7 +526,7 @@ def _decode_uni_string(input_str: str, def_name: str) -> str:
         decoded_strings = [{"value": x[0], "encoding": x[1]} for x in decoded_strings]
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
-        _error_print("Decoding: {0}. Error code: {1}. Error message: {2}".format(encoded_strings, error_code, error_message))
+        _error_print(f"Decoding: {encoded_strings}. Error code: {error_code}. Error message: {error_message}")
         return def_name
 
     # convert to dict for safe access, if it's an empty list, the dict will be empty
@@ -573,7 +574,7 @@ def _decode_uni_string(input_str: str, def_name: str) -> str:
 
 def _get_container_name(parsed_mail: ParsedMail, email_id: str) -> str:
     # Create the default name
-    def_cont_name = "Email ID: {0}".format(email_id)
+    def_cont_name = f"Email ID: {email_id}"
 
     # get the subject from the parsed mail
     subject = parsed_mail.get(PROC_EMAIL_JSON_SUBJECT)
@@ -645,8 +646,8 @@ def _handle_part(
 
     if file_name is None:
         # init name and extension to default values
-        name = "part_{0}".format(part_index)
-        extension = ".{0}".format(part_index)
+        name = f"part_{part_index}"
+        extension = f".{part_index}"
 
         # Try to create an extension from the content type if possible
         if content_type is not None:
@@ -656,7 +657,7 @@ def _handle_part(
         if content_id is not None:
             name = content_id
 
-        file_name = "{0}{1}".format(name, extension)
+        file_name = f"{name}{extension}"
     else:
         try:
             file_name = str(make_header(decode_header(file_name)))
@@ -666,12 +667,12 @@ def _handle_part(
         file_name = file_name.replace("/", "_")
 
     # Remove any chars that we don't want in the name
-    file_path = "{0}/{1}_{2}".format(
+    file_path = "{}/{}_{}".format(
         tmp_dir,
         part_index,
         file_name.translate(file_name.maketrans("", "", "<> ")),
     )
-    _debug_print("file_path: {0}".format(file_path))
+    _debug_print(f"file_path: {file_path}")
 
     # is the part representing the body of the email
     status, process_further = _handle_if_body(
@@ -729,7 +730,7 @@ def _handle_attachment(part: "Message", file_name: str, file_path: str, parsed_m
     try:
         with open(file_path, "wb") as f:
             f.write(part_payload)
-    except IOError as e:
+    except OSError as e:
         error_code, error_message = _get_error_message_from_exception(e)
         try:
             if "File name too long" in error_message:
@@ -738,20 +739,20 @@ def _handle_attachment(part: "Message", file_name: str, file_path: str, parsed_m
                     remove_child_info(file_path).rstrip(file_name.replace("<", "").replace(">", "").replace(" ", "")),
                     new_file_name,
                 )
-                _debug_print("Original filename: {}".format(file_name))
-                _base_connector.debug_print("Modified filename: {}".format(new_file_name))
+                _debug_print(f"Original filename: {file_name}")
+                _base_connector.debug_print(f"Modified filename: {new_file_name}")
                 with open(file_path, "wb") as long_file:
                     long_file.write(part_payload)
             else:
-                _debug_print("Error occurred while adding file to Vault. Error Details: {}".format(error_message))
+                _debug_print(f"Error occurred while adding file to Vault. Error Details: {error_message}")
                 return phantom.APP_ERROR
         except Exception as e:
             error_code, error_message = _get_error_message_from_exception(e)
-            _error_print("Error occurred while adding file to Vault. Error Details: {}".format(error_message))
+            _error_print(f"Error occurred while adding file to Vault. Error Details: {error_message}")
             return phantom.APP_ERROR
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
-        _error_print("Error occurred while adding file to Vault. Error Details: {}".format(error_message))
+        _error_print(f"Error occurred while adding file to Vault. Error Details: {error_message}")
         return phantom.APP_ERROR
 
     file_hash = hashlib.sha1(part_payload).hexdigest()  # nosemgrep
@@ -793,7 +794,7 @@ def _get_email_headers_from_part(part: "Message", charset: Optional[str] = None)
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
         error_text = "Error occurred while converting the header tuple into a dictionary"
-        _error_print("{}. {}. {}".format(error_text, error_code, error_message))
+        _error_print(f"{error_text}. {error_code}. {error_message}")
 
     # Handle received seperately
     try:
@@ -801,7 +802,7 @@ def _get_email_headers_from_part(part: "Message", charset: Optional[str] = None)
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
         error_text = "Error occurred while handling the received header tuple separately"
-        _error_print("{}. {}. {}".format(error_text, error_code, error_message))
+        _error_print(f"{error_text}. {error_code}. {error_message}")
 
     if received_headers:
         headers["Received"] = received_headers
@@ -883,14 +884,14 @@ def _add_body_in_email_headers(
     file_name: str,
 ) -> None:
     if not content_type:
-        _debug_print("Unable to update email headers with the invalid content_type {}".format(content_type))
+        _debug_print(f"Unable to update email headers with the invalid content_type {content_type}")
         return
 
     # Add email_bodies to email_headers
     email_headers = parsed_mail[PROC_EMAIL_JSON_EMAIL_HEADERS]
 
     try:
-        with open(file_path, "r") as f:
+        with open(file_path) as f:
             body_content = f.read()
     except Exception:
         with open(file_path, "rb") as f:
@@ -899,19 +900,19 @@ def _add_body_in_email_headers(
     # Add body to the last added Email artifact
     body_content = UnicodeDammit(body_content).unicode_markup.encode("utf-8").decode("utf-8").replace("\u0000", "")
 
-    _debug_print("Processing email part with content_type: {}".format(content_type))
+    _debug_print(f"Processing email part with content_type: {content_type}")
 
     IMAGE_CONTENT_TYPES = ["image/jpeg", "image/png"]
 
     if any(t for t in IMAGE_CONTENT_TYPES if t in content_type):
-        _debug_print("Saving image {} to files".format(file_name))
+        _debug_print(f"Saving image {file_name} to files")
 
         try:
             file_hash = hashlib.sha1(body_content.encode()).hexdigest()  # nosemgrep
             files = parsed_mail[PROC_EMAIL_JSON_FILES]
             files.append({"file_name": file_name, "file_path": file_path, "file_hash": file_hash})
         except Exception as e:
-            _error_print("Error occurred while adding file {} to files. Error Details: {}".format(file_name, e))
+            _error_print(f"Error occurred while adding file {file_name} to files. Error Details: {e}")
         return
 
     if "text/plain" in content_type:
@@ -924,7 +925,7 @@ def _add_body_in_email_headers(
                 email_headers[-1]["cef"]["bodyText"] = _decode_uni_string(body_content, body_content)
             error_code, error_message = _get_error_message_from_exception(e)
             error_text = "Error occurred while parsing text/plain body content for creating artifacts"
-            _error_print("{}. {}. {}".format(error_text, error_code, error_message))
+            _error_print(f"{error_text}. {error_code}. {error_message}")
 
     elif "text/html" in content_type:
         try:
@@ -936,7 +937,7 @@ def _add_body_in_email_headers(
                 email_headers[-1]["cef"]["bodyHtml"] = _decode_uni_string(body_content, body_content)
             error_code, error_message = _get_error_message_from_exception(e)
             error_text = "Error occurred while parsing text/html body content for creating artifacts"
-            _error_print("{}. {}. {}".format(error_text, error_code, error_message))
+            _error_print(f"{error_text}. {error_code}. {error_message}")
 
     else:
         if not email_headers[-1]["cef"].get("bodyOther"):
@@ -950,7 +951,7 @@ def _add_body_in_email_headers(
                 email_headers[-1]["cef"]["bodyOther"][content_type] = _decode_uni_string(body_content, body_content)
             error_code, error_message = _get_error_message_from_exception(e)
             error_text = "Error occurred while parsing bodyOther content for creating artifacts"
-            _error_print("{}. {}. {}".format(error_text, error_code, error_message))
+            _error_print(f"{error_text}. {error_code}. {error_message}")
 
 
 def _handle_mail_object(
@@ -970,8 +971,8 @@ def _handle_mail_object(
     extract_attach = _config[PROC_EMAIL_JSON_EXTRACT_ATTACHMENTS]
 
     charset = mail.get_content_charset()
-    _debug_print("mail file_name: {}".format(mail.get_filename()))
-    _debug_print("mail charset: {}".format(charset))
+    _debug_print(f"mail file_name: {mail.get_filename()}")
+    _debug_print(f"mail charset: {charset}")
     _debug_print("mail subject: {}".format(mail.get("Subject", "")))
 
     if charset is None:
@@ -1006,8 +1007,8 @@ def _handle_mail_object(
                 ret_val = _handle_part(part, i, tmp_dir, extract_attach, parsed_mail)
             except Exception as e:
                 error_code, error_message = _get_error_message_from_exception(e)
-                error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
-                _error_print("ErrorExp in _handle_part # {0}".format(i), error_text)
+                error_text = f"Error Code: {error_code}. Error Message: {error_message}"
+                _error_print(f"ErrorExp in _handle_part # {i}", error_text)
                 continue
 
             if phantom.is_fail(ret_val):
@@ -1016,7 +1017,7 @@ def _handle_mail_object(
     else:
         _parse_email_headers(parsed_mail, mail, add_email_id=email_id)
         # parsed_mail[PROC_EMAIL_JSON_EMAIL_HEADERS].append(mail.items())
-        file_path = "{0}/{1}".format(tmp_dir, DEFAULT_SINGLE_PART_EML_FILE_NAME)
+        file_path = f"{tmp_dir}/{DEFAULT_SINGLE_PART_EML_FILE_NAME}"
         file_name = mail.get_filename() or mail.get("Subject", DEFAULT_SINGLE_PART_EML_FILE_NAME)
 
         with open(file_path, "wb") as f:
@@ -1064,8 +1065,8 @@ def _handle_mail_object(
             _handle_body(body, parsed_mail, email_id)
         except Exception as e:
             error_code, error_message = _get_error_message_from_exception(e)
-            error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
-            _error_print("ErrorExp in _handle_body # {0}: {1}".format(i, error_text))
+            error_text = f"Error Code: {error_code}. Error Message: {error_message}"
+            _error_print(f"ErrorExp in _handle_body # {i}: {error_text}")
             continue
 
     # Files
@@ -1150,8 +1151,8 @@ def _int_process_email(rfc822_email: str, email_id: str, start_time_epoch: int) 
         ret_val = _handle_mail_object(mail, email_id, rfc822_email, tmp_dir, start_time_epoch)
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
-        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
-        message = "ErrorExp in _handle_mail_object: {0}".format(error_text)
+        error_text = f"Error Code: {error_code}. Error Message: {error_message}"
+        message = f"ErrorExp in _handle_mail_object: {error_text}"
         _error_print(message)
         _dump_error_log(e)
         return phantom.APP_ERROR, message, []
@@ -1192,7 +1193,7 @@ def process_email(
         _set_email_id_contains(email_id)
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
-        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+        error_text = f"Error Code: {error_code}. Error Message: {error_message}"
         _base_connector.error_print("Handled Exception while setting contains for email ID", error_text)
         pass
 
@@ -1260,14 +1261,14 @@ def _parse_results(
                 (ret_val, message, container_id) = cast(tuple[bool, str, int], _base_connector.save_container(container))
             except Exception as e:
                 error_code, error_message = _get_error_message_from_exception(e)
-                error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+                error_text = f"Error Code: {error_code}. Error Message: {error_message}"
                 _base_connector.error_print("Handled Exception while saving container", error_text)
                 continue
 
-            _base_connector.debug_print("save_container returns, value: {0}, reason: {1}, id: {2}".format(ret_val, message, container_id))
+            _base_connector.debug_print(f"save_container returns, value: {ret_val}, reason: {message}, id: {container_id}")
 
             if phantom.is_fail(ret_val):
-                message = "Failed to add Container for id: {0}, error msg: {1}".format(container["source_data_identifier"], message)
+                message = "Failed to add Container for id: {}, error msg: {}".format(container["source_data_identifier"], message)
                 _base_connector.debug_print(message)
                 continue
 
@@ -1279,7 +1280,7 @@ def _parse_results(
             container_id = update_container_id
 
         files = result.get("files", [])
-        _debug_print("# of files to process: {}".format(len(files)))
+        _debug_print(f"# of files to process: {len(files)}")
 
         vault_artifacts = []
         vault_ids = list()
@@ -1328,14 +1329,12 @@ def _parse_results(
         artifacts_total.extend(artifacts)
         if artifacts_total:
             ret_val, status_string, successful_artifacts = _base_connector.save_artifacts(artifacts_total)
-            _base_connector.debug_print(
-                "save_artifact returns, value: {0}, reason: {1}, ids: {2}".format(ret_val, status_string, successful_artifacts)
-            )
+            _base_connector.debug_print(f"save_artifact returns, value: {ret_val}, reason: {status_string}, ids: {successful_artifacts}")
 
         # artifacts should represent all found artifacts from the email
-        _debug_print("total # of artifacts to process: {}".format(len(artifacts_total)))
-        _debug_print("# of successful processed artifacts: {}".format(len(successful_artifacts)))
-        _debug_print("failed artifacts: {}".format(len(artifacts_total) - len(successful_artifacts)))
+        _debug_print(f"total # of artifacts to process: {len(artifacts_total)}")
+        _debug_print(f"# of successful processed artifacts: {len(successful_artifacts)}")
+        _debug_print(f"failed artifacts: {len(artifacts_total) - len(successful_artifacts)}")
 
     # delete any temp directories that were created by the email parsing function
     [shutil.rmtree(x["temp_directory"], ignore_errors=True) for x in results if x.get("temp_directory")]
@@ -1399,8 +1398,8 @@ def _handle_file(
     if not file_name:
         file_name = os.path.basename(local_file_path)
 
-    _base_connector.debug_print("Vault file name: {0}".format(file_name))
-    _base_connector.debug_print("Vault file path: {0}".format(local_file_path))
+    _base_connector.debug_print(f"Vault file name: {file_name}")
+    _base_connector.debug_print(f"Vault file path: {local_file_path}")
 
     vault_attach_dict[phantom.APP_JSON_ACTION_NAME] = _base_connector.get_action_name()
     vault_attach_dict[phantom.APP_JSON_APP_RUN_ID] = _base_connector.get_app_run_id()
@@ -1416,12 +1415,12 @@ def _handle_file(
         )
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
-        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+        error_text = f"Error Code: {error_code}. Error Message: {error_message}"
         _base_connector.error_print(phantom.APP_ERR_FILE_ADD_TO_VAULT.format(error_text))
         return phantom.APP_ERROR, phantom.APP_ERROR
 
     if not success:
-        _base_connector.debug_print("Failed to add file to Vault: {0}".format(json.dumps(message)))
+        _base_connector.debug_print(f"Failed to add file to Vault: {json.dumps(message)}")
         return phantom.APP_ERROR, phantom.APP_ERROR
 
     # add the vault id artifact to the container
@@ -1501,7 +1500,7 @@ def _create_dict_hash(input_dict: dict[str, Any]) -> Optional[str]:
         input_dict_str = json.dumps(input_dict, sort_keys=True)
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
-        error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
+        error_text = f"Error Code: {error_code}. Error Message: {error_message}"
         _base_connector.error_print("Handled exception in _create_dict_hash", error_text)
         return None
 
