@@ -1,36 +1,64 @@
 Splunk SOAR Parser
-Copyright (c) 2017-2024 Splunk Inc.
+Copyright (c) 2017-2025 Splunk Inc.
 
-Third-party Software Attributions:
+Third Party Software Attributions:
 
-Library: beautifulsoup4
+Name: beautifulsoup4
 Version: 4.9.1
+Author: Leonard Richardson
 License: MIT
-Copyright 2004-2017 Leonard Richardson
-Copyright 2004-2019 Leonard Richardson
-Copyright 2018 Isaac Muse
 
-Library: defusedxml
-Version: 0.7.1
-License: Python 2.0
-Copyright 2002-2008 ,
-Copyright 2013-2017 by Christian Heimes <christian@python.org>
+Name: cffi
+Version: 1.17.1
+Author: Armin Rigo, Maciej Fijalkowski
+License: MIT
 
-Library: pycparser
-Version: 2.21
-License: BSD 3
-Copyright 2008-2020 Eli Bendersky
-Copyright parser in Python
-Copyright parser in Python
+Name: chardet
+Version: 5.2.0
+Author: Mark Pilgrim
+License: LGPL
 
-Library: python-magic
+Name: cryptography
+Version: 42.0.8
+Author:
+License: Apache-2.0 OR BSD-3-Clause
+
+Name: lxml
+Version: 5.3.1
+Author: lxml dev team
+License: BSD-3-Clause
+
+Name: pdfminer.six
+Version: 20211012
+Author: Yusuke Shinyama + Philippe Guglielmetti
+License: MIT/X
+
+Name: pycparser
+Version: 2.22
+Author: Eli Bendersky
+License: BSD-3-Clause
+
+Name: pyOpenSSL
+Version: 24.1.0
+Author: The pyOpenSSL developers
+License: Apache License, Version 2.0
+
+Name: python-docx
+Version: 1.1.2
+Author:
+License: MIT
+
+Name: python-magic
 Version: 0.4.18
+Author: Adam Hupp
 License: MIT
-Copyright 2001-2014 Adam Hupp
 
-Library: simplejson
-Version: 3.17.2
-License: Academic 2.1
-License: MIT
-Copyright 2003-2004 Lawrence E
-Copyright 2006 Bob Ippolito
+Name: soupsieve
+Version: 2.6
+Author:
+License:
+
+Name: typing_extensions
+Version: 4.13.0
+Author:
+License:
