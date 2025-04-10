@@ -21,26 +21,6 @@
         "Module pdfminer.six-20211012, Nov 21 2024"
     ],
     "app_wizard_version": "1.0.0",
-    "pip_dependencies": {
-        "wheel": [
-            {
-                "module": "chardet",
-                "input_file": "wheels/py3/chardet-5.0.0-py3-none-any.whl"
-            },
-            {
-                "module": "pdfminer.six",
-                "input_file": "wheels/py3/pdfminer.six-20211012-py3-none-any.whl"
-            },
-            {
-                "module": "pyOpenSSL",
-                "input_file": "wheels/py3/pyOpenSSL-24.1.0-py3-none-any.whl"
-            },
-            {
-                "module": "python_magic",
-                "input_file": "wheels/shared/python_magic-0.4.18-py2.py3-none-any.whl"
-            }
-        ]
-    },
     "configuration": {},
     "actions": [
         {
@@ -626,11 +606,11 @@
             },
             {
                 "module": "lxml",
-                "input_file": "wheels/py39/lxml-5.3.0-cp39-cp39-manylinux_2_28_x86_64.whl"
+                "input_file": "wheels/py39/lxml-5.3.2-cp39-cp39-manylinux_2_28_x86_64.whl"
             },
             {
-                "module": "pdfminer.six",
-                "input_file": "wheels/py3/pdfminer.six-20211012-py3-none-any.whl"
+                "module": "pdfminer_six",
+                "input_file": "wheels/py3/pdfminer_six-20211012-py3-none-any.whl"
             },
             {
                 "module": "pyOpenSSL",
@@ -650,7 +630,51 @@
             },
             {
                 "module": "typing_extensions",
-                "input_file": "wheels/py3/typing_extensions-4.12.2-py3-none-any.whl"
+                "input_file": "wheels/py3/typing_extensions-4.13.2-py3-none-any.whl"
+            }
+        ]
+    },
+    "pip313_dependencies": {
+        "wheel": [
+            {
+                "module": "cffi",
+                "input_file": "wheels/py313/cffi-1.17.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl"
+            },
+            {
+                "module": "chardet",
+                "input_file": "wheels/py3/chardet-5.2.0-py3-none-any.whl"
+            },
+            {
+                "module": "cryptography",
+                "input_file": "wheels/py39/cryptography-42.0.8-cp39-abi3-manylinux_2_28_x86_64.whl"
+            },
+            {
+                "module": "lxml",
+                "input_file": "wheels/py313/lxml-5.3.2-cp313-cp313-manylinux_2_28_x86_64.whl"
+            },
+            {
+                "module": "pdfminer_six",
+                "input_file": "wheels/py3/pdfminer_six-20211012-py3-none-any.whl"
+            },
+            {
+                "module": "pyOpenSSL",
+                "input_file": "wheels/py3/pyOpenSSL-24.1.0-py3-none-any.whl"
+            },
+            {
+                "module": "pycparser",
+                "input_file": "wheels/py3/pycparser-2.22-py3-none-any.whl"
+            },
+            {
+                "module": "python_docx",
+                "input_file": "wheels/py3/python_docx-1.1.2-py3-none-any.whl"
+            },
+            {
+                "module": "python_magic",
+                "input_file": "wheels/shared/python_magic-0.4.18-py2.py3-none-any.whl"
+            },
+            {
+                "module": "typing_extensions",
+                "input_file": "wheels/py3/typing_extensions-4.13.2-py3-none-any.whl"
             }
         ]
     }
