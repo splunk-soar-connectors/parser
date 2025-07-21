@@ -16,7 +16,7 @@
     "package_name": "phantom_parser",
     "main_module": "parser_connector.py",
     "min_phantom_version": "6.3.0",
-    "python_version": "3",
+    "python_version": ["3.9", "3.13"],
     "latest_tested_versions": [
         "Module pdfminer.six-20211012, Nov 21 2024"
     ],
