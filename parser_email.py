@@ -51,7 +51,7 @@ else:
 
 class ParserState:
     """Encapsulates the parser state to avoid global variables."""
-    
+
     def __init__(self):
         self.base_connector = None
         self.config = {}
@@ -1085,7 +1085,7 @@ def _handle_mail_object(
 
 def _init() -> None:
     global _parser_state
-    
+
     if TYPE_CHECKING:
         _parser_state.base_connector = BaseConnector()
     else:
@@ -1326,7 +1326,9 @@ def _parse_results(
         artifacts_total.extend(artifacts)
         if artifacts_total:
             ret_val, status_string, successful_artifacts = _parser_state.base_connector.save_artifacts(artifacts_total)
-            _parser_state.base_connector.debug_print(f"save_artifact returns, value: {ret_val}, reason: {status_string}, ids: {successful_artifacts}")
+            _parser_state.base_connector.debug_print(
+                f"save_artifact returns, value: {ret_val}, reason: {status_string}, ids: {successful_artifacts}"
+            )
 
         # artifacts should represent all found artifacts from the email
         _debug_print(f"total # of artifacts to process: {len(artifacts_total)}")
@@ -1448,8 +1450,7 @@ def _handle_file(
 
 
 def _set_sdi(default_id: int, input_dict: dict[str, str]) -> bool:
-    if "source_data_identifier" in input_dict:
-        del input_dict["source_data_identifier"]
+    input_dict.pop("source_data_identifier", None)
     dict_hash = None
 
     # first get the phantom version
