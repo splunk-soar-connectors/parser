@@ -1,9 +1,9 @@
 # Parser
 
-Publisher: Splunk \
-Connector Version: 2.10.5 \
-Product Vendor: Splunk \
-Product Name: Parser \
+Publisher: Splunk <br>
+Connector Version: 2.10.5 <br>
+Product Vendor: Splunk <br>
+Product Name: Parser <br>
 Minimum Product Version: 6.3.0
 
 This app extracts IOCs from various files such as PDFs, emails, or raw text
@@ -24,7 +24,7 @@ with [.]
 
 Create IOC artifacts from a file in the vault or raw text
 
-Type: **generic** \
+Type: **generic** <br>
 Read only: **False**
 
 Specify either text or vault_id. If text is used only file_types of csv, html, and txt can be selected. <br/><br/>If vault_id is used and the [file_type] is left blank, the app will try to determine what type of file it is on its own. <br/><br/> When parsing an email file (.eml), the <b>file_type</b> parameter must be set to <b>email</b>. <br/> <br/> <b>Label</b> or <b>Container ID</b> is mandatory to run an action. It will display an error message if both of them are not mentioned. <br/> <br/> <b> Caveats:</b> <ul><li>If the [file_type] you chose related to [vault_id] is incorrect, you will have an unexpected output scenario.</li></ul>
