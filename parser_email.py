@@ -239,6 +239,12 @@ def _clean_url(url: str) -> str:
     return url
 
 
+def _normalize_browser_url(url: str) -> str:
+    """Apply the WHATWG parser's input whitespace normalization."""
+    url = re.sub(r"[\t\r\n]", "", url)
+    return re.sub(r"^[\x00-\x20]+|[\x00-\x20]+$", "", url)
+
+
 def is_ipv6(input_ip: str) -> bool:
     try:
         socket.inet_pton(socket.AF_INET6, input_ip)
@@ -323,18 +329,15 @@ def _extract_urls_domains(file_data: str, urls: set[str], domains: set[str]) -> 
             uri_text = [x for x in uri_text if x.startswith("http")]
             if uri_text:
                 uris.extend(uri_text)
-    else:
-        # To unescape html escaped body
-        file_data = unescape(file_data)
-
-        # Parse it as a text file
-        uris = re.findall(uri_regexc, file_data)
-        if uris:
-            uris = [_clean_url(x) for x in uris]
+    # Scan body text even when href/src attributes exist. Messages commonly
+    # contain browser-copyable links only in prose alongside unrelated tags.
+    text_uris = re.findall(uri_regexc, unescape(file_data))
+    uris.extend(_clean_url(uri) for uri in text_uris)
 
     validate_url = URLValidator(schemes=["http", "https"])
     validated_urls = list()
     for url in uris:
+        url = _normalize_browser_url(url)
         try:
             validate_url(url)
             validated_urls.append(url)
