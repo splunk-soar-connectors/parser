@@ -341,58 +341,65 @@ class PDFXrefObjectsToXML:
         return buf.getvalue()
 
     @classmethod
-    def dump_xml(cls, text: str, obj: Any) -> str:
-        """Convert PDF xref object to XML"""
+    def _append_xml(cls, parts: list[str], obj: Any) -> None:
+        """Append one PDF xref object as XML fragments."""
         if obj is None:
-            text += "<null />"
-            return text
+            parts.append("<null />")
+            return
 
         if isinstance(obj, dict):
-            text += f'<dict size="{len(obj)}">\n'
+            parts.append(f'<dict size="{len(obj)}">\n')
             for key, value in obj.items():
-                text += f"<key>\n{key}\n</key>\n"
-                text += "<value>"
-                text = cls.dump_xml(text, value)
-                text += "</value>\n"
-            text += "</dict>"
-            return text
+                parts.append(f"<key>\n{key}\n</key>\n")
+                parts.append("<value>")
+                cls._append_xml(parts, value)
+                parts.append("</value>\n")
+            parts.append("</dict>")
+            return
 
         if isinstance(obj, list):
-            text += f'<list size="{len(obj)}">\n'
+            parts.append(f'<list size="{len(obj)}">\n')
             for value in obj:
-                text = cls.dump_xml(text, value)
-                text += "\n"
-            text += "</list>"
-            return text
+                cls._append_xml(parts, value)
+                parts.append("\n")
+            parts.append("</list>")
+            return
 
         if isinstance(obj, bytes):
-            text += f'<string size="{len(obj)}">\n{cls.encode(obj)}\n</string>'
-            return text
+            parts.append(f'<string size="{len(obj)}">\n{cls.encode(obj)}\n</string>')
+            return
 
         if isinstance(obj, PDFStream):
-            text += "<stream>\n<props>\n"
-            text = cls.dump_xml(text, obj.attrs)
-            text += "\n</props>\n"
-            text += "</stream>"
-            return text
+            parts.append("<stream>\n<props>\n")
+            cls._append_xml(parts, obj.attrs)
+            parts.append("\n</props>\n")
+            parts.append("</stream>")
+            return
 
         if isinstance(obj, PDFObjRef):
-            text += f'<ref id="{obj.objid}" />'
-            return text
+            parts.append(f'<ref id="{obj.objid}" />')
+            return
 
         if isinstance(obj, PSKeyword):
-            text += f"<keyword>\n{obj.name}\n</keyword>"
-            return text
+            parts.append(f"<keyword>\n{obj.name}\n</keyword>")
+            return
 
         if isinstance(obj, PSLiteral):
-            text += f"<literal>\n{obj.name}\n</literal>"
-            return text
+            parts.append(f"<literal>\n{obj.name}\n</literal>")
+            return
 
         if isnumber(obj):
-            text += f"<number>\n{obj}\n</number>"
-            return text
+            parts.append(f"<number>\n{obj}\n</number>")
+            return
 
         raise TypeError(f"Unable to extract the object from PDF. Reason: {obj}")
+
+    @classmethod
+    def dump_xml(cls, text: str, obj: Any) -> str:
+        """Convert PDF xref object to XML."""
+        parts = [text]
+        cls._append_xml(parts, obj)
+        return "".join(parts)
 
     @classmethod
     def dump_trailers(cls, text: str, doc: PDFDocument) -> str:
@@ -408,7 +415,7 @@ class PDFXrefObjectsToXML:
     def convert_objects_to_xml_text(cls, text: str, doc: PDFDocument) -> str:
         """Iterate trough xrefs and convert objects of xref to XML"""
         visited = set()
-        text += "<pdf>"
+        parts = [text, "<pdf>"]
         for xref in doc.xrefs:
             for obj_id in xref.get_objids():
                 if obj_id in visited:
@@ -418,14 +425,16 @@ class PDFXrefObjectsToXML:
                     obj = doc.getobj(obj_id)
                     if obj is None:
                         continue
-                    text += f'<object id="{obj_id}">\n'
-                    text = cls.dump_xml(text, obj)
-                    text += "\n</object>\n\n"
+                    parts.append(f'<object id="{obj_id}">\n')
+                    cls._append_xml(parts, obj)
+                    parts.append("\n</object>\n\n")
                 except PDFObjectNotFound as e:
                     raise PDFObjectNotFound(f"While converting PDF to xml objects PDF object not found. Reason: {e}")
-        cls.dump_trailers(text, doc)
-        text += "</pdf>"
-        return text
+        # dump_trailers historically discarded its serialized trailer value,
+        # and convert_objects_to_xml_text discarded its return value. Preserve
+        # the existing output while avoiding that wasted traversal.
+        parts.append("</pdf>")
+        return "".join(parts)
 
     @classmethod
     def pdf_xref_objects_to_xml(cls, pdf_file: str) -> str:
