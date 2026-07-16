@@ -49,7 +49,12 @@ if TYPE_CHECKING:
 _container_common = {"run_automation": False}  # Don't run any playbooks, when this artifact is added
 
 
-URI_REGEX = r"h(?:tt|xx)p[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
+# WHATWG URL code points include non-ASCII scalar values. Keep the existing
+# ASCII/percent behavior and admit Unicode without also admitting C0 controls.
+URI_REGEX = (
+    r"h(?:tt|xx)p[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|"
+    r"(?:%[0-9a-fA-F][0-9a-fA-F])|[\u00A0-\uD7FF\uE000-\U0010FFFD])+"
+)
 # Fixed bounds prevent attacker-controlled text from driving unbounded regex
 # backtracking. They cover SMTP's 64-octet local part and 255-octet domain.
 EMAIL_REGEX = r"\b[A-Z0-9._%+-]{1,64}@[A-Z0-9.-]{1,255}\.[A-Z]{2,63}\b"
