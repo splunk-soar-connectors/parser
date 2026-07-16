@@ -1134,7 +1134,15 @@ def _del_tmp_dirs() -> None:
 def _int_process_email(rfc822_email: str, email_id: str, start_time_epoch: int) -> tuple[bool, str, list[dict[str, Any]]]:
     global _parser_state
 
-    mail = email.message_from_string(rfc822_email)
+    try:
+        mail = email.message_from_string(rfc822_email)
+    except Exception as e:
+        error_code, error_message = _get_error_message_from_exception(e)
+        error_text = f"Error Code: {error_code}. Error Message: {error_message}"
+        message = f"Error in email.message_from_string: {error_text}"
+        _error_print(message)
+        _dump_error_log(e)
+        return phantom.APP_ERROR, message, []
 
     ret_val = phantom.APP_SUCCESS
 
