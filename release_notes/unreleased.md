@@ -1,3 +1,3 @@
 **Unreleased**
 
-* Chore: prepare the connector vulnerability remediation baseline.
+* Fix email IOC patterns to use bounded matching on untrusted input.
