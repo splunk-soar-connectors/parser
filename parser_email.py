@@ -132,8 +132,10 @@ PROC_EMAIL_JSON_EMAIL_HEADERS = "email_headers"
 PROC_EMAIL_CONTENT_TYPE_MESSAGE = "message/rfc822"
 
 URI_REGEX = r"h(?:tt|xx)p[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
-EMAIL_REGEX = r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"
-EMAIL_REGEX2 = r'".*"@[A-Z0-9.-]+\.[A-Z]{2,}\b'
+# Fixed bounds prevent attacker-controlled text from driving unbounded regex
+# backtracking. They cover SMTP's 64-octet local part and 255-octet domain.
+EMAIL_REGEX = r"\b[A-Z0-9._%+-]{1,64}@[A-Z0-9.-]{1,255}\.[A-Z]{2,63}\b"
+EMAIL_REGEX2 = r'"[^"\r\n]{0,64}"@[A-Z0-9.-]{1,255}\.[A-Z]{2,63}\b'
 HASH_REGEX = r"\b[0-9a-fA-F]{32}\b|\b[0-9a-fA-F]{40}\b|\b[0-9a-fA-F]{64}\b"
 IP_REGEX = r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
 IPV6_REGEX = r"\s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|"
