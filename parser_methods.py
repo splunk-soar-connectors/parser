@@ -1,6 +1,6 @@
 # File: parser_methods.py
 #
-# Copyright (c) 2017-2025 Splunk Inc.
+# Copyright (c) 2017-2026 Splunk Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import time
 import zipfile
 from html import unescape
 from io import StringIO
-from typing import TYPE_CHECKING, Any, Optional, TypedDict, Union, cast
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 from urllib.parse import urlparse
 
 import docx
@@ -90,10 +90,10 @@ class FileInfo(TypedDict):
     type: str
     path: str
     name: str
-    id: Optional[str]
+    id: str | None
 
 
-def _extract_domain_from_url(url: str) -> Optional[str]:
+def _extract_domain_from_url(url: str) -> str | None:
     domain = phantom.get_host_from_url(url)
     if domain and not _is_ip(domain):
         return domain
@@ -152,7 +152,7 @@ def _clean_url(url: str) -> str:
     return url
 
 
-def _get_error_message_from_exception(e: Exception) -> tuple[Union[str, int], str]:
+def _get_error_message_from_exception(e: Exception) -> tuple[str | int, str]:
     """This method is used to get appropriate error message from the exception.
     :param e: Exception object
     :return: error message
@@ -235,7 +235,7 @@ class TextIOCParser:
 
     found_values = set()
 
-    def __init__(self, parse_domains: bool, patterns: Optional[list[dict[str, Any]]] = None):
+    def __init__(self, parse_domains: bool, patterns: list[dict[str, Any]] | None = None):
         self.patterns = self.BASE_PATTERNS if patterns is None else patterns
 
         if parse_domains:
@@ -306,7 +306,7 @@ class TextIOCParser:
         return artifact
 
 
-def _grab_raw_text(action_result: "ActionResult", txt_file: str) -> tuple[bool, Optional[str]]:
+def _grab_raw_text(action_result: "ActionResult", txt_file: str) -> tuple[bool, str | None]:
     """This function will actually really work for any file which is basically raw text.
     html, rtf, and the list could go on
     """
@@ -439,7 +439,7 @@ class PDFXrefObjectsToXML:
         return text
 
 
-def _pdf_to_text(action_result: "ActionResult", pdf_file: str) -> tuple[bool, Optional[str]]:
+def _pdf_to_text(action_result: "ActionResult", pdf_file: str) -> tuple[bool, str | None]:
     try:
         pagenums = set()
         output = StringIO()
@@ -478,7 +478,7 @@ def _pdf_to_text(action_result: "ActionResult", pdf_file: str) -> tuple[bool, Op
         return action_result.set_status(phantom.APP_ERROR, f"Failed to parse pdf: {error_text}"), None
 
 
-def _docx_to_text(action_result: "ActionResult", docx_file: str) -> tuple[bool, Optional[str]]:
+def _docx_to_text(action_result: "ActionResult", docx_file: str) -> tuple[bool, str | None]:
     try:
         doc = docx.Document(docx_file)
     except zipfile.BadZipfile:
@@ -516,7 +516,7 @@ def _docx_to_text(action_result: "ActionResult", docx_file: str) -> tuple[bool, 
     return phantom.APP_SUCCESS, "\n".join(full_text)
 
 
-def _csv_to_text(action_result: "ActionResult", csv_file: str) -> tuple[bool, Optional[str]]:
+def _csv_to_text(action_result: "ActionResult", csv_file: str) -> tuple[bool, str | None]:
     """This function really only exists due to a misunderstanding on how word boundaries (\b) work
     As it turns out, only word characters can invalidate word boundaries. So stuff like commas,
     brackets, gt and lt signs, etc. do not
@@ -538,9 +538,9 @@ def _csv_to_text(action_result: "ActionResult", csv_file: str) -> tuple[bool, Op
 
 def _html_to_text(
     action_result: "ActionResult",
-    html_file: Optional[str],
-    text_val: Optional[str] = None,
-) -> tuple[bool, Optional[str]]:
+    html_file: str | None,
+    text_val: str | None = None,
+) -> tuple[bool, str | None]:
     """Similar to CSV, this is also unnecessary. It will trim /some/ of that fat from a normal HTML, however"""
     try:
         if text_val is None and html_file is not None:
@@ -592,7 +592,7 @@ def parse_file(
     file_info: FileInfo,
     parse_domains: bool = True,
     keep_raw: bool = False,
-) -> tuple[bool, Optional[dict[str, list[Artifact]]]]:
+) -> tuple[bool, dict[str, list[Artifact]] | None]:
     """Parse a non-email file"""
 
     try:
@@ -639,7 +639,7 @@ def parse_file(
     return phantom.APP_SUCCESS, {"artifacts": artifacts}
 
 
-def parse_structured_file(action_result: "ActionResult", file_info: FileInfo) -> tuple[bool, Optional[dict[str, list[Artifact]]]]:
+def parse_structured_file(action_result: "ActionResult", file_info: FileInfo) -> tuple[bool, dict[str, list[Artifact]] | None]:
     if file_info["type"] == "csv":
         csv_file = file_info["path"]
         artifacts = []
@@ -672,10 +672,10 @@ def parse_structured_file(action_result: "ActionResult", file_info: FileInfo) ->
 def parse_text(
     base_connector: "BaseConnector",
     action_result: "ActionResult",
-    file_type: Optional[str],
+    file_type: str | None,
     text_val: str,
     parse_domains: bool = True,
-) -> tuple[bool, Optional[dict[str, list[Artifact]]]]:
+) -> tuple[bool, dict[str, list[Artifact]] | None]:
     """Parse a non-email file"""
 
     try:

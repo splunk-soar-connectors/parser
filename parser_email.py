@@ -1,6 +1,6 @@
 # File: parser_email.py
 #
-# Copyright (c) 2017-2025 Splunk Inc.
+# Copyright (c) 2017-2026 Splunk Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import tempfile
 from collections import OrderedDict
 from email.header import decode_header, make_header
 from html import unescape
-from typing import TYPE_CHECKING, Any, Optional, TypedDict, cast
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 from urllib.parse import urlparse
 
 import magic
@@ -158,7 +158,7 @@ IPV6_REGEX += r"(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*"
 DEFAULT_SINGLE_PART_EML_FILE_NAME = "part_1.text"
 
 
-def _get_string(input_str: str, charset: Optional[str]) -> str:
+def _get_string(input_str: str, charset: str | None) -> str:
     try:
         if input_str and charset:
             input_str = UnicodeDammit(input_str).unicode_markup.encode(charset).decode(charset)
@@ -450,7 +450,7 @@ def _add_artifacts(
 def _parse_email_headers_as_inline(
     file_data: str,
     parsed_mail: ParsedMail,
-    charset: Optional[str],
+    charset: str | None,
     email_id: str,
 ) -> bool:
     # remove the 'Forwarded Message' from the email text and parse it
@@ -595,8 +595,8 @@ def _get_container_name(parsed_mail: ParsedMail, email_id: str) -> str:
 
 
 def _handle_if_body(
-    content_disp: Optional[str],
-    content_type: Optional[str],
+    content_disp: str | None,
+    content_type: str | None,
     part: "Message",
     bodies: list[dict[str, Any]],
     file_path: str,
@@ -780,7 +780,7 @@ def remove_child_info(file_path: str) -> str:
         return file_path.rstrip("_False")
 
 
-def _get_email_headers_from_part(part: "Message", charset: Optional[str] = None) -> dict[str, str]:
+def _get_email_headers_from_part(part: "Message", charset: str | None = None) -> dict[str, str]:
     email_headers = list(part.items())
 
     # TODO: the next 2 ifs can be condensed to use 'or'
@@ -827,8 +827,8 @@ def _get_email_headers_from_part(part: "Message", charset: Optional[str] = None)
 def _parse_email_headers(
     parsed_mail: ParsedMail,
     part: "Message",
-    charset: Optional[str] = None,
-    add_email_id: Optional[str] = None,
+    charset: str | None = None,
+    add_email_id: str | None = None,
 ) -> int:
     global _parser_state
 
@@ -885,8 +885,8 @@ def _parse_email_headers(
 def _add_body_in_email_headers(
     parsed_mail: ParsedMail,
     file_path: str,
-    charset: Optional[str],
-    content_type: Optional[str],
+    charset: str | None,
+    content_type: str | None,
     file_name: str,
 ) -> None:
     if not content_type:
@@ -1226,9 +1226,9 @@ def process_email(
 def _parse_results(
     results: list[dict[str, Any]],
     label: str,
-    update_container_id: Optional[int],
+    update_container_id: int | None,
     run_automation: bool = True,
-    tags: Optional[list[str]] = None,
+    tags: list[str] | None = None,
 ) -> tuple[int, list[dict[str, Any]], list[dict[str, Any]]]:
     global _parser_state
     if tags is None:
@@ -1380,7 +1380,7 @@ def _handle_file(
     container_id: int,
     artifact_id: int,
     run_automation: bool = False,
-    tags: Optional[list[str]] = None,
+    tags: list[str] | None = None,
 ) -> tuple[bool, dict[str, Any]]:
     if tags is None:
         tags = []
@@ -1488,7 +1488,7 @@ def _get_fips_enabled() -> bool:
     return fips_enabled
 
 
-def _create_dict_hash(input_dict: dict[str, Any]) -> Optional[str]:
+def _create_dict_hash(input_dict: dict[str, Any]) -> str | None:
     input_dict_str = None
 
     if not input_dict:
