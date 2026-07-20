@@ -337,7 +337,7 @@ class ParserConnector(BaseConnector):
             artifact["run_automation"] = run_automation
 
         if artifacts:
-            status, message, id_list = self.save_artifacts(artifacts)
+            status, message, _id_list = self.save_artifacts(artifacts)
         else:
             return action_result.set_status(phantom.APP_SUCCESS)
         if phantom.is_fail(status):

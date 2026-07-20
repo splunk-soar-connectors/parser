@@ -691,7 +691,7 @@ def _handle_part(
     _debug_print(f"file_path: {file_path}")
 
     # is the part representing the body of the email
-    status, process_further = _handle_if_body(
+    _status, process_further = _handle_if_body(
         content_disp,
         content_type,
         part,
@@ -747,7 +747,7 @@ def _handle_attachment(part: "Message", file_name: str, file_path: str, parsed_m
         with open(file_path, "wb") as f:
             f.write(part_payload)
     except OSError as e:
-        error_code, error_message = _get_error_message_from_exception(e)
+        _error_code, error_message = _get_error_message_from_exception(e)
         try:
             if "File name too long" in error_message:
                 new_file_name = "ph_long_file_name_temp"
@@ -763,11 +763,11 @@ def _handle_attachment(part: "Message", file_name: str, file_path: str, parsed_m
                 _debug_print(f"Error occurred while adding file to Vault. Error Details: {error_message}")
                 return phantom.APP_ERROR
         except Exception as e:
-            error_code, error_message = _get_error_message_from_exception(e)
+            _error_code, error_message = _get_error_message_from_exception(e)
             _error_print(f"Error occurred while adding file to Vault. Error Details: {error_message}")
             return phantom.APP_ERROR
     except Exception as e:
-        error_code, error_message = _get_error_message_from_exception(e)
+        _error_code, error_message = _get_error_message_from_exception(e)
         _error_print(f"Error occurred while adding file to Vault. Error Details: {error_message}")
         return phantom.APP_ERROR
 

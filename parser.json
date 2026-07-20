@@ -597,12 +597,8 @@
                 "input_file": "wheels/py313/cffi-2.1.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl"
             },
             {
-                "module": "charset_normalizer",
-                "input_file": "wheels/py313/charset_normalizer-3.4.9-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl"
-            },
-            {
                 "module": "cryptography",
-                "input_file": "wheels/py313/cryptography-42.0.8-cp39-abi3-manylinux_2_28_x86_64.whl"
+                "input_file": "wheels/py39/cryptography-42.0.8-cp39-abi3-manylinux_2_28_x86_64.whl"
             },
             {
                 "module": "lxml",
