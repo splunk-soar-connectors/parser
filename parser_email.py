@@ -22,6 +22,7 @@ import re
 import shutil
 import socket
 import tempfile
+import unicodedata
 from collections import OrderedDict
 from email.header import decode_header, make_header
 from html import unescape
@@ -588,6 +589,12 @@ def _decode_uni_string(input_str: str, def_name: str) -> str:
     return input_str
 
 
+def _sanitize_filename(file_name: str) -> str:
+    sanitized_name = "".join(ch for ch in file_name if unicodedata.category(ch) not in {"Cc", "Cf"})
+    sanitized_name = sanitized_name.replace("/", "_").replace("\\", "_")
+    return sanitized_name.encode("utf-8")[:255].decode("utf-8", "ignore")
+
+
 def _get_container_name(parsed_mail: ParsedMail, email_id: str) -> str:
     # Create the default name
     def_cont_name = f"Email ID: {email_id}"
@@ -680,7 +687,7 @@ def _handle_part(
         except Exception:
             file_name = _decode_uni_string(file_name, file_name)
 
-        file_name = file_name.replace("/", "_")
+    file_name = _sanitize_filename(file_name)
 
     # Remove any chars that we don't want in the name
     file_path = "{}/{}_{}".format(
@@ -1318,6 +1325,8 @@ def _parse_results(
                 tags=tags,
             )
             vault_artifacts_count += 1
+            if phantom.is_fail(ret_val):
+                continue
             vault_artifacts.append(vault_artifact)
 
         if artifact_count:
@@ -1421,7 +1430,9 @@ def _handle_file(
     vault_attach_dict[phantom.APP_JSON_ACTION_NAME] = _parser_state.base_connector.get_action_name()
     vault_attach_dict[phantom.APP_JSON_APP_RUN_ID] = _parser_state.base_connector.get_app_run_id()
 
-    file_name = _decode_uni_string(file_name, file_name)
+    file_name = _sanitize_filename(_decode_uni_string(file_name, file_name))
+    if not file_name:
+        file_name = os.path.basename(local_file_path)
 
     try:
         success, message, vault_id = ph_rules.vault_add(
