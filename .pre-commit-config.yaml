@@ -33,7 +33,7 @@ repos:
         args: [ "--fix", "--unsafe-fixes"] # Allow unsafe fixes (ruff pretty strict about what it can fix)
       - id: ruff-format
   - repo: https://github.com/djlint/djLint
-    rev: v1.42.0
+    rev: v1.42.1
     hooks:
       - id: djlint-reformat-django
       - id: djlint-django
