@@ -589,8 +589,12 @@ def _decode_uni_string(input_str: str, def_name: str) -> str:
     return input_str
 
 
+def _strip_format_controls(value: str) -> str:
+    return "".join(ch for ch in value if unicodedata.category(ch) != "Cf")
+
+
 def _sanitize_filename(file_name: str) -> str:
-    sanitized_name = "".join(ch for ch in file_name if unicodedata.category(ch) not in {"Cc", "Cf"})
+    sanitized_name = "".join(ch for ch in _strip_format_controls(file_name) if unicodedata.category(ch) != "Cc")
     sanitized_name = sanitized_name.replace("/", "_").replace("\\", "_")
     return sanitized_name.encode("utf-8")[:255].decode("utf-8", "ignore")
 
@@ -606,9 +610,11 @@ def _get_container_name(parsed_mail: ParsedMail, email_id: str) -> str:
     if not subject:
         return def_cont_name
     try:
-        return str(make_header(decode_header(subject)))
+        subject = str(make_header(decode_header(subject)))
     except Exception:
-        return _decode_uni_string(subject, def_cont_name)
+        subject = _decode_uni_string(subject, def_cont_name)
+
+    return _strip_format_controls(subject)
 
 
 def _handle_if_body(

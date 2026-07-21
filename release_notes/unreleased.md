@@ -8,3 +8,4 @@
 * Extract prose URLs alongside HTML links and normalize browser-clickable whitespace.
 * Preserve every repeated email header in extract IOC results.
 * Safely handle malformed attachment filenames without losing other parsed artifacts.
+* Remove invisible Unicode format controls from parsed email subjects and attachment names.
