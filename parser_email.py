@@ -1157,7 +1157,7 @@ def _int_process_email(rfc822_email: str, email_id: str, start_time_epoch: int) 
 
     try:
         mail = email.message_from_string(rfc822_email)
-    except Exception as e:
+    except RecursionError as e:
         error_code, error_message = _get_error_message_from_exception(e)
         error_text = f"Error Code: {error_code}. Error Message: {error_message}"
         message = f"Error in email.message_from_string: {error_text}"
