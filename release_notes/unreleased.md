@@ -9,3 +9,4 @@
 * Preserve every repeated email header in extract IOC results.
 * Safely handle malformed attachment filenames without losing other parsed artifacts.
 * Remove invisible Unicode format controls from parsed email subjects and attachment names.
+* Keep IOC deduplication scoped to each parsed input.

@@ -240,10 +240,10 @@ class TextIOCParser:
         ]
     }
 
-    found_values = set()
-
     def __init__(self, parse_domains: bool, patterns: list[dict[str, Any]] | None = None):
-        self.patterns = self.BASE_PATTERNS if patterns is None else patterns
+        pattern_definitions = self.BASE_PATTERNS if patterns is None else patterns
+        self.patterns = [dict(pattern) for pattern in pattern_definitions]
+        self.found_values = set()
 
         if parse_domains:
             # Add the subtypes somain parsing functions only if parse_domains is True
