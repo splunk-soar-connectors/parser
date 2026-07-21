@@ -6,3 +6,4 @@
 * Build PDF xref XML with fragment lists to avoid quadratic string copying.
 * Extract internationalized URLs so IDN homograph indicators are not missed.
 * Extract prose URLs alongside HTML links and normalize browser-clickable whitespace.
+* Preserve every repeated email header in extract IOC results.

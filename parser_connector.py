@@ -160,7 +160,23 @@ class ParserConnector(BaseConnector):
                 None,
             )
 
-        return HeaderResult(phantom.APP_SUCCESS, dict(headers))
+        header_dict = {}
+        normalized_names = {}
+        for name, value in headers:
+            normalized_name = name.lower()
+            existing_name = normalized_names.get(normalized_name)
+            if existing_name is None:
+                normalized_names[normalized_name] = name
+                header_dict[name] = value
+                continue
+
+            existing_value = header_dict[existing_name]
+            if not isinstance(existing_value, list):
+                existing_value = [existing_value]
+                header_dict[existing_name] = existing_value
+            existing_value.append(value)
+
+        return HeaderResult(phantom.APP_SUCCESS, header_dict)
 
     def _get_email_data_from_vault(self, vault_id: str, action_result: ActionResult) -> EmailVaultData:
         email_data = None
