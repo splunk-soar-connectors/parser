@@ -1,6 +1,6 @@
 # File: parser_methods.py
 #
-# Copyright (c) 2017-2025 Splunk Inc.
+# Copyright (c) 2017-2026 Splunk Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import time
 import zipfile
 from html import unescape
 from io import StringIO
-from typing import TYPE_CHECKING, Any, Optional, TypedDict, Union, cast
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 from urllib.parse import urlparse
 
 import docx
@@ -49,9 +49,16 @@ if TYPE_CHECKING:
 _container_common = {"run_automation": False}  # Don't run any playbooks, when this artifact is added
 
 
-URI_REGEX = r"h(?:tt|xx)p[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
-EMAIL_REGEX = r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"
-EMAIL_REGEX2 = r'".*"@[A-Z0-9.-]+\.[A-Z]{2,}\b'
+# WHATWG URL code points include non-ASCII scalar values. Keep the existing
+# ASCII/percent behavior and admit Unicode without also admitting C0 controls.
+URI_REGEX = (
+    r"h(?:tt|xx)p[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|"
+    r"(?:%[0-9a-fA-F][0-9a-fA-F])|[\u00A0-\uD7FF\uE000-\U0010FFFD])+"
+)
+# Fixed bounds prevent attacker-controlled text from driving unbounded regex
+# backtracking. They cover SMTP's 64-octet local part and 255-octet domain.
+EMAIL_REGEX = r"\b[A-Z0-9._%+-]{1,64}@[A-Z0-9.-]{1,255}\.[A-Z]{2,63}\b"
+EMAIL_REGEX2 = r'"[^"\r\n]{0,64}"@[A-Z0-9.-]{1,255}\.[A-Z]{2,63}\b'
 HASH_REGEX = r"\b[0-9a-fA-F]{32}\b|\b[0-9a-fA-F]{40}\b|\b[0-9a-fA-F]{64}\b"
 IP_REGEX = r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
 IPV6_REGEX = (
@@ -90,10 +97,10 @@ class FileInfo(TypedDict):
     type: str
     path: str
     name: str
-    id: Optional[str]
+    id: str | None
 
 
-def _extract_domain_from_url(url: str) -> Optional[str]:
+def _extract_domain_from_url(url: str) -> str | None:
     domain = phantom.get_host_from_url(url)
     if domain and not _is_ip(domain):
         return domain
@@ -152,7 +159,7 @@ def _clean_url(url: str) -> str:
     return url
 
 
-def _get_error_message_from_exception(e: Exception) -> tuple[Union[str, int], str]:
+def _get_error_message_from_exception(e: Exception) -> tuple[str | int, str]:
     """This method is used to get appropriate error message from the exception.
     :param e: Exception object
     :return: error message
@@ -233,10 +240,10 @@ class TextIOCParser:
         ]
     }
 
-    found_values = set()
-
-    def __init__(self, parse_domains: bool, patterns: Optional[list[dict[str, Any]]] = None):
-        self.patterns = self.BASE_PATTERNS if patterns is None else patterns
+    def __init__(self, parse_domains: bool, patterns: list[dict[str, Any]] | None = None):
+        pattern_definitions = self.BASE_PATTERNS if patterns is None else patterns
+        self.patterns = [dict(pattern) for pattern in pattern_definitions]
+        self.found_values = set()
 
         if parse_domains:
             # Add the subtypes somain parsing functions only if parse_domains is True
@@ -306,7 +313,7 @@ class TextIOCParser:
         return artifact
 
 
-def _grab_raw_text(action_result: "ActionResult", txt_file: str) -> tuple[bool, Optional[str]]:
+def _grab_raw_text(action_result: "ActionResult", txt_file: str) -> tuple[bool, str | None]:
     """This function will actually really work for any file which is basically raw text.
     html, rtf, and the list could go on
     """
@@ -339,58 +346,65 @@ class PDFXrefObjectsToXML:
         return buf.getvalue()
 
     @classmethod
-    def dump_xml(cls, text: str, obj: Any) -> str:
-        """Convert PDF xref object to XML"""
+    def _append_xml(cls, parts: list[str], obj: Any) -> None:
+        """Append one PDF xref object as XML fragments."""
         if obj is None:
-            text += "<null />"
-            return text
+            parts.append("<null />")
+            return
 
         if isinstance(obj, dict):
-            text += f'<dict size="{len(obj)}">\n'
+            parts.append(f'<dict size="{len(obj)}">\n')
             for key, value in obj.items():
-                text += f"<key>\n{key}\n</key>\n"
-                text += "<value>"
-                text = cls.dump_xml(text, value)
-                text += "</value>\n"
-            text += "</dict>"
-            return text
+                parts.append(f"<key>\n{key}\n</key>\n")
+                parts.append("<value>")
+                cls._append_xml(parts, value)
+                parts.append("</value>\n")
+            parts.append("</dict>")
+            return
 
         if isinstance(obj, list):
-            text += f'<list size="{len(obj)}">\n'
+            parts.append(f'<list size="{len(obj)}">\n')
             for value in obj:
-                text = cls.dump_xml(text, value)
-                text += "\n"
-            text += "</list>"
-            return text
+                cls._append_xml(parts, value)
+                parts.append("\n")
+            parts.append("</list>")
+            return
 
         if isinstance(obj, bytes):
-            text += f'<string size="{len(obj)}">\n{cls.encode(obj)}\n</string>'
-            return text
+            parts.append(f'<string size="{len(obj)}">\n{cls.encode(obj)}\n</string>')
+            return
 
         if isinstance(obj, PDFStream):
-            text += "<stream>\n<props>\n"
-            text = cls.dump_xml(text, obj.attrs)
-            text += "\n</props>\n"
-            text += "</stream>"
-            return text
+            parts.append("<stream>\n<props>\n")
+            cls._append_xml(parts, obj.attrs)
+            parts.append("\n</props>\n")
+            parts.append("</stream>")
+            return
 
         if isinstance(obj, PDFObjRef):
-            text += f'<ref id="{obj.objid}" />'
-            return text
+            parts.append(f'<ref id="{obj.objid}" />')
+            return
 
         if isinstance(obj, PSKeyword):
-            text += f"<keyword>\n{obj.name}\n</keyword>"
-            return text
+            parts.append(f"<keyword>\n{obj.name}\n</keyword>")
+            return
 
         if isinstance(obj, PSLiteral):
-            text += f"<literal>\n{obj.name}\n</literal>"
-            return text
+            parts.append(f"<literal>\n{obj.name}\n</literal>")
+            return
 
         if isnumber(obj):
-            text += f"<number>\n{obj}\n</number>"
-            return text
+            parts.append(f"<number>\n{obj}\n</number>")
+            return
 
         raise TypeError(f"Unable to extract the object from PDF. Reason: {obj}")
+
+    @classmethod
+    def dump_xml(cls, text: str, obj: Any) -> str:
+        """Convert PDF xref object to XML."""
+        parts = [text]
+        cls._append_xml(parts, obj)
+        return "".join(parts)
 
     @classmethod
     def dump_trailers(cls, text: str, doc: PDFDocument) -> str:
@@ -406,7 +420,7 @@ class PDFXrefObjectsToXML:
     def convert_objects_to_xml_text(cls, text: str, doc: PDFDocument) -> str:
         """Iterate trough xrefs and convert objects of xref to XML"""
         visited = set()
-        text += "<pdf>"
+        parts = [text, "<pdf>"]
         for xref in doc.xrefs:
             for obj_id in xref.get_objids():
                 if obj_id in visited:
@@ -416,14 +430,16 @@ class PDFXrefObjectsToXML:
                     obj = doc.getobj(obj_id)
                     if obj is None:
                         continue
-                    text += f'<object id="{obj_id}">\n'
-                    text = cls.dump_xml(text, obj)
-                    text += "\n</object>\n\n"
+                    parts.append(f'<object id="{obj_id}">\n')
+                    cls._append_xml(parts, obj)
+                    parts.append("\n</object>\n\n")
                 except PDFObjectNotFound as e:
                     raise PDFObjectNotFound(f"While converting PDF to xml objects PDF object not found. Reason: {e}")
-        cls.dump_trailers(text, doc)
-        text += "</pdf>"
-        return text
+        # dump_trailers historically discarded its serialized trailer value,
+        # and convert_objects_to_xml_text discarded its return value. Preserve
+        # the existing output while avoiding that wasted traversal.
+        parts.append("</pdf>")
+        return "".join(parts)
 
     @classmethod
     def pdf_xref_objects_to_xml(cls, pdf_file: str) -> str:
@@ -439,7 +455,7 @@ class PDFXrefObjectsToXML:
         return text
 
 
-def _pdf_to_text(action_result: "ActionResult", pdf_file: str) -> tuple[bool, Optional[str]]:
+def _pdf_to_text(action_result: "ActionResult", pdf_file: str) -> tuple[bool, str | None]:
     try:
         pagenums = set()
         output = StringIO()
@@ -478,7 +494,7 @@ def _pdf_to_text(action_result: "ActionResult", pdf_file: str) -> tuple[bool, Op
         return action_result.set_status(phantom.APP_ERROR, f"Failed to parse pdf: {error_text}"), None
 
 
-def _docx_to_text(action_result: "ActionResult", docx_file: str) -> tuple[bool, Optional[str]]:
+def _docx_to_text(action_result: "ActionResult", docx_file: str) -> tuple[bool, str | None]:
     try:
         doc = docx.Document(docx_file)
     except zipfile.BadZipfile:
@@ -516,7 +532,7 @@ def _docx_to_text(action_result: "ActionResult", docx_file: str) -> tuple[bool, 
     return phantom.APP_SUCCESS, "\n".join(full_text)
 
 
-def _csv_to_text(action_result: "ActionResult", csv_file: str) -> tuple[bool, Optional[str]]:
+def _csv_to_text(action_result: "ActionResult", csv_file: str) -> tuple[bool, str | None]:
     """This function really only exists due to a misunderstanding on how word boundaries (\b) work
     As it turns out, only word characters can invalidate word boundaries. So stuff like commas,
     brackets, gt and lt signs, etc. do not
@@ -538,9 +554,9 @@ def _csv_to_text(action_result: "ActionResult", csv_file: str) -> tuple[bool, Op
 
 def _html_to_text(
     action_result: "ActionResult",
-    html_file: Optional[str],
-    text_val: Optional[str] = None,
-) -> tuple[bool, Optional[str]]:
+    html_file: str | None,
+    text_val: str | None = None,
+) -> tuple[bool, str | None]:
     """Similar to CSV, this is also unnecessary. It will trim /some/ of that fat from a normal HTML, however"""
     try:
         if text_val is None and html_file is not None:
@@ -592,7 +608,7 @@ def parse_file(
     file_info: FileInfo,
     parse_domains: bool = True,
     keep_raw: bool = False,
-) -> tuple[bool, Optional[dict[str, list[Artifact]]]]:
+) -> tuple[bool, dict[str, list[Artifact]] | None]:
     """Parse a non-email file"""
 
     try:
@@ -639,7 +655,7 @@ def parse_file(
     return phantom.APP_SUCCESS, {"artifacts": artifacts}
 
 
-def parse_structured_file(action_result: "ActionResult", file_info: FileInfo) -> tuple[bool, Optional[dict[str, list[Artifact]]]]:
+def parse_structured_file(action_result: "ActionResult", file_info: FileInfo) -> tuple[bool, dict[str, list[Artifact]] | None]:
     if file_info["type"] == "csv":
         csv_file = file_info["path"]
         artifacts = []
@@ -672,10 +688,10 @@ def parse_structured_file(action_result: "ActionResult", file_info: FileInfo) ->
 def parse_text(
     base_connector: "BaseConnector",
     action_result: "ActionResult",
-    file_type: Optional[str],
+    file_type: str | None,
     text_val: str,
     parse_domains: bool = True,
-) -> tuple[bool, Optional[dict[str, list[Artifact]]]]:
+) -> tuple[bool, dict[str, list[Artifact]] | None]:
     """Parse a non-email file"""
 
     try:

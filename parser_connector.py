@@ -1,6 +1,6 @@
 # File: parser_connector.py
 #
-# Copyright (c) 2017-2025 Splunk Inc.
+# Copyright (c) 2017-2026 Splunk Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import json
 import sys
 import threading
 import time
-from typing import Any, NamedTuple, Optional, cast
+from typing import Any, NamedTuple, cast
 
 import phantom.app as phantom
 import phantom.rules as ph_rules
@@ -46,14 +46,14 @@ class ParseFileParams:
     artifact_tags_list: list[str] = dataclasses.field(init=False)
     custom_remap_json: str = "{}"
     custom_mapping: dict[str, Any] = dataclasses.field(init=False)
-    custom_mapping_error: Optional[Exception] = None
+    custom_mapping_error: Exception | None = None
     text: str = ""
 
-    vault_id: Optional[str] = None
-    file_type: Optional[str] = None
-    label: Optional[str] = None
-    max_artifacts: Optional[int] = None
-    container_id: Optional[int] = None
+    vault_id: str | None = None
+    file_type: str | None = None
+    label: str | None = None
+    max_artifacts: int | None = None
+    container_id: int | None = None
 
     def __post_init__(self) -> None:
         self.severity = self.severity.lower()
@@ -74,23 +74,23 @@ class ParseFileParams:
 
 class SaveContainerResult(NamedTuple):
     success: bool
-    container_id: Optional[int]
+    container_id: int | None
 
 
 class FileInfoResult(NamedTuple):
     success: bool
-    file_info: Optional[parser_methods.FileInfo]
+    file_info: parser_methods.FileInfo | None
 
 
 class HeaderResult(NamedTuple):
     success: bool
-    headers: Optional[dict[str, str]]
+    headers: dict[str, str] | None
 
 
 class EmailVaultData(NamedTuple):
     success: bool
-    email_data: Optional[str]
-    email_id: Optional[str]
+    email_data: str | None
+    email_id: str | None
 
 
 class ParserConnector(BaseConnector):
@@ -160,7 +160,23 @@ class ParserConnector(BaseConnector):
                 None,
             )
 
-        return HeaderResult(phantom.APP_SUCCESS, dict(headers))
+        header_dict = {}
+        normalized_names = {}
+        for name, value in headers:
+            normalized_name = name.lower()
+            existing_name = normalized_names.get(normalized_name)
+            if existing_name is None:
+                normalized_names[normalized_name] = name
+                header_dict[name] = value
+                continue
+
+            existing_value = header_dict[existing_name]
+            if not isinstance(existing_value, list):
+                existing_value = [existing_value]
+                header_dict[existing_name] = existing_value
+            existing_value.append(value)
+
+        return HeaderResult(phantom.APP_SUCCESS, header_dict)
 
     def _get_email_data_from_vault(self, vault_id: str, action_result: ActionResult) -> EmailVaultData:
         email_data = None
@@ -213,7 +229,7 @@ class ParserConnector(BaseConnector):
         self,
         action_result: ActionResult,
         vault_id: str,
-        file_type: Optional[str] = None,
+        file_type: str | None = None,
     ) -> FileInfoResult:
         file_info = cast(parser_methods.FileInfo, {"id": vault_id})
 
@@ -271,11 +287,11 @@ class ParserConnector(BaseConnector):
         self,
         action_result: ActionResult,
         vault_id: str,
-        label: Optional[str],
-        container_id: Optional[int],
+        label: str | None,
+        container_id: int | None,
         run_automation: bool = True,
         parse_domains: bool = True,
-        artifact_tags_list: Optional[list[str]] = None,
+        artifact_tags_list: list[str] | None = None,
     ) -> bool:
         if artifact_tags_list is None:
             artifact_tags_list = []
@@ -321,9 +337,9 @@ class ParserConnector(BaseConnector):
         artifacts: list[dict[str, Any]],
         container_id: int,
         severity: str,
-        max_artifacts: Optional[int] = None,
+        max_artifacts: int | None = None,
         run_automation: bool = True,
-        tags: Optional[list[str]] = None,
+        tags: list[str] | None = None,
     ) -> bool:
         if tags is None:
             tags = []
@@ -337,7 +353,7 @@ class ParserConnector(BaseConnector):
             artifact["run_automation"] = run_automation
 
         if artifacts:
-            status, message, id_list = self.save_artifacts(artifacts)
+            status, message, _id_list = self.save_artifacts(artifacts)
         else:
             return action_result.set_status(phantom.APP_SUCCESS)
         if phantom.is_fail(status):
@@ -350,11 +366,11 @@ class ParserConnector(BaseConnector):
         action_result: ActionResult,
         artifacts: list[dict[str, Any]],
         file_name: str,
-        label: Optional[str],
+        label: str | None,
         severity: str,
-        max_artifacts: Optional[int] = None,
+        max_artifacts: int | None = None,
         run_automation: bool = True,
-        artifact_tags_list: Optional[list[str]] = None,
+        artifact_tags_list: list[str] | None = None,
     ) -> SaveContainerResult:
         if artifact_tags_list is None:
             artifact_tags_list = []
@@ -387,9 +403,9 @@ class ParserConnector(BaseConnector):
         artifacts: list[dict[str, Any]],
         container_id: int,
         severity: str,
-        max_artifacts: Optional[int] = None,
+        max_artifacts: int | None = None,
         run_automation: bool = True,
-        artifact_tags_list: Optional[list[str]] = None,
+        artifact_tags_list: list[str] | None = None,
     ) -> bool:
         return self._save_artifacts(
             action_result,

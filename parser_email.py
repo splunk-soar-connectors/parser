@@ -1,6 +1,6 @@
 # File: parser_email.py
 #
-# Copyright (c) 2017-2025 Splunk Inc.
+# Copyright (c) 2017-2026 Splunk Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,10 +22,11 @@ import re
 import shutil
 import socket
 import tempfile
+import unicodedata
 from collections import OrderedDict
 from email.header import decode_header, make_header
 from html import unescape
-from typing import TYPE_CHECKING, Any, Optional, TypedDict, cast
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 from urllib.parse import urlparse
 
 import magic
@@ -131,9 +132,16 @@ PROC_EMAIL_JSON_MSG_ID = "message_id"
 PROC_EMAIL_JSON_EMAIL_HEADERS = "email_headers"
 PROC_EMAIL_CONTENT_TYPE_MESSAGE = "message/rfc822"
 
-URI_REGEX = r"h(?:tt|xx)p[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
-EMAIL_REGEX = r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"
-EMAIL_REGEX2 = r'".*"@[A-Z0-9.-]+\.[A-Z]{2,}\b'
+# WHATWG URL code points include non-ASCII scalar values. Keep the existing
+# ASCII/percent behavior and admit Unicode without also admitting C0 controls.
+URI_REGEX = (
+    r"h(?:tt|xx)p[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|"
+    r"(?:%[0-9a-fA-F][0-9a-fA-F])|[\u00A0-\uD7FF\uE000-\U0010FFFD])+"
+)
+# Fixed bounds prevent attacker-controlled text from driving unbounded regex
+# backtracking. They cover SMTP's 64-octet local part and 255-octet domain.
+EMAIL_REGEX = r"\b[A-Z0-9._%+-]{1,64}@[A-Z0-9.-]{1,255}\.[A-Z]{2,63}\b"
+EMAIL_REGEX2 = r'"[^"\r\n]{0,64}"@[A-Z0-9.-]{1,255}\.[A-Z]{2,63}\b'
 HASH_REGEX = r"\b[0-9a-fA-F]{32}\b|\b[0-9a-fA-F]{40}\b|\b[0-9a-fA-F]{64}\b"
 IP_REGEX = r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
 IPV6_REGEX = r"\s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|"
@@ -158,7 +166,7 @@ IPV6_REGEX += r"(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*"
 DEFAULT_SINGLE_PART_EML_FILE_NAME = "part_1.text"
 
 
-def _get_string(input_str: str, charset: Optional[str]) -> str:
+def _get_string(input_str: str, charset: str | None) -> str:
     try:
         if input_str and charset:
             input_str = UnicodeDammit(input_str).unicode_markup.encode(charset).decode(charset)
@@ -230,6 +238,12 @@ def _clean_url(url: str) -> str:
 
     url = _refang_url(url)
     return url
+
+
+def _normalize_browser_url(url: str) -> str:
+    """Apply the WHATWG parser's input whitespace normalization."""
+    url = re.sub(r"[\t\r\n]", "", url)
+    return re.sub(r"^[\x00-\x20]+|[\x00-\x20]+$", "", url)
 
 
 def is_ipv6(input_ip: str) -> bool:
@@ -316,18 +330,15 @@ def _extract_urls_domains(file_data: str, urls: set[str], domains: set[str]) -> 
             uri_text = [x for x in uri_text if x.startswith("http")]
             if uri_text:
                 uris.extend(uri_text)
-    else:
-        # To unescape html escaped body
-        file_data = unescape(file_data)
-
-        # Parse it as a text file
-        uris = re.findall(uri_regexc, file_data)
-        if uris:
-            uris = [_clean_url(x) for x in uris]
+    # Scan body text even when href/src attributes exist. Messages commonly
+    # contain browser-copyable links only in prose alongside unrelated tags.
+    text_uris = re.findall(uri_regexc, unescape(file_data))
+    uris.extend(_clean_url(uri) for uri in text_uris)
 
     validate_url = URLValidator(schemes=["http", "https"])
     validated_urls = list()
     for url in uris:
+        url = _normalize_browser_url(url)
         try:
             validate_url(url)
             validated_urls.append(url)
@@ -450,7 +461,7 @@ def _add_artifacts(
 def _parse_email_headers_as_inline(
     file_data: str,
     parsed_mail: ParsedMail,
-    charset: Optional[str],
+    charset: str | None,
     email_id: str,
 ) -> bool:
     # remove the 'Forwarded Message' from the email text and parse it
@@ -578,6 +589,16 @@ def _decode_uni_string(input_str: str, def_name: str) -> str:
     return input_str
 
 
+def _strip_format_controls(value: str) -> str:
+    return "".join(ch for ch in value if unicodedata.category(ch) != "Cf")
+
+
+def _sanitize_filename(file_name: str) -> str:
+    sanitized_name = "".join(ch for ch in _strip_format_controls(file_name) if unicodedata.category(ch) != "Cc")
+    sanitized_name = sanitized_name.replace("/", "_").replace("\\", "_")
+    return sanitized_name.encode("utf-8")[:255].decode("utf-8", "ignore")
+
+
 def _get_container_name(parsed_mail: ParsedMail, email_id: str) -> str:
     # Create the default name
     def_cont_name = f"Email ID: {email_id}"
@@ -589,14 +610,16 @@ def _get_container_name(parsed_mail: ParsedMail, email_id: str) -> str:
     if not subject:
         return def_cont_name
     try:
-        return str(make_header(decode_header(subject)))
+        subject = str(make_header(decode_header(subject)))
     except Exception:
-        return _decode_uni_string(subject, def_cont_name)
+        subject = _decode_uni_string(subject, def_cont_name)
+
+    return _strip_format_controls(subject)
 
 
 def _handle_if_body(
-    content_disp: Optional[str],
-    content_type: Optional[str],
+    content_disp: str | None,
+    content_type: str | None,
     part: "Message",
     bodies: list[dict[str, Any]],
     file_path: str,
@@ -670,7 +693,7 @@ def _handle_part(
         except Exception:
             file_name = _decode_uni_string(file_name, file_name)
 
-        file_name = file_name.replace("/", "_")
+    file_name = _sanitize_filename(file_name)
 
     # Remove any chars that we don't want in the name
     file_path = "{}/{}_{}".format(
@@ -681,7 +704,7 @@ def _handle_part(
     _debug_print(f"file_path: {file_path}")
 
     # is the part representing the body of the email
-    status, process_further = _handle_if_body(
+    _status, process_further = _handle_if_body(
         content_disp,
         content_type,
         part,
@@ -737,7 +760,7 @@ def _handle_attachment(part: "Message", file_name: str, file_path: str, parsed_m
         with open(file_path, "wb") as f:
             f.write(part_payload)
     except OSError as e:
-        error_code, error_message = _get_error_message_from_exception(e)
+        _error_code, error_message = _get_error_message_from_exception(e)
         try:
             if "File name too long" in error_message:
                 new_file_name = "ph_long_file_name_temp"
@@ -753,11 +776,11 @@ def _handle_attachment(part: "Message", file_name: str, file_path: str, parsed_m
                 _debug_print(f"Error occurred while adding file to Vault. Error Details: {error_message}")
                 return phantom.APP_ERROR
         except Exception as e:
-            error_code, error_message = _get_error_message_from_exception(e)
+            _error_code, error_message = _get_error_message_from_exception(e)
             _error_print(f"Error occurred while adding file to Vault. Error Details: {error_message}")
             return phantom.APP_ERROR
     except Exception as e:
-        error_code, error_message = _get_error_message_from_exception(e)
+        _error_code, error_message = _get_error_message_from_exception(e)
         _error_print(f"Error occurred while adding file to Vault. Error Details: {error_message}")
         return phantom.APP_ERROR
 
@@ -780,7 +803,7 @@ def remove_child_info(file_path: str) -> str:
         return file_path.rstrip("_False")
 
 
-def _get_email_headers_from_part(part: "Message", charset: Optional[str] = None) -> dict[str, str]:
+def _get_email_headers_from_part(part: "Message", charset: str | None = None) -> dict[str, str]:
     email_headers = list(part.items())
 
     # TODO: the next 2 ifs can be condensed to use 'or'
@@ -827,8 +850,8 @@ def _get_email_headers_from_part(part: "Message", charset: Optional[str] = None)
 def _parse_email_headers(
     parsed_mail: ParsedMail,
     part: "Message",
-    charset: Optional[str] = None,
-    add_email_id: Optional[str] = None,
+    charset: str | None = None,
+    add_email_id: str | None = None,
 ) -> int:
     global _parser_state
 
@@ -885,8 +908,8 @@ def _parse_email_headers(
 def _add_body_in_email_headers(
     parsed_mail: ParsedMail,
     file_path: str,
-    charset: Optional[str],
-    content_type: Optional[str],
+    charset: str | None,
+    content_type: str | None,
     file_name: str,
 ) -> None:
     if not content_type:
@@ -1132,7 +1155,15 @@ def _del_tmp_dirs() -> None:
 def _int_process_email(rfc822_email: str, email_id: str, start_time_epoch: int) -> tuple[bool, str, list[dict[str, Any]]]:
     global _parser_state
 
-    mail = email.message_from_string(rfc822_email)
+    try:
+        mail = email.message_from_string(rfc822_email)
+    except RecursionError as e:
+        error_code, error_message = _get_error_message_from_exception(e)
+        error_text = f"Error Code: {error_code}. Error Message: {error_message}"
+        message = f"Error in email.message_from_string: {error_text}"
+        _error_print(message)
+        _dump_error_log(e)
+        return phantom.APP_ERROR, message, []
 
     ret_val = phantom.APP_SUCCESS
 
@@ -1226,9 +1257,9 @@ def process_email(
 def _parse_results(
     results: list[dict[str, Any]],
     label: str,
-    update_container_id: Optional[int],
+    update_container_id: int | None,
     run_automation: bool = True,
-    tags: Optional[list[str]] = None,
+    tags: list[str] | None = None,
 ) -> tuple[int, list[dict[str, Any]], list[dict[str, Any]]]:
     global _parser_state
     if tags is None:
@@ -1300,6 +1331,8 @@ def _parse_results(
                 tags=tags,
             )
             vault_artifacts_count += 1
+            if phantom.is_fail(ret_val):
+                continue
             vault_artifacts.append(vault_artifact)
 
         if artifact_count:
@@ -1380,7 +1413,7 @@ def _handle_file(
     container_id: int,
     artifact_id: int,
     run_automation: bool = False,
-    tags: Optional[list[str]] = None,
+    tags: list[str] | None = None,
 ) -> tuple[bool, dict[str, Any]]:
     if tags is None:
         tags = []
@@ -1403,7 +1436,9 @@ def _handle_file(
     vault_attach_dict[phantom.APP_JSON_ACTION_NAME] = _parser_state.base_connector.get_action_name()
     vault_attach_dict[phantom.APP_JSON_APP_RUN_ID] = _parser_state.base_connector.get_app_run_id()
 
-    file_name = _decode_uni_string(file_name, file_name)
+    file_name = _sanitize_filename(_decode_uni_string(file_name, file_name))
+    if not file_name:
+        file_name = os.path.basename(local_file_path)
 
     try:
         success, message, vault_id = ph_rules.vault_add(
@@ -1488,7 +1523,7 @@ def _get_fips_enabled() -> bool:
     return fips_enabled
 
 
-def _create_dict_hash(input_dict: dict[str, Any]) -> Optional[str]:
+def _create_dict_hash(input_dict: dict[str, Any]) -> str | None:
     input_dict_str = None
 
     if not input_dict:
