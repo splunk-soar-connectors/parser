@@ -569,10 +569,17 @@ def _html_to_text(
         html_text = unescape(html_text or "")
 
         soup = BeautifulSoup(html_text, "html.parser")
-        read_text = soup.findAll(text=True)
-        links = [tag.get("href") for tag in soup.findAll(href=True)]
-        srcs = [tag.get("src") for tag in soup.findAll(src=True)]
-        text = " ".join(read_text + links + srcs)
+        read_text = [str(value) for value in soup.find_all(string=True)]
+        url_values = [tag.get("href") for tag in soup.find_all(href=True)]
+        url_values.extend(tag.get("src") for tag in soup.find_all(src=True))
+        url_values.extend(tag.get("action") for tag in soup.find_all(action=True))
+        url_values.extend(tag.get("formaction") for tag in soup.find_all(formaction=True))
+        url_values.extend(tag.get("data") for tag in soup.find_all("object", data=True))
+        url_values.extend(
+            tag.get("content") for tag in soup.find_all("meta", content=True) if str(tag.get("http-equiv", "")).strip().casefold() == "refresh"
+        )
+        normalized_urls = [re.sub(r"[\t\r\n]", "", str(value)).strip() for value in url_values if value]
+        text = " ".join(read_text + normalized_urls)
         return phantom.APP_SUCCESS, text
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
