@@ -27,7 +27,7 @@ from collections import OrderedDict
 from email.header import decode_header, make_header
 from html import unescape
 from typing import TYPE_CHECKING, Any, TypedDict, cast
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 import magic
 import phantom.app as phantom
@@ -248,6 +248,56 @@ def _normalize_browser_url(url: str) -> str:
     return re.sub(r"^[\x00-\x20]+|[\x00-\x20]+$", "", url)
 
 
+def _parse_whatwg_ipv4(host: str) -> str | None:
+    parts = host.split(".")
+    if parts and not parts[-1]:
+        parts.pop()
+    if not parts or len(parts) > 4:
+        return None
+
+    numbers = []
+    for part in parts:
+        try:
+            if part.casefold().startswith("0x"):
+                number = int(part[2:] or "0", 16)
+            elif len(part) > 1 and part.startswith("0"):
+                number = int(part[1:] or "0", 8)
+            else:
+                number = int(part, 10)
+        except ValueError:
+            return None
+        if number < 0:
+            return None
+        numbers.append(number)
+
+    if any(number > 255 for number in numbers[:-1]) or numbers[-1] >= 256 ** (5 - len(numbers)):
+        return None
+    address = numbers.pop()
+    for index, number in enumerate(numbers):
+        address += number * 256 ** (3 - index)
+    return ".".join(str((address >> shift) & 0xFF) for shift in (24, 16, 8, 0))
+
+
+def _normalize_url_host(url: str) -> str:
+    try:
+        parsed = urlparse(url)
+        host = parsed.hostname
+        if not host:
+            return url
+        decoded_host = unquote(host)
+        if any(ord(character) <= 0x20 or character == "\x7f" or character in "#/:<>?@[\\]^|" for character in decoded_host):
+            return url
+        normalized_host = _parse_whatwg_ipv4(decoded_host) or decoded_host
+        if normalized_host == host:
+            return url
+        userinfo, separator, _ = parsed.netloc.rpartition("@")
+        port = f":{parsed.port}" if parsed.port is not None else ""
+        netloc = f"{userinfo}{separator}{normalized_host}{port}"
+        return parsed._replace(netloc=netloc).geturl()
+    except Exception:
+        return url
+
+
 def is_ipv6(input_ip: str) -> bool:
     try:
         socket.inet_pton(socket.AF_INET6, input_ip)
@@ -345,6 +395,7 @@ def _extract_urls_domains(file_data: str, urls: set[str], domains: set[str]) -> 
     validated_urls = list()
     for url in uris:
         url = _normalize_browser_url(url)
+        url = _normalize_url_host(url)
         try:
             validate_url(url)
             validated_urls.append(url)
