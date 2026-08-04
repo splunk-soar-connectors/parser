@@ -532,6 +532,15 @@ def _docx_to_text(action_result: "ActionResult", docx_file: str) -> tuple[bool, 
     return phantom.APP_SUCCESS, "\n".join(full_text)
 
 
+def _read_csv_text(csv_file: str) -> str:
+    with open(csv_file, "rb") as raw_file:
+        raw_text = raw_file.read()
+    decoded_text = UnicodeDammit(raw_text).unicode_markup
+    if decoded_text is None:
+        decoded_text = raw_text.decode("utf-8", errors="replace")
+    return decoded_text.lstrip("\ufeff")
+
+
 def _csv_to_text(action_result: "ActionResult", csv_file: str) -> tuple[bool, str | None]:
     """This function really only exists due to a misunderstanding on how word boundaries (\b) work
     As it turns out, only word characters can invalidate word boundaries. So stuff like commas,
@@ -539,7 +548,7 @@ def _csv_to_text(action_result: "ActionResult", csv_file: str) -> tuple[bool, st
     """
     text = ""
     try:
-        with open(csv_file) as fp:
+        with StringIO(_read_csv_text(csv_file), newline="") as fp:
             reader = csv.reader(fp)
             for row in reader:
                 text += " ".join(row)
@@ -667,7 +676,7 @@ def parse_structured_file(action_result: "ActionResult", file_info: FileInfo) ->
         csv_file = file_info["path"]
         artifacts = []
         try:
-            with open(csv_file) as fp:
+            with StringIO(_read_csv_text(csv_file), newline="") as fp:
                 reader = csv.DictReader(fp, restkey="other")  # need to handle lines terminated in commas
                 for row in reader:
                     row["source_file"] = file_info["name"]
