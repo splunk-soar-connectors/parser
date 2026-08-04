@@ -13,3 +13,5 @@
 * Normalizes numeric IPv4 URL hosts before creating email IOC artifacts.
 
 * Preserves complete email URL paths containing browser-handled punctuation.
+
+* Maps CEF source and destination address aliases consistently to `src_ip` and `dest_ip`.
