@@ -61,6 +61,7 @@ class ParserState:
         self.attachments = []
         self.tmp_dirs = []
         self.email_id_contains = []
+        self.attachment_count = 0
 
 
 # Global state instance
@@ -105,6 +106,7 @@ MAGIC_FORMATS = [
 
 PARSER_DEFAULT_ARTIFACT_COUNT = 100
 PARSER_DEFAULT_CONTAINER_COUNT = 100
+PARSER_MAX_VAULT_FILE_BYTES = 30 * 1024 * 1024
 HASH_FIXED_PHANTOM_VERSION = "2.0.201"
 
 OFFICE365_APP_ID = "a73f6d32-c9d5-4fec-b024-43876700daa6"
@@ -760,6 +762,12 @@ def _handle_attachment(part: "Message", file_name: str, file_path: str, parsed_m
     part_payload = cast(bytes, part.get_payload(decode=True))
     if not part_payload:
         return phantom.APP_SUCCESS
+    if len(part_payload) >= PARSER_MAX_VAULT_FILE_BYTES:
+        _debug_print(f"Skipping attachment '{file_name}': SOAR vault uploads must be under 30 MB")
+        return phantom.APP_SUCCESS
+    if _parser_state.attachment_count >= PARSER_DEFAULT_ARTIFACT_COUNT:
+        _debug_print(f"Skipping attachment '{file_name}': parsed email attachment limit reached")
+        return phantom.APP_SUCCESS
     try:
         with open(file_path, "wb") as f:
             f.write(part_payload)
@@ -789,6 +797,7 @@ def _handle_attachment(part: "Message", file_name: str, file_path: str, parsed_m
         return phantom.APP_ERROR
 
     file_hash = hashlib.sha1(part_payload).hexdigest()  # nosemgrep
+    _parser_state.attachment_count += 1
     files.append(
         {
             "file_name": file_name,
@@ -1123,6 +1132,7 @@ def _init() -> None:
     _parser_state.container = {}
     _parser_state.artifacts = []
     _parser_state.attachments = []
+    _parser_state.attachment_count = 0
 
 
 def _set_email_id_contains(email_id: str) -> None:
