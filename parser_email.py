@@ -261,6 +261,10 @@ email_regexc2 = re.compile(EMAIL_REGEX2, re.IGNORECASE)
 hash_regexc = re.compile(HASH_REGEX)
 ip_regexc = re.compile(IP_REGEX)
 ipv6_regexc = re.compile(IPV6_REGEX)
+encoded_word_regexc = re.compile(
+    r"=\?(?=[!-~]{1,71}\?=)[^? \x00-\x1f\x7f]+\?[BQ]\?[\x21-\x3e\x40-\x7e]+\?=",
+    re.IGNORECASE,
+)
 
 
 def _get_file_contains(file_path: str) -> list[str]:
@@ -531,7 +535,7 @@ def _decode_uni_string(input_str: str, def_name: str) -> str:
     # try to find all the decoded strings, we could have multiple decoded strings
     # or a single decoded string between two normal strings separated by \r\n
     # YEAH...it could get that messy
-    encoded_strings = re.findall(r"=\?.*?\?=", input_str, re.I)
+    encoded_strings = encoded_word_regexc.findall(input_str)
 
     # return input_str as is, no need to do any conversion
     if not encoded_strings:
