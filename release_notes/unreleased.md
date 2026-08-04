@@ -11,3 +11,5 @@
 * Removes NUL and Unicode format controls from structured CSV CEF names and values.
 
 * Normalizes numeric IPv4 URL hosts before creating email IOC artifacts.
+
+* Preserves complete email URL paths containing browser-handled punctuation.

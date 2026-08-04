@@ -138,7 +138,7 @@ PROC_EMAIL_CONTENT_TYPE_MESSAGE = "message/rfc822"
 # ASCII/percent behavior and admit Unicode without also admitting C0 controls.
 URI_REGEX = (
     r"h(?:tt|xx)p[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|"
-    r"(?:%[0-9a-fA-F][0-9a-fA-F])|[\u00A0-\uD7FF\uE000-\U0010FFFD])+"
+    r"(?:%[0-9a-fA-F][0-9a-fA-F])|[~`|{}]|[\u00A0-\uD7FF\uE000-\U0010FFFD])+"
 )
 # Fixed bounds prevent attacker-controlled text from driving unbounded regex
 # backtracking. They cover SMTP's 64-octet local part and 255-octet domain.
