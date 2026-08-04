@@ -7,3 +7,5 @@
 * Extracts URLs from HTML form actions, submit overrides, object data, and refresh metadata.
 
 * Decodes structured and unstructured CSV input consistently across supported character encodings.
+
+* Removes NUL and Unicode format controls from structured CSV CEF names and values.

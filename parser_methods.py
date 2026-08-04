@@ -17,6 +17,7 @@ import re
 import struct
 import threading
 import time
+import unicodedata
 import zipfile
 from html import unescape
 from io import StringIO
@@ -541,6 +542,14 @@ def _read_csv_text(csv_file: str) -> str:
     return decoded_text.lstrip("\ufeff")
 
 
+def _strip_csv_format_controls(value: Any) -> Any:
+    if isinstance(value, str):
+        return "".join(character for character in value if character != "\x00" and unicodedata.category(character) != "Cf")
+    if isinstance(value, list):
+        return [_strip_csv_format_controls(item) for item in value]
+    return value
+
+
 def _csv_to_text(action_result: "ActionResult", csv_file: str) -> tuple[bool, str | None]:
     """This function really only exists due to a misunderstanding on how word boundaries (\b) work
     As it turns out, only word characters can invalidate word boundaries. So stuff like commas,
@@ -683,7 +692,7 @@ def parse_structured_file(action_result: "ActionResult", file_info: FileInfo) ->
                     artifacts.append(
                         {
                             "name": "CSV entry",
-                            "cef": {k: v for k, v in list(row.items())},
+                            "cef": {_strip_csv_format_controls(k): _strip_csv_format_controls(v) for k, v in row.items()},
                         }
                     )  # make CSV entry artifact
         except Exception as e:
