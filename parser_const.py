@@ -14,8 +14,11 @@
 # and limitations under the License.
 _CEF2CIM_override = {
     "fileHash": "file_hash",
+    "src": "src_ip",
+    "SourceAddress": "src_ip",
     "sourceAddress": "src_ip",
     "sourceDnsDomain": "src_dns",
+    "dst": "dest_ip",
     "destinationAddress": "dest_ip",
     "destinationDnsDomain": "dest_dns",
 }

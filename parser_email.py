@@ -27,7 +27,7 @@ from collections import OrderedDict
 from email.header import decode_header, make_header
 from html import unescape
 from typing import TYPE_CHECKING, Any, TypedDict, cast
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 import magic
 import phantom.app as phantom
@@ -61,6 +61,7 @@ class ParserState:
         self.attachments = []
         self.tmp_dirs = []
         self.email_id_contains = []
+        self.attachment_count = 0
 
 
 # Global state instance
@@ -105,6 +106,7 @@ MAGIC_FORMATS = [
 
 PARSER_DEFAULT_ARTIFACT_COUNT = 100
 PARSER_DEFAULT_CONTAINER_COUNT = 100
+PARSER_MAX_VAULT_FILE_BYTES = 30 * 1024 * 1024
 HASH_FIXED_PHANTOM_VERSION = "2.0.201"
 
 OFFICE365_APP_ID = "a73f6d32-c9d5-4fec-b024-43876700daa6"
@@ -136,7 +138,7 @@ PROC_EMAIL_CONTENT_TYPE_MESSAGE = "message/rfc822"
 # ASCII/percent behavior and admit Unicode without also admitting C0 controls.
 URI_REGEX = (
     r"h(?:tt|xx)p[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|"
-    r"(?:%[0-9a-fA-F][0-9a-fA-F])|[\u00A0-\uD7FF\uE000-\U0010FFFD])+"
+    r"(?:%[0-9a-fA-F][0-9a-fA-F])|[~`|{}]|[\u00A0-\uD7FF\uE000-\U0010FFFD])+"
 )
 # Fixed bounds prevent attacker-controlled text from driving unbounded regex
 # backtracking. They cover SMTP's 64-octet local part and 255-octet domain.
@@ -246,6 +248,56 @@ def _normalize_browser_url(url: str) -> str:
     return re.sub(r"^[\x00-\x20]+|[\x00-\x20]+$", "", url)
 
 
+def _parse_whatwg_ipv4(host: str) -> str | None:
+    parts = host.split(".")
+    if parts and not parts[-1]:
+        parts.pop()
+    if not parts or len(parts) > 4:
+        return None
+
+    numbers = []
+    for part in parts:
+        try:
+            if part.casefold().startswith("0x"):
+                number = int(part[2:] or "0", 16)
+            elif len(part) > 1 and part.startswith("0"):
+                number = int(part[1:] or "0", 8)
+            else:
+                number = int(part, 10)
+        except ValueError:
+            return None
+        if number < 0:
+            return None
+        numbers.append(number)
+
+    if any(number > 255 for number in numbers[:-1]) or numbers[-1] >= 256 ** (5 - len(numbers)):
+        return None
+    address = numbers.pop()
+    for index, number in enumerate(numbers):
+        address += number * 256 ** (3 - index)
+    return ".".join(str((address >> shift) & 0xFF) for shift in (24, 16, 8, 0))
+
+
+def _normalize_url_host(url: str) -> str:
+    try:
+        parsed = urlparse(url)
+        host = parsed.hostname
+        if not host:
+            return url
+        decoded_host = unquote(host)
+        if any(ord(character) <= 0x20 or character == "\x7f" or character in "#/:<>?@[\\]^|" for character in decoded_host):
+            return url
+        normalized_host = _parse_whatwg_ipv4(decoded_host) or decoded_host
+        if normalized_host == host:
+            return url
+        userinfo, separator, _ = parsed.netloc.rpartition("@")
+        port = f":{parsed.port}" if parsed.port is not None else ""
+        netloc = f"{userinfo}{separator}{normalized_host}{port}"
+        return parsed._replace(netloc=netloc).geturl()
+    except Exception:
+        return url
+
+
 def is_ipv6(input_ip: str) -> bool:
     try:
         socket.inet_pton(socket.AF_INET6, input_ip)
@@ -261,6 +313,10 @@ email_regexc2 = re.compile(EMAIL_REGEX2, re.IGNORECASE)
 hash_regexc = re.compile(HASH_REGEX)
 ip_regexc = re.compile(IP_REGEX)
 ipv6_regexc = re.compile(IPV6_REGEX)
+encoded_word_regexc = re.compile(
+    r"=\?(?=[!-~]{1,71}\?=)[^? \x00-\x1f\x7f]+\?[BQ]\?[\x21-\x3e\x40-\x7e]+\?=",
+    re.IGNORECASE,
+)
 
 
 def _get_file_contains(file_path: str) -> list[str]:
@@ -339,6 +395,7 @@ def _extract_urls_domains(file_data: str, urls: set[str], domains: set[str]) -> 
     validated_urls = list()
     for url in uris:
         url = _normalize_browser_url(url)
+        url = _normalize_url_host(url)
         try:
             validate_url(url)
             validated_urls.append(url)
@@ -531,7 +588,7 @@ def _decode_uni_string(input_str: str, def_name: str) -> str:
     # try to find all the decoded strings, we could have multiple decoded strings
     # or a single decoded string between two normal strings separated by \r\n
     # YEAH...it could get that messy
-    encoded_strings = re.findall(r"=\?.*?\?=", input_str, re.I)
+    encoded_strings = encoded_word_regexc.findall(input_str)
 
     # return input_str as is, no need to do any conversion
     if not encoded_strings:
@@ -756,6 +813,12 @@ def _handle_attachment(part: "Message", file_name: str, file_path: str, parsed_m
     part_payload = cast(bytes, part.get_payload(decode=True))
     if not part_payload:
         return phantom.APP_SUCCESS
+    if len(part_payload) >= PARSER_MAX_VAULT_FILE_BYTES:
+        _debug_print(f"Skipping attachment '{file_name}': SOAR vault uploads must be under 30 MB")
+        return phantom.APP_SUCCESS
+    if _parser_state.attachment_count >= PARSER_DEFAULT_ARTIFACT_COUNT:
+        _debug_print(f"Skipping attachment '{file_name}': parsed email attachment limit reached")
+        return phantom.APP_SUCCESS
     try:
         with open(file_path, "wb") as f:
             f.write(part_payload)
@@ -785,6 +848,7 @@ def _handle_attachment(part: "Message", file_name: str, file_path: str, parsed_m
         return phantom.APP_ERROR
 
     file_hash = hashlib.sha1(part_payload).hexdigest()  # nosemgrep
+    _parser_state.attachment_count += 1
     files.append(
         {
             "file_name": file_name,
@@ -1119,6 +1183,7 @@ def _init() -> None:
     _parser_state.container = {}
     _parser_state.artifacts = []
     _parser_state.attachments = []
+    _parser_state.attachment_count = 0
 
 
 def _set_email_id_contains(email_id: str) -> None:

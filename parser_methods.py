@@ -17,6 +17,7 @@ import re
 import struct
 import threading
 import time
+import unicodedata
 import zipfile
 from html import unescape
 from io import StringIO
@@ -532,6 +533,23 @@ def _docx_to_text(action_result: "ActionResult", docx_file: str) -> tuple[bool, 
     return phantom.APP_SUCCESS, "\n".join(full_text)
 
 
+def _read_csv_text(csv_file: str) -> str:
+    with open(csv_file, "rb") as raw_file:
+        raw_text = raw_file.read()
+    decoded_text = UnicodeDammit(raw_text).unicode_markup
+    if decoded_text is None:
+        decoded_text = raw_text.decode("utf-8", errors="replace")
+    return decoded_text.lstrip("\ufeff")
+
+
+def _strip_csv_format_controls(value: Any) -> Any:
+    if isinstance(value, str):
+        return "".join(character for character in value if character != "\x00" and unicodedata.category(character) != "Cf")
+    if isinstance(value, list):
+        return [_strip_csv_format_controls(item) for item in value]
+    return value
+
+
 def _csv_to_text(action_result: "ActionResult", csv_file: str) -> tuple[bool, str | None]:
     """This function really only exists due to a misunderstanding on how word boundaries (\b) work
     As it turns out, only word characters can invalidate word boundaries. So stuff like commas,
@@ -539,7 +557,7 @@ def _csv_to_text(action_result: "ActionResult", csv_file: str) -> tuple[bool, st
     """
     text = ""
     try:
-        with open(csv_file) as fp:
+        with StringIO(_read_csv_text(csv_file), newline="") as fp:
             reader = csv.reader(fp)
             for row in reader:
                 text += " ".join(row)
@@ -569,10 +587,17 @@ def _html_to_text(
         html_text = unescape(html_text or "")
 
         soup = BeautifulSoup(html_text, "html.parser")
-        read_text = soup.findAll(text=True)
-        links = [tag.get("href") for tag in soup.findAll(href=True)]
-        srcs = [tag.get("src") for tag in soup.findAll(src=True)]
-        text = " ".join(read_text + links + srcs)
+        read_text = [str(value) for value in soup.find_all(string=True)]
+        url_values = [tag.get("href") for tag in soup.find_all(href=True)]
+        url_values.extend(tag.get("src") for tag in soup.find_all(src=True))
+        url_values.extend(tag.get("action") for tag in soup.find_all(action=True))
+        url_values.extend(tag.get("formaction") for tag in soup.find_all(formaction=True))
+        url_values.extend(tag.get("data") for tag in soup.find_all("object", data=True))
+        url_values.extend(
+            tag.get("content") for tag in soup.find_all("meta", content=True) if str(tag.get("http-equiv", "")).strip().casefold() == "refresh"
+        )
+        normalized_urls = [re.sub(r"[\t\r\n]", "", str(value)).strip() for value in url_values if value]
+        text = " ".join(read_text + normalized_urls)
         return phantom.APP_SUCCESS, text
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
@@ -660,14 +685,14 @@ def parse_structured_file(action_result: "ActionResult", file_info: FileInfo) ->
         csv_file = file_info["path"]
         artifacts = []
         try:
-            with open(csv_file) as fp:
+            with StringIO(_read_csv_text(csv_file), newline="") as fp:
                 reader = csv.DictReader(fp, restkey="other")  # need to handle lines terminated in commas
                 for row in reader:
                     row["source_file"] = file_info["name"]
                     artifacts.append(
                         {
                             "name": "CSV entry",
-                            "cef": {k: v for k, v in list(row.items())},
+                            "cef": {_strip_csv_format_controls(k): _strip_csv_format_controls(v) for k, v in row.items()},
                         }
                     )  # make CSV entry artifact
         except Exception as e:

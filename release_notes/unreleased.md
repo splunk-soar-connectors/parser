@@ -1,1 +1,17 @@
 **Unreleased**
+
+* Bounds RFC 2047 encoded-word recognition when parsing malformed email headers.
+
+* Limits parsed email attachments to 100 files under the supported 30 MB vault upload size.
+
+* Extracts URLs from HTML form actions, submit overrides, object data, and refresh metadata.
+
+* Decodes structured and unstructured CSV input consistently across supported character encodings.
+
+* Removes NUL and Unicode format controls from structured CSV CEF names and values.
+
+* Normalizes numeric IPv4 URL hosts before creating email IOC artifacts.
+
+* Preserves complete email URL paths containing browser-handled punctuation.
+
+* Maps CEF source and destination address aliases consistently to `src_ip` and `dest_ip`.
