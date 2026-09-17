@@ -4,7 +4,7 @@ Third Party Software Attributions:
 
 @@@@============================================================================
 
-Library: charset-normalizer - 3.4.9
+Library: charset-normalizer - 3.5.1
 Homepage: https://github.com/jawah/charset_normalizer/blob/master/CHANGELOG.md
 License: MIT
 License Text:
@@ -65,7 +65,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 @@@@============================================================================
 
-Library: pyOpenSSL - 24.1.0
+Library: pyOpenSSL - 26.0.0
 Homepage: https://pyopenssl.org/
 License: Apache Software License
 License Text:

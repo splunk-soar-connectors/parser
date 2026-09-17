@@ -1,4 +1,4 @@
 charset-normalizer>=2.0
 pdfminer_six @ git+https://github.com/phantomcyber/pdfminer.six.git@20260107.post1
-pyOpenSSL==24.1.0
+pyOpenSSL==26.0.0
 python-docx==1.1.2
