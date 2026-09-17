@@ -1,7 +1,7 @@
 # Parser
 
 Publisher: Splunk <br>
-Connector Version: 2.10.8 <br>
+Connector Version: 2.10.9 <br>
 Product Vendor: Splunk <br>
 Product Name: Parser <br>
 Minimum Product Version: 7.1.0
