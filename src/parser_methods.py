@@ -25,11 +25,10 @@ from typing import TYPE_CHECKING, Any, TypedDict, cast
 from urllib.parse import urlparse
 
 import docx
-import phantom.app as phantom
-import phantom.utils as ph_utils
+from soar_sdk.shims.phantom import app as phantom
+from soar_sdk.shims.phantom import utils as ph_utils
 from bs4 import BeautifulSoup
 from bs4.dammit import UnicodeDammit
-from django.core.validators import URLValidator
 from docx.opc.constants import RELATIONSHIP_TYPE as REL_TYPE
 from docx.opc.part import Part as DocxPart
 from pdfminer.converter import TextConverter
@@ -44,10 +43,15 @@ from pdfminer.utils import isnumber
 
 
 if TYPE_CHECKING:
-    from phantom.action_result import ActionResult
-    from phantom.base_connector import BaseConnector
+    pass
 
-_container_common = {"run_automation": False}  # Don't run any playbooks, when this artifact is added
+_container_common = {
+    "run_automation": False
+}  # Don't run any playbooks, when this artifact is added
+
+
+def _is_fail(status: bool) -> bool:
+    return not status
 
 
 # WHATWG URL code points include non-ASCII scalar values. Keep the existing
@@ -83,7 +87,9 @@ IPV6_REGEX = (
     r"(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
     r"(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*"
 )
-DOMAIN_REGEX = r"(?!:\/\/)((?:[a-zA-Z0-9-_]+\.)*[a-zA-Z0-9][a-zA-Z0-9-_]+\.[a-zA-Z]{2,11})"
+DOMAIN_REGEX = (
+    r"(?!:\/\/)((?:[a-zA-Z0-9-_]+\.)*[a-zA-Z0-9][a-zA-Z0-9-_]+\.[a-zA-Z]{2,11})"
+)
 
 ESCAPE = set(map(ord, '&<>"'))
 
@@ -102,7 +108,7 @@ class FileInfo(TypedDict):
 
 
 def _extract_domain_from_url(url: str) -> str | None:
-    domain = phantom.get_host_from_url(url)
+    domain = urlparse(url).hostname
     if domain and not _is_ip(domain):
         return domain
     return None
@@ -119,10 +125,9 @@ def _is_ip(input_ip: str) -> bool:
 
 
 def _is_url(input_url: str) -> bool:
-    validate_url = URLValidator(schemes=["http", "https"])
     try:
-        validate_url(input_url)
-        return True
+        parsed_url = urlparse(input_url)
+        return parsed_url.scheme in {"http", "https"} and bool(parsed_url.netloc)
     except Exception:
         return False
 
@@ -241,7 +246,9 @@ class TextIOCParser:
         ]
     }
 
-    def __init__(self, parse_domains: bool, patterns: list[dict[str, Any]] | None = None):
+    def __init__(
+        self, parse_domains: bool, patterns: list[dict[str, Any]] | None = None
+    ):
         pattern_definitions = self.BASE_PATTERNS if patterns is None else patterns
         self.patterns = [dict(pattern) for pattern in pattern_definitions]
         self.found_values = set()
@@ -250,16 +257,23 @@ class TextIOCParser:
             # Add the subtypes somain parsing functions only if parse_domains is True
             is_email = True
             for pattern_dict in self.patterns:
-                if pattern_dict.get("cef") == "requestURL" and pattern_dict.get("pattern") == URI_REGEX:
+                if (
+                    pattern_dict.get("cef") == "requestURL"
+                    and pattern_dict.get("pattern") == URI_REGEX
+                ):
                     pattern_dict.update(self.URL_DOMAIN_SUBTYPES_DICT)
                     is_email = False
-                elif pattern_dict.get("cef") == "email" and pattern_dict.get("pattern") in [EMAIL_REGEX, EMAIL_REGEX2]:
+                elif pattern_dict.get("cef") == "email" and pattern_dict.get(
+                    "pattern"
+                ) in [EMAIL_REGEX, EMAIL_REGEX2]:
                     pattern_dict.update(self.EMAILS_DOMAIN_SUBTYPES_DICT)
             if is_email:
                 self.patterns.append(self.DOMAIN_PATTERN)
         self.added_artifacts = 0
 
-    def _create_artifact(self, artifacts: list[Artifact], value: Any, cef: str, name: str) -> None:
+    def _create_artifact(
+        self, artifacts: list[Artifact], value: Any, cef: str, name: str
+    ) -> None:
         artifact = Artifact(
             source_data_identifier=self.added_artifacts,
             cef={cef: value},
@@ -269,13 +283,17 @@ class TextIOCParser:
         self.added_artifacts += 1
         self.found_values.add(value)
 
-    def _parse_ioc_subtype(self, artifacts: list[Artifact], value: Any, subtype: dict[str, Any]) -> None:
+    def _parse_ioc_subtype(
+        self, artifacts: list[Artifact], value: Any, subtype: dict[str, Any]
+    ) -> None:
         callback = subtype.get("callback")
         if callback:
             sub_val = callback(value)
             self._pass_over_value(artifacts, sub_val, subtype)
 
-    def _pass_over_value(self, artifacts: list[Artifact], value: Any, ioc: dict[str, Any]) -> None:
+    def _pass_over_value(
+        self, artifacts: list[Artifact], value: Any, ioc: dict[str, Any]
+    ) -> None:
         validator = ioc.get("validator")
         clean = ioc.get("clean")
         subtypes = ioc.get("subtypes", [])
@@ -314,7 +332,7 @@ class TextIOCParser:
         return artifact
 
 
-def _grab_raw_text(action_result: "ActionResult", txt_file: str) -> tuple[bool, str | None]:
+def _grab_raw_text(action_result: Any, txt_file: str) -> tuple[bool, str | None]:
     """This function will actually really work for any file which is basically raw text.
     html, rtf, and the list could go on
     """
@@ -435,7 +453,9 @@ class PDFXrefObjectsToXML:
                     cls._append_xml(parts, obj)
                     parts.append("\n</object>\n\n")
                 except PDFObjectNotFound as e:
-                    raise PDFObjectNotFound(f"While converting PDF to xml objects PDF object not found. Reason: {e}")
+                    raise PDFObjectNotFound(
+                        f"While converting PDF to xml objects PDF object not found. Reason: {e}"
+                    )
         # dump_trailers historically discarded its serialized trailer value,
         # and convert_objects_to_xml_text discarded its return value. Preserve
         # the existing output while avoiding that wasted traversal.
@@ -456,7 +476,7 @@ class PDFXrefObjectsToXML:
         return text
 
 
-def _pdf_to_text(action_result: "ActionResult", pdf_file: str) -> tuple[bool, str | None]:
+def _pdf_to_text(action_result: Any, pdf_file: str) -> tuple[bool, str | None]:
     try:
         pagenums = set()
         output = StringIO()
@@ -480,7 +500,9 @@ def _pdf_to_text(action_result: "ActionResult", pdf_file: str) -> tuple[bool, st
             None,
         )
     except PDFEncryptionError:
-        return action_result.set_status(phantom.APP_ERROR, "Failed to parse pdf: The provided pdf is encrypted"), None
+        return action_result.set_status(
+            phantom.APP_ERROR, "Failed to parse pdf: The provided pdf is encrypted"
+        ), None
     except struct.error:
         return (
             action_result.set_status(
@@ -492,10 +514,12 @@ def _pdf_to_text(action_result: "ActionResult", pdf_file: str) -> tuple[bool, st
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
         error_text = f"Error Code: {error_code}. Error Message: {error_message}"
-        return action_result.set_status(phantom.APP_ERROR, f"Failed to parse pdf: {error_text}"), None
+        return action_result.set_status(
+            phantom.APP_ERROR, f"Failed to parse pdf: {error_text}"
+        ), None
 
 
-def _docx_to_text(action_result: "ActionResult", docx_file: str) -> tuple[bool, str | None]:
+def _docx_to_text(action_result: Any, docx_file: str) -> tuple[bool, str | None]:
     try:
         doc = docx.Document(docx_file)
     except zipfile.BadZipfile:
@@ -509,7 +533,9 @@ def _docx_to_text(action_result: "ActionResult", docx_file: str) -> tuple[bool, 
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
         error_text = f"Error Code: {error_code}. Error Message: {error_message}"
-        return action_result.set_status(phantom.APP_ERROR, f"Failed to parse docx: {error_text}"), None
+        return action_result.set_status(
+            phantom.APP_ERROR, f"Failed to parse docx: {error_text}"
+        ), None
 
     full_text = []
 
@@ -544,13 +570,17 @@ def _read_csv_text(csv_file: str) -> str:
 
 def _strip_csv_format_controls(value: Any) -> Any:
     if isinstance(value, str):
-        return "".join(character for character in value if character != "\x00" and unicodedata.category(character) != "Cf")
+        return "".join(
+            character
+            for character in value
+            if character != "\x00" and unicodedata.category(character) != "Cf"
+        )
     if isinstance(value, list):
         return [_strip_csv_format_controls(item) for item in value]
     return value
 
 
-def _csv_to_text(action_result: "ActionResult", csv_file: str) -> tuple[bool, str | None]:
+def _csv_to_text(action_result: Any, csv_file: str) -> tuple[bool, str | None]:
     """This function really only exists due to a misunderstanding on how word boundaries (\b) work
     As it turns out, only word characters can invalidate word boundaries. So stuff like commas,
     brackets, gt and lt signs, etc. do not
@@ -567,11 +597,13 @@ def _csv_to_text(action_result: "ActionResult", csv_file: str) -> tuple[bool, st
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
         error_text = f"Error Code: {error_code}. Error Message: {error_message}"
-        return action_result.set_status(phantom.APP_ERROR, f"Failed to parse csv: {error_text}"), None
+        return action_result.set_status(
+            phantom.APP_ERROR, f"Failed to parse csv: {error_text}"
+        ), None
 
 
 def _html_to_text(
-    action_result: "ActionResult",
+    action_result: Any,
     html_file: str | None,
     text_val: str | None = None,
 ) -> tuple[bool, str | None]:
@@ -591,45 +623,41 @@ def _html_to_text(
         url_values = [tag.get("href") for tag in soup.find_all(href=True)]
         url_values.extend(tag.get("src") for tag in soup.find_all(src=True))
         url_values.extend(tag.get("action") for tag in soup.find_all(action=True))
-        url_values.extend(tag.get("formaction") for tag in soup.find_all(formaction=True))
+        url_values.extend(
+            tag.get("formaction") for tag in soup.find_all(formaction=True)
+        )
         url_values.extend(tag.get("data") for tag in soup.find_all("object", data=True))
         url_values.extend(
-            tag.get("content") for tag in soup.find_all("meta", content=True) if str(tag.get("http-equiv", "")).strip().casefold() == "refresh"
+            tag.get("content")
+            for tag in soup.find_all("meta", content=True)
+            if str(tag.get("http-equiv", "")).strip().casefold() == "refresh"
         )
-        normalized_urls = [re.sub(r"[\t\r\n]", "", str(value)).strip() for value in url_values if value]
+        normalized_urls = [
+            re.sub(r"[\t\r\n]", "", str(value)).strip() for value in url_values if value
+        ]
         text = " ".join(read_text + normalized_urls)
         return phantom.APP_SUCCESS, text
     except Exception as e:
         error_code, error_message = _get_error_message_from_exception(e)
         error_text = f"Error Code: {error_code}. Error Message: {error_message}"
-        return action_result.set_status(phantom.APP_ERROR, f"Failed to parse html: {error_text}"), None
+        return action_result.set_status(
+            phantom.APP_ERROR, f"Failed to parse html: {error_text}"
+        ), None
 
 
-def _join_thread(base_connector: "BaseConnector", thread: threading.Thread) -> None:
-    base_connector._lock.acquire()
+def _join_thread(base_connector: Any, thread: threading.Thread) -> None:
     base_connector._done = True
-    base_connector._lock.release()
     thread.join()
 
 
-def _wait_for_parse(base_connector: "BaseConnector") -> None:
-    i = 0
-    base_msg = "Parsing PDF document"
-    while True:
-        base_connector._lock.acquire()
-        if base_connector._done:
-            base_connector._lock.release()
-            break
-        base_connector.send_progress(base_msg + "." * i)
-        base_connector._lock.release()
-        i = i % 5 + 1
-        time.sleep(1)
-    return
+def _wait_for_parse(base_connector: Any) -> None:
+    while not base_connector._done:
+        time.sleep(0.1)
 
 
 def parse_file(
-    base_connector: "BaseConnector",
-    action_result: "ActionResult",
+    base_connector: Any,
+    action_result: Any,
     file_info: FileInfo,
     parse_domains: bool = True,
     keep_raw: bool = False,
@@ -664,7 +692,7 @@ def parse_file(
     else:
         return action_result.set_status(phantom.APP_ERROR, "Unexpected file type"), None
 
-    if phantom.is_fail(ret_val) or raw_text is None:
+    if _is_fail(ret_val) or raw_text is None:
         return ret_val, None
 
     base_connector.save_progress("Parsing for IOCs")
@@ -680,19 +708,28 @@ def parse_file(
     return phantom.APP_SUCCESS, {"artifacts": artifacts}
 
 
-def parse_structured_file(action_result: "ActionResult", file_info: FileInfo) -> tuple[bool, dict[str, list[Artifact]] | None]:
+def parse_structured_file(
+    action_result: Any, file_info: FileInfo
+) -> tuple[bool, dict[str, list[Artifact]] | None]:
     if file_info["type"] == "csv":
         csv_file = file_info["path"]
         artifacts = []
         try:
             with StringIO(_read_csv_text(csv_file), newline="") as fp:
-                reader = csv.DictReader(fp, restkey="other")  # need to handle lines terminated in commas
+                reader = csv.DictReader(
+                    fp, restkey="other"
+                )  # need to handle lines terminated in commas
                 for row in reader:
                     row["source_file"] = file_info["name"]
                     artifacts.append(
                         {
                             "name": "CSV entry",
-                            "cef": {_strip_csv_format_controls(k): _strip_csv_format_controls(v) for k, v in row.items()},
+                            "cef": {
+                                _strip_csv_format_controls(
+                                    k
+                                ): _strip_csv_format_controls(v)
+                                for k, v in row.items()
+                            },
                         }
                     )  # make CSV entry artifact
         except Exception as e:
@@ -706,13 +743,15 @@ def parse_structured_file(action_result: "ActionResult", file_info: FileInfo) ->
                 None,
             )
     else:
-        return action_result.set_status(phantom.APP_ERROR, "Structured extraction only supported for CSV files"), None
+        return action_result.set_status(
+            phantom.APP_ERROR, "Structured extraction only supported for CSV files"
+        ), None
     return phantom.APP_SUCCESS, {"artifacts": artifacts}
 
 
 def parse_text(
-    base_connector: "BaseConnector",
-    action_result: "ActionResult",
+    base_connector: Any,
+    action_result: Any,
     file_type: str | None,
     text_val: str,
     parse_domains: bool = True,
@@ -732,7 +771,7 @@ def parse_text(
     else:
         return action_result.set_status(phantom.APP_ERROR, "Unexpected file type"), None
 
-    if phantom.is_fail(ret_val) or raw_text is None:
+    if _is_fail(ret_val) or raw_text is None:
         return ret_val, None
 
     base_connector.save_progress("Parsing for IOCs")
