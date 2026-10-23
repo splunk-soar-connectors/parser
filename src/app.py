@@ -11,14 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import time
-from pathlib import Path
 from typing import Any
 
 from soar_sdk.abstract import SOARClient
 from soar_sdk.app import App
 from soar_sdk.params import Param, Params
-from soar_sdk.action_results import ActionOutput, OutputField
+from soar_sdk.action_results import ActionOutput, OutputField, PermissiveActionOutput
 from soar_sdk.asset import BaseAsset
 from soar_sdk.logging import getLogger
 
@@ -59,45 +57,55 @@ class ExtractIocParams(Params):
         value_list=["txt", "email", "pdf", "docx", "csv", "html"],
     )
     text: str | None = Param(description="Raw text from which to extract IOCs")
-    is_structured: bool | None = Param(
-        description="Use first row of CSV file as field names", default=False
+    is_structured: bool = Param(
+        description="Use first row of CSV file as field names",
+        default=False,
+        required=False,
     )
     label: str | None = Param(description="Add container to this label")
     max_artifacts: int | None = Param(description="Maximum number of artifacts")
     container_id: int | None = Param(
         description="Add created artifacts to this container"
     )
-    remap_cef_fields: str | None = Param(
+    remap_cef_fields: str = Param(
         description="Remap the CEF fields with new field names; Optionally, also apply an internal CEF -> CIM field name mapping. Note: (source|destination)Address will be mapped to (src|dest)_ip respectively instead of src|dest (not applicable to .eml filetype)",
         default="Do not apply CEF -> CIM remapping, only apply custom remap",
+        required=False,
         value_list=[
             "Do not apply CEF -> CIM remapping, only apply custom remap",
             "Apply CEF -> CIM remapping before applying custom remap",
             "Apply custom remap and apply CEF -> CIM remapping after",
         ],
     )
-    custom_remap_json: str | None = Param(
+    custom_remap_json: str = Param(
         description="Custom set of CEF field name mappings. This is a serialized json dictionary (json.dumps) of Key/Value pairs where Key is an existing field name and Value is the resultant name (not applicable to .eml filetype)",
         default="{}",
+        required=False,
     )
-    run_automation: bool | None = Param(
-        description="Enable run_automation for newly created artifacts", default=True
+    run_automation: bool = Param(
+        description="Enable run_automation for newly created artifacts",
+        default=True,
+        required=False,
     )
-    severity: str | None = Param(
-        description="Severity for the newly created artifacts", default="medium"
+    severity: str = Param(
+        description="Severity for the newly created artifacts",
+        default="medium",
+        required=False,
     )
-    parse_domains: bool | None = Param(
-        description="Parse domains from artifacts", default=True
+    parse_domains: bool = Param(
+        description="Parse domains from artifacts", default=True, required=False
     )
     artifact_tags: str | None = Param(
         description="Tags to add to artifacts (comma separated). Tag should only contain characters A-Z, a-z, 0-9, _, and -. Blank spaces will be ignored"
     )
-    keep_raw: bool | None = Param(
-        description="Save raw text to artifact", default=False
+    keep_raw: bool = Param(
+        description="Save raw text to artifact", default=False, required=False
     )
 
 
-class ExtractIocOutput(ActionOutput):
+class ExtractIocOutput(PermissiveActionOutput):
+    """Preserve arbitrary email header names and string-or-list values at runtime."""
+
     Content_Language: str | None = OutputField(
         example_values=["en-US"], alias="Content-Language"
     )
@@ -290,7 +298,13 @@ def parse_file(
     params: ExtractIocParams, soar: SOARClient[ExtractIocSummary]
 ) -> ExtractIocOutput:
     from . import parser_const, parser_methods  # noqa: PLC0415
-    from .helper import ParseResult, ParserContext, apply_remap, parse_custom_mapping  # noqa: PLC0415
+    from .helper import (  # noqa: PLC0415
+        ParseResult,
+        ParserContext,
+        apply_remap,
+        parse_custom_mapping,
+        save_artifacts,
+    )
 
     logger.progress("Parsing input for IOCs")
     if params.container_id is None and params.label is None:
@@ -338,76 +352,22 @@ def parse_file(
         }
 
     if params.vault_id and params.file_type == "email":
-        import email  # noqa: PLC0415
-        from bs4.dammit import UnicodeDammit  # noqa: PLC0415
-        from soar_sdk.extras.email import EmailProcessor, ProcessEmailContext  # noqa: PLC0415
-        from soar_sdk.shims.phantom.vault import PhantomVault  # noqa: PLC0415
+        from .email_processor import process_email  # noqa: PLC0415
 
-        email_text = UnicodeDammit(Path(file_info["path"]).read_bytes()).unicode_markup
-        if not email_text:
-            raise ValueError("Could not read email file contents from the vault")
-        message = email.message_from_string(email_text)
-        email_headers: dict[str, Any] = {}
-        normalized: dict[str, str] = {}
-        for key, value in message.items():
-            existing = normalized.get(key.lower())
-            if existing is None:
-                normalized[key.lower()] = key
-                email_headers[key] = value
-            else:
-                previous = email_headers[existing]
-                email_headers[existing] = (
-                    f"{previous}, {value}" if isinstance(previous, str) else previous
-                )
-
-        context = ProcessEmailContext(
-            soar=soar,
-            vault=PhantomVault(soar),
-            app_id=app.appid,
-            folder_name="parser",
-            is_hex=False,
-            action_name="extract ioc",
-        )
-        config = {
-            "extract_attachments": True,
-            "extract_domains": params.parse_domains,
-            "extract_hashes": True,
-            "extract_ips": True,
-            "extract_urls": True,
-            "run_automation": params.run_automation,
-            "tags": tags,
-        }
-        processor = EmailProcessor(context, config)
-        status, error, parsed_results = processor._int_process_email(
-            email_text, params.vault_id, time.time()
-        )
-        if not status or not parsed_results:
-            processor._del_tmp_dirs()
-            raise ValueError(error or "Failed to process email")
-        container = parsed_results[0].get("container") or {}
-        if params.container_id is None:
-            container.update({"label": params.label, "severity": severity})
-            container_id = soar.container.create(container)
-        else:
-            container_id = params.container_id
-        if processor._parse_results(parsed_results, container_id) is False:
-            processor._del_tmp_dirs()
-            raise ValueError("Failed to save processed email data")
-        processor._del_tmp_dirs()
-        artifacts_found = sum(
-            len(result.get("artifacts", [])) for result in parsed_results
+        processed = process_email(
+            soar, params, file_info["path"], app.app_meta_info["appid"], tags
         )
         soar.set_summary(
             ExtractIocSummary(
-                artifacts_found=artifacts_found,
-                artifacts_ingested=artifacts_found,
-                container_id=container_id,
+                artifacts_found=processed.artifacts_found,
+                artifacts_ingested=processed.artifacts_ingested,
+                container_id=processed.container_id,
             )
         )
         soar.set_message(
-            f"Container id: {container_id}, Artifacts found: {artifacts_found}"
+            f"Container id: {processed.container_id}, Artifacts found: {processed.artifacts_found}"
         )
-        return ExtractIocOutput(**email_headers)
+        return ExtractIocOutput(**processed.headers)
 
     context = ParserContext()
     result = ParseResult()
@@ -455,18 +415,15 @@ def parse_file(
                 "name": f"{file_info['name']} Parse Results",
                 "label": params.label,
                 "severity": severity,
-                "artifacts": artifacts_to_save,
             }
         )
     else:
         container_id = params.container_id
-        for artifact in artifacts_to_save:
-            artifact["container_id"] = container_id
-            soar.artifact.create(artifact)
+    artifacts_ingested = save_artifacts(soar, artifacts_to_save, container_id)
     soar.set_summary(
         ExtractIocSummary(
             artifacts_found=artifacts_found,
-            artifacts_ingested=len(artifacts_to_save),
+            artifacts_ingested=artifacts_ingested,
             container_id=container_id,
         )
     )

@@ -14,6 +14,7 @@
 import json
 from typing import Any
 
+from soar_sdk.abstract import SOARClient
 from soar_sdk.exceptions import ActionFailure
 from soar_sdk.logging import getLogger
 
@@ -72,3 +73,15 @@ def apply_remap(
             mapping.get(key, key): value for key, value in artifact["cef"].items()
         }
     return artifacts
+
+
+def save_artifacts(
+    soar: SOARClient, artifacts: list[dict[str, Any]], container_id: int
+) -> int:
+    saved = 0
+    for artifact in artifacts:
+        artifact["container_id"] = container_id
+        if not soar.artifact.create(artifact):
+            raise ActionFailure("Artifact creation did not return an artifact ID")
+        saved += 1
+    return saved
