@@ -4,7 +4,7 @@ Publisher: Splunk <br>
 Connector Version: 2.10.9 <br>
 Product Vendor: Splunk <br>
 Product Name: Parser <br>
-Minimum Product Version: 7.1.0
+Minimum Product Version: 7.0.0
 
 This app extracts IOCs from various files such as PDFs, emails, or raw text
 
@@ -18,7 +18,30 @@ with [.]
 
 ### Supported Actions
 
+[test connectivity](#action-test-connectivity) - test connectivity <br>
 [extract ioc](#action-extract-ioc) - Create IOC artifacts from a file in the vault or raw text
+
+## action: 'test connectivity'
+
+test connectivity
+
+Type: **test** <br>
+Read only: **True**
+
+Basic test for app.
+
+#### Action Parameters
+
+No parameters are required for this action
+
+#### Action Output
+
+DATA PATH | TYPE | CONTAINS | EXAMPLE VALUES
+--------- | ---- | -------- | --------------
+action_result.status | string | | success failure |
+action_result.message | string | | |
+summary.total_objects | numeric | | 1 |
+summary.total_objects_successful | numeric | | 1 |
 
 ## action: 'extract ioc'
 
@@ -52,22 +75,22 @@ PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
 
 DATA PATH | TYPE | CONTAINS | EXAMPLE VALUES
 --------- | ---- | -------- | --------------
-action_result.status | string | | success failed |
-action_result.parameter.artifact_tags | string | | tag1, tag2 |
-action_result.parameter.container_id | numeric | | 1776 |
-action_result.parameter.custom_remap_json | string | | {"a": "fileHash", "b": "sourceAddress"} |
-action_result.parameter.file_type | string | | txt email pdf docx csv html |
-action_result.parameter.is_structured | boolean | | True False |
-action_result.parameter.keep_raw | boolean | | True False |
-action_result.parameter.label | string | | Events |
-action_result.parameter.max_artifacts | numeric | | 100 |
-action_result.parameter.parse_domains | boolean | | True False |
-action_result.parameter.remap_cef_fields | string | | Apply custom remap and apply CEF -> CIM remapping after |
-action_result.parameter.run_automation | boolean | | True False |
-action_result.parameter.severity | string | | low |
-action_result.parameter.text | string | | Test string to extract IOCs from |
-action_result.parameter.vault_id | string | `vault id` | 3d6ef06ab51be5a86cdfaba246db2c2ab1d07795 |
-action_result.data | string | | |
+action_result.status | string | | success failure |
+action_result.message | string | | |
+action_result.parameter.vault_id | string | `vault id` | |
+action_result.parameter.file_type | string | | |
+action_result.parameter.text | string | | |
+action_result.parameter.is_structured | boolean | | |
+action_result.parameter.label | string | | |
+action_result.parameter.max_artifacts | numeric | | |
+action_result.parameter.container_id | numeric | | |
+action_result.parameter.remap_cef_fields | string | | |
+action_result.parameter.custom_remap_json | string | | |
+action_result.parameter.run_automation | boolean | | |
+action_result.parameter.severity | string | | |
+action_result.parameter.parse_domains | boolean | | |
+action_result.parameter.artifact_tags | string | | |
+action_result.parameter.keep_raw | boolean | | |
 action_result.data.\*.Content-Language | string | | en-US |
 action_result.data.\*.Content-Type | string | | multipart/alternative; boundary="0000000000005233b405c7737dbe" |
 action_result.data.\*.Date | string | | Mon, 19 Jul 2021 11:18:40 +0530 |
@@ -270,8 +293,7 @@ action_result.data.\*.X-MS-Exchange-Organization-Network-Message-Id | string | |
 action_result.summary.artifacts_found | numeric | | 13 |
 action_result.summary.artifacts_ingested | numeric | | 1 |
 action_result.summary.container_id | numeric | | 1776 |
-action_result.message | string | | Container id: 52069, Artifacts found: 27 |
-summary.total_objects | numeric | | 2 |
+summary.total_objects | numeric | | 1 |
 summary.total_objects_successful | numeric | | 1 |
 
 ______________________________________________________________________
